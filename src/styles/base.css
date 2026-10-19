@@ -1,0 +1,70 @@
+/* Base element styles (design §3, §4.1, §10). Layered so utilities always win. */
+@layer base {
+  html {
+    background-color: var(--c-bg);
+    /* Dialog scroll lock causes no layout shift (§3.1). */
+    scrollbar-gutter: stable;
+    /* Focus is never hidden under the sticky top bar (2.4.11, §4.1). */
+    scroll-padding-top: 76px;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  @media (min-width: 80rem) {
+    html {
+      scroll-padding-top: 24px;
+    }
+  }
+
+  /* Next 16 reads data-scroll-behavior to switch smoothing off during route changes. */
+  @media (prefers-reduced-motion: no-preference) {
+    html[data-scroll-behavior="smooth"]:not([data-motion="reduce"]) {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--c-bg);
+    color: var(--c-ink);
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: var(--c-accent-soft);
+    color: var(--c-ink);
+  }
+
+  /* Outline (not box-shadow) so the ring survives forced-colors mode. Never removed. */
+  :focus-visible {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 2px;
+  }
+
+  /* 12px minimum text size outside the replicas (§3.2). */
+  small {
+    font-size: max(0.75rem, 0.8em);
+  }
+
+  sub,
+  sup {
+    font-size: max(0.75rem, 0.75em);
+  }
+
+  /* Same declarations as Tailwind's sr-only utility; defined here so markup that Tailwind
+     does not scan (strings rendered from content) can rely on the class. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}

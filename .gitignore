@@ -1,0 +1,24 @@
+.planning/
+node_modules/
+
+# Next.js / build output
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Tests and reports
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# Local caches (e.g. store-asset originals)
+.cache/
+
+# Environment
+.env
+.env*.local
+
+# Vercel
+.vercel

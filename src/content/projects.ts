@@ -1,0 +1,57 @@
+// STUB — owned by W2, replaced in wave 1
+import type { Project } from '@/content/types';
+import { ph } from '@/lib/placeholder';
+
+/** The three case-study projects, so every case-study reference resolves. */
+export const projects: readonly Project[] = [
+  {
+    slug: 'sme-panindio',
+    title: 'SME Panindio',
+    summary: 'An offline-first business app for Filipino micro-businesses: POS, inventory, an utang (credit) ledger and real profit.',
+    context: 'personal',
+    role: 'Solo: product, design, mobile, backend and AI',
+    ownership: 'sole',
+    types: ['mobile', 'ai'],
+    status: 'beta',
+    statusLabel: 'Private beta',
+    stack: ['React Native', 'Expo', 'TypeScript', 'NestJS', 'FastAPI'],
+    icon: 'store',
+    links: [{ kind: 'case-study', slug: 'sme-panindio' }],
+    caseStudy: 'sme-panindio',
+    app: 'sme',
+  },
+  {
+    slug: 'defensys-citizen',
+    title: 'Defensys Citizen',
+    summary: 'A white-label public-safety app for Philippine local governments: one-tap SOS video calls, reports and hazard alerts.',
+    context: 'company',
+    company: 'DGSI',
+    role: ph('Your title at DGSI'),
+    ownership: 'primary',
+    types: ['mobile'],
+    status: 'live',
+    statusLabel: 'Live on Google Play and the App Store',
+    stack: ['React Native', 'Expo', 'TypeScript', 'WebRTC'],
+    icon: 'shield-check',
+    links: [{ kind: 'case-study', slug: 'defensys-citizen' }],
+    caseStudy: 'defensys-citizen',
+    app: 'citizen',
+  },
+  {
+    slug: 'defensys-responder',
+    title: 'Defensys Responder',
+    summary: 'The field app for LGU emergency responders: live dispatch, road navigation, push-to-talk and video with the command center.',
+    context: 'company',
+    company: 'DGSI',
+    role: ph('Your title at DGSI'),
+    ownership: 'primary',
+    types: ['mobile'],
+    status: 'live',
+    statusLabel: 'Private distribution',
+    stack: ['React Native', 'Expo', 'TypeScript', 'Socket.IO'],
+    icon: 'radio',
+    links: [{ kind: 'case-study', slug: 'defensys-responder' }],
+    caseStudy: 'defensys-responder',
+    app: 'responder',
+  },
+];

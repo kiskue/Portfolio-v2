@@ -1,0 +1,27 @@
+/*
+ * View Transitions. The site has one signature transition, the phone morph
+ * (<ViewTransition share="morph" default="none">); its CSS is added by the glimpse and
+ * case-study work. No theme crossfade and no page slides (PLAN.md → Motion).
+ */
+
+/* Clicks during a transition reach the live page instead of the overlay. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* Reduced motion: transitions swap instantly. */
+:root[data-motion="reduce"]::view-transition-group(*),
+:root[data-motion="reduce"]::view-transition-old(*),
+:root[data-motion="reduce"]::view-transition-new(*) {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion])::view-transition-group(*),
+  :root:not([data-motion])::view-transition-old(*),
+  :root:not([data-motion])::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

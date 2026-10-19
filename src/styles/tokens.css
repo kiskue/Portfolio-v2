@@ -1,0 +1,244 @@
+/*
+ * Design tokens: design-spec §3.1 (colour), §3.2 (type), §3.3 (radii, shadows), §3.6 (easing).
+ *
+ * Raw values live on :root (light) and .dark as --c-* custom properties. Tailwind reads them
+ * through `@theme inline`, so `bg-surface text-ink` always follows the active theme, including
+ * inside a `.dark` subtree.
+ *
+ * PLAN amendment: --c-on-accent is white in BOTH themes. The orange icon tiles keep the
+ * template's white glyph (those icons are decorative and aria-hidden). Orange TEXT only ever
+ * uses --c-accent-ink.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * html[data-motion="reduce"] is set by the pre-paint script from the in-site setting or the OS
+ * preference. If the attribute is missing (inline scripts blocked), the media query applies.
+ */
+@custom-variant reduce-motion {
+  &:where([data-motion="reduce"], [data-motion="reduce"] *) {
+    @slot;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:where(:root:not([data-motion]), :root:not([data-motion]) *) {
+      @slot;
+    }
+  }
+}
+
+@layer theme {
+  :root {
+    color-scheme: light;
+
+    --c-bg: #F3F3EB;
+    --c-bg-2: #EDEEE7;
+    --c-sidebar: #FBFCF7;
+    --c-surface: #FCFBF7;
+    --c-raised: #FFFFFF;
+    --c-sunken: #F6F5EF;
+    --c-line: #E6E4DE;
+    --c-line-strong: #8A877E;
+    --c-ink: #0D1C3D;
+    --c-ink-2: #44474F;
+    --c-ink-3: #5C5F66;
+    --c-ink-4: #6B6A63;
+    --c-accent: #FF7816;
+    --c-on-accent: #FFFFFF;
+    --c-accent-ink: #C2410C;
+    --c-accent-soft: #FDE3CC;
+    --c-soft-ink: #9A3412;
+    --c-focus: #2563EB;
+    --c-nav-hover: #EFEEE8;
+    --c-nav-active: #E7E6DF;
+    --c-status-live: #25A464;
+    --c-status-beta: #2563EB;
+    --c-status-building: #D97706;
+    --c-status-prototype: #6B7280;
+    --c-danger-ink: #B42318;
+    --c-ph-bg: #FFF1D6;
+    --c-ph-ink: #8A4B00;
+    --c-avail-bg: #DCFCE7;
+    --c-avail-ink: #166534;
+    --c-deco: #C9C8BF;
+    --c-bezel: #121622;
+    --c-bezel-ring: transparent;
+    --c-scrim: rgb(10 16 34 / 0.45);
+
+    /* RGB triplets for rgb(var(--glow) / a). The *-alpha tokens carry each theme's strength. */
+    --glow: 191 212 255;
+    --glow-alpha: 0.85;
+    --glow-line-alpha: 0.55;
+    --peach: 255 210 174;
+    --peach-alpha: 0.9;
+
+    /* Navy-tinted elevation (§3.3). */
+    --sh-xs: 0 1px 2px rgb(13 28 61 / 0.05);
+    --sh-sm: 0 1px 2px rgb(13 28 61 / 0.04), 0 4px 12px rgb(13 28 61 / 0.05);
+    --sh-md: 0 2px 4px rgb(13 28 61 / 0.05), 0 12px 28px rgb(13 28 61 / 0.08);
+    --sh-lg: 0 8px 16px rgb(13 28 61 / 0.06), 0 28px 64px rgb(13 28 61 / 0.12);
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --c-bg: #0A1022;
+    --c-bg-2: #080D1C;
+    --c-sidebar: #0D1428;
+    --c-surface: #111A30;
+    --c-raised: #16203A;
+    --c-sunken: #0C1326;
+    --c-line: #233150;
+    --c-line-strong: #63759A;
+    --c-ink: #ECEEF3;
+    --c-ink-2: #B8C0CF;
+    --c-ink-3: #98A2B6;
+    --c-ink-4: #8892A6;
+    --c-accent: #FF8A3D;
+    --c-on-accent: #FFFFFF;
+    --c-accent-ink: #FF9A52;
+    --c-accent-soft: #372C32;
+    --c-soft-ink: #FFB27A;
+    --c-focus: #8AB0FF;
+    --c-nav-hover: #141D36;
+    --c-nav-active: #1A2440;
+    --c-status-live: #3DD68C;
+    --c-status-beta: #7AA2FF;
+    --c-status-building: #FBBF24;
+    --c-status-prototype: #8892A6;
+    --c-danger-ink: #FDA29B;
+    --c-ph-bg: #323032;
+    --c-ph-ink: #FFD18A;
+    --c-avail-bg: #133236;
+    --c-avail-ink: #86EFAC;
+    --c-deco: #1C2742;
+    --c-bezel: #0B0F19;
+    --c-bezel-ring: rgb(255 255 255 / 0.08);
+    --c-scrim: rgb(2 6 15 / 0.65);
+
+    --glow: 110 140 255;
+    --glow-alpha: 0.28;
+    --glow-line-alpha: 0.22;
+    --peach: 255 138 61;
+    --peach-alpha: 0.22;
+
+    /* Dark drops the soft shadows in favour of 1px borders (§3.3). 0 0 #0000 keeps lists valid. */
+    --sh-xs: 0 0 #0000;
+    --sh-sm: 0 0 #0000;
+    --sh-md: 0 12px 32px rgb(0 0 0 / 0.35);
+    --sh-lg: 0 12px 32px rgb(0 0 0 / 0.35);
+  }
+}
+
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-bg-2: var(--c-bg-2);
+  --color-sidebar: var(--c-sidebar);
+  --color-surface: var(--c-surface);
+  --color-raised: var(--c-raised);
+  --color-sunken: var(--c-sunken);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-ink: var(--c-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-ink-3: var(--c-ink-3);
+  --color-ink-4: var(--c-ink-4);
+  --color-accent: var(--c-accent);
+  --color-on-accent: var(--c-on-accent);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-soft-ink: var(--c-soft-ink);
+  --color-focus: var(--c-focus);
+  --color-nav-hover: var(--c-nav-hover);
+  --color-nav-active: var(--c-nav-active);
+  --color-status-live: var(--c-status-live);
+  --color-status-beta: var(--c-status-beta);
+  --color-status-building: var(--c-status-building);
+  --color-status-prototype: var(--c-status-prototype);
+  --color-danger-ink: var(--c-danger-ink);
+  --color-ph-bg: var(--c-ph-bg);
+  --color-ph-ink: var(--c-ph-ink);
+  --color-avail-bg: var(--c-avail-bg);
+  --color-avail-ink: var(--c-avail-ink);
+  --color-deco: var(--c-deco);
+  --color-bezel: var(--c-bezel);
+  --color-bezel-ring: var(--c-bezel-ring);
+  --color-scrim: var(--c-scrim);
+  --color-glow: rgb(var(--glow));
+  --color-peach: rgb(var(--peach));
+
+  /* Replica brand bridge: brandVars() sets --app-* on BrandVars / BrandScope wrappers. */
+  --color-r-primary: var(--app-primary);
+  --color-r-secondary: var(--app-secondary);
+  --color-r-accent: var(--app-accent);
+  --color-r-lighttext: var(--app-lighttext);
+  --color-r-title-ink: var(--app-title-ink);
+
+  /* next/font variables are set on <html> by src/lib/fonts.ts. */
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --shadow-xs: var(--sh-xs);
+  --shadow-sm: var(--sh-sm);
+  --shadow-md: var(--sh-md);
+  --shadow-lg: var(--sh-lg);
+}
+
+@theme static {
+  /* Semantic radii, named so nobody confuses them with Tailwind's rounded-lg (§3.3). */
+  --radius-tile: 8px;
+  --radius-control: 12px;
+  --radius-card: 18px;
+  --radius-strip: 24px;
+  --radius-bento: 30px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-emph: cubic-bezier(0.2, 0, 0, 1);
+
+  --breakpoint-3xl: 100rem;
+
+  /* Type scale (§3.2). Fluid sizes use cqi of <main> once it is a size container. */
+  --text-display: clamp(2rem, 0.9rem + 4.6cqi, 3.5rem);
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 800;
+  --text-h1: clamp(1.875rem, 1rem + 3cqi, 3rem);
+  --text-h1--line-height: 1.06;
+  --text-h1--letter-spacing: -0.03em;
+  --text-h1--font-weight: 800;
+  --text-h2: clamp(1.5rem, 1.1rem + 1.4cqi, 2rem);
+  --text-h2--line-height: 1.15;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 750;
+  --text-h3-hero: 1.25rem;
+  --text-h3-hero--line-height: 1.25;
+  --text-h3-hero--letter-spacing: -0.01em;
+  --text-h3-hero--font-weight: 700;
+  --text-card-title: 1rem;
+  --text-card-title--line-height: 1.3;
+  --text-card-title--font-weight: 700;
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.55;
+  --text-lead--font-weight: 500;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.5;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.45;
+  --text-meta--font-weight: 500;
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--letter-spacing: 0.12em;
+  --text-eyebrow--font-weight: 650;
+  --text-fig: 0.75rem;
+  --text-fig--letter-spacing: 0.02em;
+  --text-fig--font-weight: 500;
+  --text-nav: 0.9375rem;
+  --text-nav--font-weight: 500;
+  --text-button: 0.9375rem;
+  --text-button--font-weight: 600;
+  --text-stat: clamp(1.75rem, 1.2rem + 1.5cqi, 2.25rem);
+  --text-stat--letter-spacing: -0.02em;
+  --text-stat--font-weight: 800;
+}

@@ -1,0 +1,66 @@
+/*
+ * Motion tokens (design §3.6) and the global reduced-motion baseline.
+ * Easing curves are Tailwind theme tokens in tokens.css (ease-out, ease-in-out, ease-emph).
+ *
+ * Reduced motion means the in-site setting or the OS preference, resolved by the pre-paint
+ * script into html[data-motion="reduce"]. When that attribute is missing (inline scripts
+ * blocked), the prefers-reduced-motion media query applies instead.
+ *
+ * Under reduced motion, CSS animations finish at once and transitions animate only colour and
+ * opacity, for --dur-reduced (120ms, within the 150ms limit). Static transform states such as
+ * the hover lift or the About fan spread are switched off per component with the
+ * `reduce-motion:` variant; layout transforms (phone scaling, centring) are left alone.
+ *
+ * These rules are unlayered `!important`. Layered important declarations beat them, so a
+ * component can deliberately keep a short opacity fade with an important utility, for example
+ * `reduce-motion:!animate-[fade-in_120ms_both]`.
+ */
+:root {
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --dur-morph: 480ms;
+  --dur-glimpse-enter: 360ms;
+  --dur-marquee: 48s;
+  --dur-reduced: 120ms;
+}
+
+:root[data-motion="reduce"] {
+  --dur-2: var(--dur-reduced);
+  --dur-3: var(--dur-reduced);
+  --dur-morph: 0ms;
+  --dur-glimpse-enter: var(--dur-reduced);
+}
+
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity !important;
+  transition-duration: var(--dur-reduced) !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion]) {
+    --dur-2: var(--dur-reduced);
+    --dur-3: var(--dur-reduced);
+    --dur-morph: 0ms;
+    --dur-glimpse-enter: var(--dur-reduced);
+  }
+
+  :root:not([data-motion]) *,
+  :root:not([data-motion]) *::before,
+  :root:not([data-motion]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity !important;
+    transition-duration: var(--dur-reduced) !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
