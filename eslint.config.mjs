@@ -178,5 +178,6 @@ export default defineConfig([
     'blob-report/**',
     '.planning/**',
     '.cache/**',
+    '.claude/**',
   ]),
 ]);

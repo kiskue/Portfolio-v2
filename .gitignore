@@ -22,3 +22,6 @@ blob-report/
 
 # Vercel
 .vercel
+
+# Claude Code local state and agent worktrees
+.claude/
