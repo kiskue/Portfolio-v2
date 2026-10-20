@@ -1,3 +1,4 @@
+import 'server-only';
 import { apps } from '@/content/apps/apps';
 import { brands } from '@/content/apps/brands';
 import { figures } from '@/content/apps/figures';
@@ -40,6 +41,9 @@ import { showInstalls, showRating } from '@/lib/store-rules';
  * Every number and lookup the pages need, computed from content. This is the only place counts
  * are derived; copy and JSX never hard-code them. Builders are pure (and unit-tested with
  * fixtures); the exported values apply them to the real content.
+ *
+ * Server-only (like src/content/apps/store.ts, which it imports): a client island never imports
+ * this module; it receives the values it needs as props or as server-rendered children.
  */
 
 // ─── Lookups ─────────────────────────────────────────────────────────────────────────────

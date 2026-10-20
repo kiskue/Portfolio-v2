@@ -18,6 +18,8 @@ import {
 import type { CitizenBrandId, InstallBand, Project, ScreenImage, StoreListing, StorePlatform } from '@/content/types';
 
 // ─── Fixtures: the 8 verified listings (research store.json, as of 2026-10-19) ──────────
+// Screenshot counts are the SHOWN ones: 12 of the 47 store screenshots are excluded for
+// privacy (store-listings.json `excluded`), so the site shows 35.
 
 function screenshots(count: number, platform: StorePlatform): ScreenImage[] {
   return Array.from({ length: count }, (_, index): ScreenImage => ({
@@ -53,22 +55,22 @@ function listing(
 }
 
 const VERIFIED_LISTINGS: readonly StoreListing[] = [
-  listing('smile-safe-taytay', 'play', '5K+', { value: 4.2, count: 27 }, 5),
-  listing('1hope', 'play', '1K+', { value: 5, count: 9 }, 8),
-  listing('sjdm-app', 'play', '10+', null, 5),
-  listing('defensys-safe', 'play', '10+', null, 5),
+  listing('smile-safe-taytay', 'play', '5K+', { value: 4.2, count: 27 }, 3),
+  listing('1hope', 'play', '1K+', { value: 5, count: 9 }, 7),
+  listing('sjdm-app', 'play', '10+', null, 3),
+  listing('defensys-safe', 'play', '10+', null, 3),
   listing('safe-icb', 'play', '0+', null, 5),
   listing('aero-app', 'play', '1+', null, 5),
-  listing('smile-safe-taytay', 'appstore', null, { value: 4, count: 3 }, 5),
-  listing('1hope', 'appstore', null, null, 9),
+  listing('smile-safe-taytay', 'appstore', null, { value: 4, count: 3 }, 3),
+  listing('1hope', 'appstore', null, null, 6),
 ];
 
 // ─── Store ───────────────────────────────────────────────────────────────────────────────
 
 describe('summarizeStore', () => {
-  it('derives "6 apps · 8 store listings (6 Google Play · 2 App Store)" and 47 screenshots', () => {
+  it('derives "6 apps · 8 store listings (6 Google Play · 2 App Store)" and the 35 shown screenshots', () => {
     const summary = summarizeStore(VERIFIED_LISTINGS, '2026-01-01');
-    expect(summary).toMatchObject({ listings: 8, play: 6, appstore: 2, publicBrands: 6, screenshots: 47, asOf: '2026-10-19' });
+    expect(summary).toMatchObject({ listings: 8, play: 6, appstore: 2, publicBrands: 6, screenshots: 35, asOf: '2026-10-19' });
   });
 
   it('headlines Smile SAFE Taytay: 5K+ installs and 4.2 from 27 ratings', () => {
@@ -97,8 +99,9 @@ describe('summarizeStore', () => {
     });
   });
 
-  it('is what the site uses', () => {
+  it('is what the site uses, and counts only the screenshots it shows (35)', () => {
     expect(storeSummary).toEqual(summarizeStore(storeListings, storeSummary.asOf));
+    expect(storeSummary.screenshots).toBe(35);
   });
 });
 
@@ -107,10 +110,10 @@ describe('summarizeStore', () => {
 describe('showcase entries', () => {
   it('put every replica first within its app, then the real screenshots', () => {
     const entries = buildShowcaseEntries(figures, VERIFIED_LISTINGS, apps);
-    expect(entries).toHaveLength(figures.length + 47);
+    expect(entries).toHaveLength(figures.length + 35);
     expect(entries.map((entry) => entry.app)).toEqual([
       ...Array<string>(9).fill('sme'),
-      ...Array<string>(6 + 47).fill('citizen'),
+      ...Array<string>(6 + 35).fill('citizen'),
       ...Array<string>(6).fill('responder'),
     ]);
     const citizen = entries.filter((entry) => entry.app === 'citizen');
@@ -122,12 +125,13 @@ describe('showcase entries', () => {
     const entries = buildShowcaseEntries(figures, VERIFIED_LISTINGS, apps);
     expect(entries[0]?.label).toBe('FIG 1.1 Owner dashboard');
     const real = entries.find((entry) => entry.source === 'real');
-    expect(real?.label).toBe('smile-safe-taytay · Google Play screenshot 1 of 5');
+    expect(real?.label).toBe('smile-safe-taytay · Google Play screenshot 1 of 3');
     expect(new Set(entries.map((entry) => entry.id)).size).toBe(entries.length);
   });
 
-  it('cover every figure on the site', () => {
+  it('cover every figure on the site, and only the 35 shown store screenshots', () => {
     expect(showcaseEntries.filter((entry) => entry.source === 'replica')).toHaveLength(figures.length);
+    expect(showcaseEntries.filter((entry) => entry.source === 'real')).toHaveLength(35);
   });
 });
 

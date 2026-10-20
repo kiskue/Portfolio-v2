@@ -1,4 +1,3 @@
-// STUB — owned by W2, replaced in wave 1
 import type { CaseStudy } from '@/content/types';
 import { defensysCitizen } from './defensys-citizen';
 import { defensysResponder } from './defensys-responder';

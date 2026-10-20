@@ -1,0 +1,407 @@
+{
+  "brands/sme/icon": {
+    "src": "/brands/sme/icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 3236,
+    "sha256": "a22c33d0d1617932be0e3e89a4dd6f3abf0fd63a703f69132cc135c06ce8a4e1",
+    "sourceUrl": "repo:SME-Panindio/assets/icon.png",
+    "asOf": "2026-10-19"
+  },
+  "portrait/gerric-portrait": {
+    "src": "@/assets/portrait/gerric-portrait.jpg",
+    "width": 765,
+    "height": 944,
+    "bytes": 24875,
+    "sha256": "5ddd4ae09c0ea00ec32d9cd85df149a17e9827d219060f328e6e814a98e41f07",
+    "sourceUrl": "repo:Profile/public/gerric-portrait.jpg",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/appstore-01": {
+    "src": "/store/citizen/1hope/appstore-01.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 109412,
+    "sha256": "53730868c87d6b70150ae8722dfeeb381e8b39aea0a354d497863c696bc4d885",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/c6/9b/00/c69b000e-60d8-8000-8ef6-6239b78da895/Defensys.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/appstore-02": {
+    "src": "/store/citizen/1hope/appstore-02.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 154104,
+    "sha256": "1022700ff2df91877074f922b502751b3f7768e5a536ddea08335582f47b5248",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/9e/0a/84/9e0a84d2-4c5a-5f28-7daa-d542d676963f/Defensys-4.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/appstore-03": {
+    "src": "/store/citizen/1hope/appstore-03.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 53286,
+    "sha256": "3e808bc5d55081330571035bca402124f969e9c40125b8f1d8ce1dfadbae609e",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/89/76/a2/8976a22d-a64d-6c6d-3451-b0ca331ac3a1/Defensys-1.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/appstore-04": {
+    "src": "/store/citizen/1hope/appstore-04.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 165194,
+    "sha256": "46a4e55d6b08ab48b7892d0f9300d288668b42652c2b548ec1127a46eed1efd7",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/e8/08/fb/e808fbc0-3e3a-e226-f91a-c95b12700d89/Defensys-5.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/appstore-07": {
+    "src": "/store/citizen/1hope/appstore-07.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 119344,
+    "sha256": "506e17b000efdabfa9b1383b4c9e8a979cf133cdb64dfff9de4e1b2defa675a3",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/cd/09/da/cd09dac3-68d6-8cfa-90a3-603856780d2a/Defensys-8.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/appstore-09": {
+    "src": "/store/citizen/1hope/appstore-09.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 73284,
+    "sha256": "eae30510e4e97c49693dbfb0a83db38f93ac86a16198aba4dd8459dad9466286",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/33/ae/0b/33ae0b7c-f67b-3225-9816-90d13d18fbf2/Defensys-6.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/appstore-icon": {
+    "src": "/store/citizen/1hope/appstore-icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 4242,
+    "sha256": "a2b17f460b8e53fa58b883d17bb7945f229d9ab37244a076a6c50cf8ac82c998",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/f3/ee/fa/f3eefadf-045c-1d74-2de5-312554a62f1b/AppIcon-0-0-1x_U007ephone-0-1-85-220.png/512x512bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/play-01": {
+    "src": "/store/citizen/1hope/play-01.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 43760,
+    "sha256": "753a84a10945837cb61def9100e4b7c1e3021a4c62819b547d5e97ddd26af66c",
+    "sourceUrl": "https://play-lh.googleusercontent.com/jQZuDBkd8WRSng-5YaQLLmlJYxvwcoPN-QEgrdx3H5fetYLaaABc1shJkPCrY54yTzKWc6dx4HqMTFXtLo30Tw=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/play-02": {
+    "src": "/store/citizen/1hope/play-02.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 57462,
+    "sha256": "e854b5700c6273f2307b7af7addf861aef295d1a06d6515f5cd36cb5da875366",
+    "sourceUrl": "https://play-lh.googleusercontent.com/1FDx5OFebxYWUrgTNRsu_1Mbx3-jkHomkQhLiCA7_vE2_2TRacHvvNCE9An6ySj0H_UHwRfa20XuZpfPgEBHgVI=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/play-03": {
+    "src": "/store/citizen/1hope/play-03.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 22270,
+    "sha256": "4b0d28c4291fe763514a3ada2afe4e5df2dcd4407c672c2e90958214334c0cb3",
+    "sourceUrl": "https://play-lh.googleusercontent.com/h7x6GvwooYGZfaSnTPsNEl4WHUD7Xqkw5JwG2PPpw7S3emErUXhNyTKIBDth2Il3UEIHkZZSjaUb2fvJXdualw=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/play-04": {
+    "src": "/store/citizen/1hope/play-04.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 52744,
+    "sha256": "058b9fea6f2116954153cf09ccc3f2a184d1669b9821c4ea4d434995c4445f4a",
+    "sourceUrl": "https://play-lh.googleusercontent.com/oEMDglQr9vzBZ7pQh3JkpqlabL3ceFbCOKKGtYIoUlZf5--CL5dLWJ_GrYmuiMkmJEp7-yjz-WOmVBaBd74USg=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/play-05": {
+    "src": "/store/citizen/1hope/play-05.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 69466,
+    "sha256": "4d1d43051ceda33889447653aa596e3d621a445bb3c7be289f424c686d3eec83",
+    "sourceUrl": "https://play-lh.googleusercontent.com/vdKlaK9uRklvAAaSXqR5-JDBYA3RG5BCrhdBpg6dg0oS6h3LHIplKM4gsNw7UaoFXnOTFGPySwMdhvYpB5wK0w=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/play-06": {
+    "src": "/store/citizen/1hope/play-06.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 42466,
+    "sha256": "0a10d862f0cd58f0ca161a32ecf0f75772be72a2a0411ed7e5e38f7d4694f669",
+    "sourceUrl": "https://play-lh.googleusercontent.com/wFZwrml5Zsnx6Wn8TM7KVeDUD6TbVvQknbPAGcw9SyH9YprECGsUeDfmhHNVwHKYaUFckeeux_mJRiFpO3yy=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/play-08": {
+    "src": "/store/citizen/1hope/play-08.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 30730,
+    "sha256": "35e931d1b2b40919998d248a625368bc6201556088a82a97a09352684ef088f9",
+    "sourceUrl": "https://play-lh.googleusercontent.com/tQlT0Up0cDrf87OMSfiWesCMtwWP2-VxTZG7uwNceRJAJoqF_M7V1gk5gpE-VsOQ_4-woIQobdaJOX4z-wem=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/1hope/play-icon": {
+    "src": "/store/citizen/1hope/play-icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 4556,
+    "sha256": "798c74e9781edacad1f6c9d4ae758c221ae63e0d819cd5841ccfc42ab7f2d445",
+    "sourceUrl": "https://play-lh.googleusercontent.com/2xeFIAEF4Q4Skg2GxIy9mKsh9v0CwXvYKFWx0I1aZaLKz4HzbsNl7EsMOfYLnyAWbz5tQ3FCoCfUFXwU0Aewqho=s512",
+    "asOf": "2026-10-19"
+  },
+  "store/aero-app/play-01": {
+    "src": "/store/citizen/aero-app/play-01.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 49140,
+    "sha256": "835f7e7db2a9e046f387c7ee7ae6bba3a7e62fbd255d01f824feb30eaef0a44e",
+    "sourceUrl": "https://play-lh.googleusercontent.com/yQZ9W40bBIhW1yy-3P7OB40B4u3JuCS9qPUMmu7a4jesyIWGmyM4OcvzaZv2x3HDw4BZlOUKduMFzlglDmcqtA=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/aero-app/play-02": {
+    "src": "/store/citizen/aero-app/play-02.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 58044,
+    "sha256": "58c8da2b9220e0fcd5e91b9f16d94a4e13fbcfdc8a55b82dc21bb46063dc1ef3",
+    "sourceUrl": "https://play-lh.googleusercontent.com/lwW6ECpJOPam3Pj98l99joV-Hn05QFk0gafQaN9PuuDFLdnUvdNXzYZYWeCGewZ4AQHs1vdzlQAg3tgjTNAOYR8=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/aero-app/play-03": {
+    "src": "/store/citizen/aero-app/play-03.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 89746,
+    "sha256": "cf147378ad1af48903e363971d5fc0d54f4b06a7c9894169266d522dc351b0a8",
+    "sourceUrl": "https://play-lh.googleusercontent.com/Fr87rMZRtUZtTfeZbNcU3DkvueA05fey2cIlB6BSTYNbJXqudKdpdnPwltQ-Z_JURXC_oj7Wm7L-XQdcL2oAdg=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/aero-app/play-04": {
+    "src": "/store/citizen/aero-app/play-04.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 38488,
+    "sha256": "35690828e7176adf14c5b263e11fe17cf5f1e62d302f1396e46297e81426673d",
+    "sourceUrl": "https://play-lh.googleusercontent.com/KTUZeNn2UDnFLnEt28gE18nQZ8IIj4K4BK8ku7r7jGyAeOJe3PlCWnPXBjPFPqVV0a0yp_GOqAYDZLNgmfVouw=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/aero-app/play-05": {
+    "src": "/store/citizen/aero-app/play-05.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 42926,
+    "sha256": "e4dd98637a141e6892d6f375d5c3fc77485dae00a801979b7a193bde7066b84b",
+    "sourceUrl": "https://play-lh.googleusercontent.com/qCoopuWu3irrfb5amM5_v6zZYWe-F3qWgeG_t6DfluaPbOGXZ0S3tWPWf_MD-cqt3PZaXcMhiIR7WSaEDkSq=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/aero-app/play-icon": {
+    "src": "/store/citizen/aero-app/play-icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 17826,
+    "sha256": "e5b35e65b253c68acbf543942ddf6b31f267970fd8debfa1426f73cff51fb69c",
+    "sourceUrl": "https://play-lh.googleusercontent.com/0e0vUGRxsLhkajdobYkMlEge-1SbKnr0O-CoGmnXJZnm6PheIj8jeG1a4rYixDhMWJ9k9WABVclTt_qPm5pN=s512",
+    "asOf": "2026-10-19"
+  },
+  "store/defensys-safe/play-01": {
+    "src": "/store/citizen/defensys-safe/play-01.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 46172,
+    "sha256": "b98ec0fc3948432acbe769f8af34da87e44972f783fa1dec3d2c1b8cfc8fd6ed",
+    "sourceUrl": "https://play-lh.googleusercontent.com/QnlqgfpFR8xbCq-It6xf0bsAU-h42pwqQdojWsjgVRTwHQkTEJ1AbthfuPrQOBES5ZFzdSuuQ90Ex1uzfixP0g=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/defensys-safe/play-02": {
+    "src": "/store/citizen/defensys-safe/play-02.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 54988,
+    "sha256": "3e4bfba82aac3caa17411f04edbb51c1d20a42e2c18cec4cb9a7e235456a542a",
+    "sourceUrl": "https://play-lh.googleusercontent.com/_PWutlAeE6i-QRveskqje1GGMlg72MHiOUCWLS5SnbVq1AfRPW8A-lcZxPwhzWFUlu70_cAsq1mrl6P6llsy=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/defensys-safe/play-03": {
+    "src": "/store/citizen/defensys-safe/play-03.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 33472,
+    "sha256": "7849b7a11712e50f294d6aa051ca93800e54dfda7fa86c0018e23092a4f1d2bc",
+    "sourceUrl": "https://play-lh.googleusercontent.com/5AqqKehA6vcVcqPDT55BAx4UvOspR9IZWBsz1PNXahB8m06k2pfKcIRiWrJ2k1bDI9N1AKkrCsO2Z4ehj7qZ=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/defensys-safe/play-icon": {
+    "src": "/store/citizen/defensys-safe/play-icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 3068,
+    "sha256": "7bf1a2f6ba324fd2e22fd5471007a33d07b9eceb158a59625d19406b98ef8907",
+    "sourceUrl": "https://play-lh.googleusercontent.com/02MQhOS8upUInJH_AUbYUPn0q9VISZuWzebwfgzgLNbCoHtItjHhP-n5ShHhmvv5azDot4ZZ0h-UBHLHeyVbiA=s512",
+    "asOf": "2026-10-19"
+  },
+  "store/safe-icb/play-01": {
+    "src": "/store/citizen/safe-icb/play-01.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 45312,
+    "sha256": "8f9726a4b07627f66a2fa9cda17d8c4631f3997401e2f97ce56e4c725befc973",
+    "sourceUrl": "https://play-lh.googleusercontent.com/KTQWUgQZGhsKZP9v-VlIIvIXi3hz3T4tD1z0zY-jWpSkM6ZkVVD4176EFWSTt5K85fXEbegSE1znoVo46ENozg=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/safe-icb/play-02": {
+    "src": "/store/citizen/safe-icb/play-02.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 65126,
+    "sha256": "bca30bcf63985f9c0feaf233954b3747eb35dfe56ddf16433dce2b4e8c8088f0",
+    "sourceUrl": "https://play-lh.googleusercontent.com/WwbDiqGv0mWlLxtYE5vlp0f5m-O_KYGZqkOWyKG-p3wykQRYwKvkFuCy9MIjK8lzkc4omwho8qe3d5GzYsGPsQ=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/safe-icb/play-03": {
+    "src": "/store/citizen/safe-icb/play-03.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 86414,
+    "sha256": "8c28cd71914ef655d7eaeb20d4d3aa5990c9e875a4edff95883420077e87026f",
+    "sourceUrl": "https://play-lh.googleusercontent.com/yKdrgi2EW0T7T8jukn_Kz--RPSJx3a6k2Fq-iBnbd0Mow_UoJ1b6TYU_fB0ZbxqJp-_OTmZ5Hc3M6kEq4cwc=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/safe-icb/play-04": {
+    "src": "/store/citizen/safe-icb/play-04.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 36482,
+    "sha256": "693150f67c92ae6df8f838e83f4bcb42852093cd3865a5ef04d282b98dfde6e8",
+    "sourceUrl": "https://play-lh.googleusercontent.com/c_r_Q12EMEnwzjWa2e3S3p5PlXpdKhbueN8Zi6gYcnAapFCkbaJ460_w0-hFH864fujSxP6tWAaBSLanyvo8=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/safe-icb/play-05": {
+    "src": "/store/citizen/safe-icb/play-05.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 40974,
+    "sha256": "e3e841b5d7dd899104c4fb290db8e06b8d40c1abb69fc53a7a3a612301b64b49",
+    "sourceUrl": "https://play-lh.googleusercontent.com/Vw33q1egikTlDFrwZ2jxT1e3zt7zzWwMF_6xTAc8La1myWsi5-TndAjBMGeg1KN96Og-K_tHBaRRQyi_hCH2=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/safe-icb/play-icon": {
+    "src": "/store/citizen/safe-icb/play-icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 12644,
+    "sha256": "4e133ed0388b1515af04b3de63cfb42548247835db8b14a31cb1b4fea10f2d4c",
+    "sourceUrl": "https://play-lh.googleusercontent.com/-rpRPca3xXFp4FzlrAspgXEWX-gvql_pcotqAtVAVfPlVlXV2QwBu4BQIx_0ST1OvAW7lDHTlduRS9iNb-r-3Q=s512",
+    "asOf": "2026-10-19"
+  },
+  "store/sjdm-app/play-01": {
+    "src": "/store/citizen/sjdm-app/play-01.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 46118,
+    "sha256": "92f20e725695554c5f01500adc37b0f9b1ba82ba2ad35f33d08b9b679f5ecbe8",
+    "sourceUrl": "https://play-lh.googleusercontent.com/_sEvxDs7lvc8eWn5TZdWI6fR5ApFiaRRE2Rvyk15t_QW87VRu9ZUDEf0MyH9MsKWLHxgFAdSeMCnGhPik2VpOg=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/sjdm-app/play-02": {
+    "src": "/store/citizen/sjdm-app/play-02.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 54988,
+    "sha256": "3e4bfba82aac3caa17411f04edbb51c1d20a42e2c18cec4cb9a7e235456a542a",
+    "sourceUrl": "https://play-lh.googleusercontent.com/xi03DQr73vUix6ymyC8ydeAE49jSEfwUDr8vpp-WPc7cCJUDDKqEPYU3W8IRdP09t4V6g9xin_nxXSK7sKpu=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/sjdm-app/play-03": {
+    "src": "/store/citizen/sjdm-app/play-03.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 33072,
+    "sha256": "5d5182ef6c25cefdf32bdb4aa0232b8efd2447bd84e04d4229f472945fe154a0",
+    "sourceUrl": "https://play-lh.googleusercontent.com/s2e-jBFBAIC2T07IZvpdehKokBRINYEn3WgWQ8o5HU9W_F64oujVZlP_Vb44I2x5KVEOdVlC-xzxEscSFhiP0w=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/sjdm-app/play-icon": {
+    "src": "/store/citizen/sjdm-app/play-icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 14974,
+    "sha256": "45375222ada995a0ea514123a2d2360c6a8dae69467d64f8a77d70faa085faef",
+    "sourceUrl": "https://play-lh.googleusercontent.com/pcMKi0s8Uu0wLVtkTj929IEXN-2_zd1VOSkso8pizmWZXxD7sLvHuFDNcW6OiMMk1u31VRjIvwBMF8KGu3RX=s512",
+    "asOf": "2026-10-19"
+  },
+  "store/smile-safe-taytay/appstore-01": {
+    "src": "/store/citizen/smile-safe-taytay/appstore-01.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 108452,
+    "sha256": "43a97cf809516db5328ee1ceace5222d083b5b49c435ed09d25540bc6e2da8fd",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a4/50/67/a4506739-0a78-3852-ce4c-9e419c1fbb02/Defensys.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/smile-safe-taytay/appstore-02": {
+    "src": "/store/citizen/smile-safe-taytay/appstore-02.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 180744,
+    "sha256": "3ece8b39079ab51291abb405ed0bf8d65b43bcad45088d68980cd3023d6227fc",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/81/a7/6c/81a76ca2-8931-6032-d701-9b52f4416404/Defensys__U00281_U0029.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/smile-safe-taytay/appstore-03": {
+    "src": "/store/citizen/smile-safe-taytay/appstore-03.webp",
+    "width": 1080,
+    "height": 2347,
+    "bytes": 88642,
+    "sha256": "de8520c222c0537dad6bd70785b813da91468ba4059e9a86806c2902c73bb335",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/36/05/cc/3605cc8a-13ef-4ed8-99fe-cb291a919712/Defensys__U00282_U0029.png/4000x4000bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/smile-safe-taytay/appstore-icon": {
+    "src": "/store/citizen/smile-safe-taytay/appstore-icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 3872,
+    "sha256": "d7a286e1ebe317ffb80912a4fd01ea89f4c98b10157ccc9ff9c86dfd46f10198",
+    "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/9f/15/d0/9f15d083-36fc-7812-288b-464a435a891e/AppIcon-0-0-1x_U007ephone-0-1-85-220.png/512x512bb.png",
+    "asOf": "2026-10-19"
+  },
+  "store/smile-safe-taytay/play-01": {
+    "src": "/store/citizen/smile-safe-taytay/play-01.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 43174,
+    "sha256": "b9ab2cb91a312d63fc870dbc1fa0a0666df547e2882a5612beecfa3b5effbae2",
+    "sourceUrl": "https://play-lh.googleusercontent.com/w2KOe8vsXEjE5N5D5XcBvEYB7DDnoBeDlJedKNsZrkkHQ3eyLW14XDZj69ewxkn3_pcGN6PfPyDP256SGEpWKi4=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/smile-safe-taytay/play-02": {
+    "src": "/store/citizen/smile-safe-taytay/play-02.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 55692,
+    "sha256": "9a4cae756bba8f0445270c8e70abb02b02547ccedb58d257792f2ca22aa8a264",
+    "sourceUrl": "https://play-lh.googleusercontent.com/ZV660A1PaiXN4MG1mZ4G-9DIipqUxy-dRjUTQpxr90PuiQ165VzhllEt-z1yybpJlpjWi8hCpNOL67bQM8fo=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/smile-safe-taytay/play-03": {
+    "src": "/store/citizen/smile-safe-taytay/play-03.webp",
+    "width": 500,
+    "height": 1024,
+    "bytes": 32978,
+    "sha256": "28718d1dce86069408ecd66cf6a7e7b499b96b15e074e93f746556b1157bbe0a",
+    "sourceUrl": "https://play-lh.googleusercontent.com/sdhUO4sV9cSGzrveNtMhxA5KkR6ot8NGWClBZeuBxTNmFx9a52eIi73o5QDpGSm_voU5zyI9oO1tm-rH2778=s0",
+    "asOf": "2026-10-19"
+  },
+  "store/smile-safe-taytay/play-icon": {
+    "src": "/store/citizen/smile-safe-taytay/play-icon.webp",
+    "width": 256,
+    "height": 256,
+    "bytes": 4100,
+    "sha256": "980a96bde4c08538515c2c8d7179f8f0cc71afeb9186da6e6c5521ef718d0763",
+    "sourceUrl": "https://play-lh.googleusercontent.com/FbnANUOZHkM-N6z3dgwMggRjXtFChRwlp7rdUvlTfaQ6TUj20Ccm49Q8bRjcK0UAVrvyn68aX_mAdG1aCm_o=s512",
+    "asOf": "2026-10-19"
+  }
+}

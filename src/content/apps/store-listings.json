@@ -1,1 +1,394 @@
-[]
+[
+  {
+    "id": "smile-safe-taytay.play",
+    "brand": "smile-safe-taytay",
+    "platform": "play",
+    "name": "Smile SAFE Taytay",
+    "url": "https://play.google.com/store/apps/details?id=com.dgsi.sagiptaytay",
+    "publisher": "Dynamic Global Soft Inc.",
+    "installs": "5K+",
+    "rating": {
+      "value": 4.2,
+      "count": 27
+    },
+    "asOf": "2026-10-19",
+    "iconUrl": "https://play-lh.googleusercontent.com/FbnANUOZHkM-N6z3dgwMggRjXtFChRwlp7rdUvlTfaQ6TUj20Ccm49Q8bRjcK0UAVrvyn68aX_mAdG1aCm_o",
+    "screenshots": [
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/w2KOe8vsXEjE5N5D5XcBvEYB7DDnoBeDlJedKNsZrkkHQ3eyLW14XDZj69ewxkn3_pcGN6PfPyDP256SGEpWKi4=w526-h296-rw",
+        "alt": "Smile SAFE Taytay sign-in screen on a tilted Android phone, under the caption \"Smile Taytay\" and four numbered login steps",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/ZV660A1PaiXN4MG1mZ4G-9DIipqUxy-dRjUTQpxr90PuiQ165VzhllEt-z1yybpJlpjWi8hCpNOL67bQM8fo=w526-h296-rw",
+        "alt": "Smile SAFE Taytay news feed with two local news cards beside a partly visible Android phone, captioned \"Latest News\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/sdhUO4sV9cSGzrveNtMhxA5KkR6ot8NGWClBZeuBxTNmFx9a52eIi73o5QDpGSm_voU5zyI9oO1tm-rH2778=w526-h296-rw",
+        "alt": "Smile SAFE Taytay outgoing call to the command center with a Cancel Call button, on a tilted Android phone, captioned \"Calling\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/gPX2wOY_GVATW4dbedOb8zKNBruAvyU5y3zoXdwSUCXtEzSuh52YQxEg941Yn0EWeVe5G8s2cpNw0EqsT0RV=w526-h296-rw",
+        "alt": "Smile SAFE Taytay hazard list of nearby fire reports with distances and map pins, on an Android phone, captioned \"Hazard Nearby\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the hazard list shows real incident reports with residential addresses and plus codes."
+        }
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/uuMfm6Yj7_GUOz1FtBi-R16l7Wv468-OQ5tB7zz_g5yCGYaCLLvTwlfCBnfXMIUVx0Np4J-SllFPyOzLcdhkdg=w526-h296-rw",
+        "alt": "Smile SAFE Taytay fire report chat with replies from the command center and responders, on an Android phone, captioned \"Response\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the incident chat shows a command-center agent's personal name and the incident's street address."
+        }
+      }
+    ]
+  },
+  {
+    "id": "smile-safe-taytay.appstore",
+    "brand": "smile-safe-taytay",
+    "platform": "appstore",
+    "name": "Smile SAFE Taytay",
+    "url": "https://apps.apple.com/ph/app/smile-safe-taytay/id6744604994",
+    "publisher": "Municipal Government of Taytay Rizal",
+    "installs": null,
+    "rating": {
+      "value": 4,
+      "count": 3
+    },
+    "asOf": "2026-10-19",
+    "iconUrl": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/9f/15/d0/9f15d083-36fc-7812-288b-464a435a891e/AppIcon-0-0-1x_U007ephone-0-1-85-220.png/512x512bb.jpg",
+    "screenshots": [
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a4/50/67/a4506739-0a78-3852-ce4c-9e419c1fbb02/Defensys.png/320x480bb.jpg",
+        "alt": "Smile SAFE Taytay sign-in screen on a tilted iPhone, under the caption \"Smile Taytay\" and four numbered login steps",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/81/a7/6c/81a76ca2-8931-6032-d701-9b52f4416404/Defensys__U00281_U0029.png/320x480bb.jpg",
+        "alt": "Smile SAFE Taytay news feed with two local news cards beside a partly visible iPhone, captioned \"Latest News\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/36/05/cc/3605cc8a-13ef-4ed8-99fe-cb291a919712/Defensys__U00282_U0029.png/320x480bb.jpg",
+        "alt": "Smile SAFE Taytay outgoing call to the command center with a Cancel Call button, on a tilted iPhone, captioned \"Calling\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/95/bb/88/95bb8858-aa99-dba4-de81-a90a24e6f8dc/Defensys__U00283_U0029.png/320x480bb.jpg",
+        "alt": "Smile SAFE Taytay hazard list of nearby fire reports above an SOS tab bar, on an iPhone, captioned \"Hazard Nearby\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the hazard list shows real incident reports with residential addresses and plus codes."
+        }
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/f2/8e/d0/f28ed07e-5067-43d8-63e5-e11712b4bf30/Defensys__U00284_U0029.png/320x480bb.jpg",
+        "alt": "Smile SAFE Taytay fire report chat with replies from the command center and responders, on an iPhone, captioned \"Response\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the incident chat shows a command-center agent's personal name and the incident's street address."
+        }
+      }
+    ]
+  },
+  {
+    "id": "1hope.play",
+    "brand": "1hope",
+    "platform": "play",
+    "name": "1Hope",
+    "url": "https://play.google.com/store/apps/details?id=com.dgsi.pagasa",
+    "publisher": "Dynamic Global Soft Inc.",
+    "installs": "1K+",
+    "rating": {
+      "value": 5,
+      "count": 9
+    },
+    "asOf": "2026-10-19",
+    "iconUrl": "https://play-lh.googleusercontent.com/2xeFIAEF4Q4Skg2GxIy9mKsh9v0CwXvYKFWx0I1aZaLKz4HzbsNl7EsMOfYLnyAWbz5tQ3FCoCfUFXwU0Aewqho",
+    "screenshots": [
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/jQZuDBkd8WRSng-5YaQLLmlJYxvwcoPN-QEgrdx3H5fetYLaaABc1shJkPCrY54yTzKWc6dx4HqMTFXtLo30Tw=w526-h296-rw",
+        "alt": "1Hope sign-in screen on a tilted Android phone, under the caption \"1 Hope\" and four numbered login steps",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/1FDx5OFebxYWUrgTNRsu_1Mbx3-jkHomkQhLiCA7_vE2_2TRacHvvNCE9An6ySj0H_UHwRfa20XuZpfPgEBHgVI=w526-h296-rw",
+        "alt": "1Hope home feed with nearby situations and local news cards, on an Android phone, captioned \"Latest News\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/h7x6GvwooYGZfaSnTPsNEl4WHUD7Xqkw5JwG2PPpw7S3emErUXhNyTKIBDth2Il3UEIHkZZSjaUb2fvJXdualw=w526-h296-rw",
+        "alt": "1Hope outgoing call to the barangay command center with a Cancel Call button, on an Android phone, captioned \"Calling\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/oEMDglQr9vzBZ7pQh3JkpqlabL3ceFbCOKKGtYIoUlZf5--CL5dLWJ_GrYmuiMkmJEp7-yjz-WOmVBaBd74USg=w526-h296-rw",
+        "alt": "1Hope home screen with a weather card, hourly forecast and an announcement, on an Android phone, captioned \"1 Hope App\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/vdKlaK9uRklvAAaSXqR5-JDBYA3RG5BCrhdBpg6dg0oS6h3LHIplKM4gsNw7UaoFXnOTFGPySwMdhvYpB5wK0w=w526-h296-rw",
+        "alt": "1Hope earthquake warnings list with magnitude badges and distances, on an Android phone, captioned \"Hazards Earthquake alerts\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/wFZwrml5Zsnx6Wn8TM7KVeDUD6TbVvQknbPAGcw9SyH9YprECGsUeDfmhHNVwHKYaUFckeeux_mJRiFpO3yy=w526-h296-rw",
+        "alt": "1Hope Sumbong (complaints) list with Active and Done tabs and a Create Sumbong button, on an Android phone, captioned \"Sumbong\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/TJPJpCprVy4mZMNeseqApCkbmVQ0Z30iNDh9dGfPp-F39jBN7hHJ7d6z3Yud7RpkX0os0vQwMua6gv1b3TTC=w526-h296-rw",
+        "alt": "1Hope complaint thread opened with barangay replies and a reply box, on an Android phone, captioned \"Sumbong Response\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the complaint thread shows citizens' user ids and a barangay employee's personal name."
+        }
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/tQlT0Up0cDrf87OMSfiWesCMtwWP2-VxTZG7uwNceRJAJoqF_M7V1gk5gpE-VsOQ_4-woIQobdaJOX4z-wem=w526-h296-rw",
+        "alt": "1Hope announcement about the launch of its command center, on an Android phone, captioned \"Announcement\"",
+        "presentation": "marketing"
+      }
+    ]
+  },
+  {
+    "id": "1hope.appstore",
+    "brand": "1hope",
+    "platform": "appstore",
+    "name": "1Hope",
+    "url": "https://apps.apple.com/ph/app/1hope/id6745863407",
+    "publisher": "Barangay Government of Bagong Pag-asa",
+    "installs": null,
+    "rating": null,
+    "asOf": "2026-10-19",
+    "iconUrl": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/f3/ee/fa/f3eefadf-045c-1d74-2de5-312554a62f1b/AppIcon-0-0-1x_U007ephone-0-1-85-220.png/512x512bb.jpg",
+    "screenshots": [
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/c6/9b/00/c69b000e-60d8-8000-8ef6-6239b78da895/Defensys.png/320x480bb.jpg",
+        "alt": "1Hope sign-in screen on a tilted iPhone, under the caption \"1 Hope\" and four numbered login steps",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/9e/0a/84/9e0a84d2-4c5a-5f28-7daa-d542d676963f/Defensys-4.png/320x480bb.jpg",
+        "alt": "1Hope home feed with nearby situations and local news cards, on an iPhone, captioned \"Latest News\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/89/76/a2/8976a22d-a64d-6c6d-3451-b0ca331ac3a1/Defensys-1.png/320x480bb.jpg",
+        "alt": "1Hope outgoing call to the barangay command center with a Cancel Call button, on an iPhone, captioned \"Calling\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/e8/08/fb/e808fbc0-3e3a-e226-f91a-c95b12700d89/Defensys-5.png/320x480bb.jpg",
+        "alt": "1Hope home screen with a weather card, hourly forecast, announcements and earthquake warnings, on an iPhone, captioned \"1 Hope App\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/83/0c/7d/830c7d52-fe1c-590b-4d9d-11af8ab80a2e/Defensys-2.png/320x480bb.jpg",
+        "alt": "1Hope hazard list of nearby fire reports with map pins, on an iPhone, captioned \"Hazard Nearby\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the hazard list shows real incident reports with residential addresses and plus codes."
+        }
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/e4/04/49/e40449a2-fda8-2d74-9a87-b1ce3a27d312/Defensys-3.png/320x480bb.jpg",
+        "alt": "1Hope fire report chat with replies from the command center and responders, on an iPhone, captioned \"Response\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the incident chat shows a command-center agent's personal name and the incident's street address."
+        }
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/cd/09/da/cd09dac3-68d6-8cfa-90a3-603856780d2a/Defensys-8.png/320x480bb.jpg",
+        "alt": "1Hope Sumbong (complaints) list with Active and Done tabs and a Create Sumbong button, on an iPhone, captioned \"Sumbong\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/69/74/b5/6974b5f0-4cc0-678b-61e4-805ce20170ef/Defensys-7.png/320x480bb.jpg",
+        "alt": "1Hope complaint thread opened with barangay replies and a reply box, on an iPhone, captioned \"Sumbong Response\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the complaint thread shows citizens' user ids and a barangay employee's personal name."
+        }
+      },
+      {
+        "sourceUrl": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/33/ae/0b/33ae0b7c-f67b-3225-9816-90d13d18fbf2/Defensys-6.png/320x480bb.jpg",
+        "alt": "1Hope announcement about the launch of its command center, on an iPhone, captioned \"Announcement\"",
+        "presentation": "marketing"
+      }
+    ]
+  },
+  {
+    "id": "sjdm-app.play",
+    "brand": "sjdm-app",
+    "platform": "play",
+    "name": "SJDM App",
+    "url": "https://play.google.com/store/apps/details?id=com.dgsi.sjdmcitizen",
+    "publisher": "Dynamic Global Soft Inc.",
+    "installs": "10+",
+    "rating": null,
+    "asOf": "2026-10-19",
+    "iconUrl": "https://play-lh.googleusercontent.com/pcMKi0s8Uu0wLVtkTj929IEXN-2_zd1VOSkso8pizmWZXxD7sLvHuFDNcW6OiMMk1u31VRjIvwBMF8KGu3RX",
+    "screenshots": [
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/_sEvxDs7lvc8eWn5TZdWI6fR5ApFiaRRE2Rvyk15t_QW87VRu9ZUDEf0MyH9MsKWLHxgFAdSeMCnGhPik2VpOg=w526-h296-rw",
+        "alt": "SJDM App sign-in screen with the city logo on a tilted phone, under the caption \"SJDM APP\" and four numbered login steps",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/xi03DQr73vUix6ymyC8ydeAE49jSEfwUDr8vpp-WPc7cCJUDDKqEPYU3W8IRdP09t4V6g9xin_nxXSK7sKpu=w526-h296-rw",
+        "alt": "SJDM App news feed with two local news cards on a peach background, captioned \"Latest News\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/s2e-jBFBAIC2T07IZvpdehKokBRINYEn3WgWQ8o5HU9W_F64oujVZlP_Vb44I2x5KVEOdVlC-xzxEscSFhiP0w=w526-h296-rw",
+        "alt": "SJDM App outgoing call to the SJDM command center with an orange Cancel Call button, on a tilted phone, captioned \"Calling\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/NCloBXjGUU9DHcgiEPDiVOT4P6PT3QW9ZsACrR9RxI9R1hfQWN0bX0RZKY9UmOkdlls8iZMnw1uan5btVh2TkA=w526-h296-rw",
+        "alt": "SJDM App hazard list of nearby fire reports with pink map pins, on a phone, captioned \"Hazard Nearby\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the hazard list shows real incident reports with residential addresses and plus codes."
+        }
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/5-svG5uoS-QSlRH9QDuzlePcoO-sov-RDlsZyAAGi9gd5tOddiOjcgyayIW7UzuXJF7UIKBJNSizF5dufbiBtxM=w526-h296-rw",
+        "alt": "SJDM App fire report chat with an orange header and command center replies, on a phone, captioned \"Response\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the incident chat shows a command-center agent's personal name and the incident's street address."
+        }
+      }
+    ]
+  },
+  {
+    "id": "defensys-safe.play",
+    "brand": "defensys-safe",
+    "platform": "play",
+    "name": "Defensys SAFE",
+    "url": "https://play.google.com/store/apps/details?id=com.dgsi.defensyscitizen",
+    "publisher": "Dynamic Global Soft Inc.",
+    "installs": "10+",
+    "rating": null,
+    "asOf": "2026-10-19",
+    "iconUrl": "https://play-lh.googleusercontent.com/02MQhOS8upUInJH_AUbYUPn0q9VISZuWzebwfgzgLNbCoHtItjHhP-n5ShHhmvv5azDot4ZZ0h-UBHLHeyVbiA",
+    "screenshots": [
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/QnlqgfpFR8xbCq-It6xf0bsAU-h42pwqQdojWsjgVRTwHQkTEJ1AbthfuPrQOBES5ZFzdSuuQ90Ex1uzfixP0g=w526-h296-rw",
+        "alt": "Defensys SAFE store image: SJDM-branded sign-in screen on a tilted phone, under the caption \"Smile Taytay\" and four login steps",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/_PWutlAeE6i-QRveskqje1GGMlg72MHiOUCWLS5SnbVq1AfRPW8A-lcZxPwhzWFUlu70_cAsq1mrl6P6llsy=w526-h296-rw",
+        "alt": "Defensys SAFE store image: news feed with two local news cards on a peach background, captioned \"Latest News\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/5AqqKehA6vcVcqPDT55BAx4UvOspR9IZWBsz1PNXahB8m06k2pfKcIRiWrJ2k1bDI9N1AKkrCsO2Z4ehj7qZ=w526-h296-rw",
+        "alt": "Defensys SAFE store image: SJDM-branded call to a test command center, on a tilted phone, captioned \"Calling\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/96UN2zxrjw3ictcPcM4OQbCTXrUDnEutVO6YM7GYD2a9BfXXthZOTIIdX-iYWfLsI4XoiaX5Qw7jHpCphrG8QA=w526-h296-rw",
+        "alt": "Defensys SAFE store image: SJDM-branded hazard list of nearby fire reports, on a phone, captioned \"Hazard Nearby\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the hazard list shows real incident reports with residential addresses and plus codes."
+        }
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/NHH_qP8dmGN7OXWfahWHuw138puX9gjcAxXzAmj1B3_1yWWvNgGQ7Ef3E3QB--8qOiLs1oKG4rbmZTHI1_Vyrw=w526-h296-rw",
+        "alt": "Defensys SAFE store image: SJDM-branded fire report chat with an orange header, on a phone, captioned \"Response\"",
+        "presentation": "marketing",
+        "excluded": {
+          "reason": "Privacy: the incident chat shows a command-center agent's personal name and the incident's street address."
+        }
+      }
+    ]
+  },
+  {
+    "id": "safe-icb.play",
+    "brand": "safe-icb",
+    "platform": "play",
+    "name": "SAFE ICB",
+    "url": "https://play.google.com/store/apps/details?id=com.dgsi.safeicb",
+    "publisher": "Dynamic Global Soft Inc.",
+    "installs": "0+",
+    "rating": null,
+    "asOf": "2026-10-19",
+    "iconUrl": "https://play-lh.googleusercontent.com/-rpRPca3xXFp4FzlrAspgXEWX-gvql_pcotqAtVAVfPlVlXV2QwBu4BQIx_0ST1OvAW7lDHTlduRS9iNb-r-3Q",
+    "screenshots": [
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/KTQWUgQZGhsKZP9v-VlIIvIXi3hz3T4tD1z0zY-jWpSkM6ZkVVD4176EFWSTt5K85fXEbegSE1znoVo46ENozg=w526-h296-rw",
+        "alt": "SAFE ICB sign-in screen with the City of Isabela seal, on a phone held in a hand, captioned \"SAFE ICB\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/WwbDiqGv0mWlLxtYE5vlp0f5m-O_KYGZqkOWyKG-p3wykQRYwKvkFuCy9MIjK8lzkc4omwho8qe3d5GzYsGPsQ=w526-h296-rw",
+        "alt": "SAFE ICB dark dashboard with a weather card, 5-day forecast and announcements, captioned \"Dashboard & Weather Forecast\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/yKdrgi2EW0T7T8jukn_Kz--RPSJx3a6k2Fq-iBnbd0Mow_UoJ1b6TYU_fB0ZbxqJp-_OTmZ5Hc3M6kEq4cwc=w526-h296-rw",
+        "alt": "SAFE ICB dark news feed with photo headlines, captioned \"Official LGU News & Announcements\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/c_r_Q12EMEnwzjWa2e3S3p5PlXpdKhbueN8Zi6gYcnAapFCkbaJ460_w0-hFH864fujSxP6tWAaBSLanyvo8=w526-h296-rw",
+        "alt": "SAFE ICB dark hazard map with a fire pin and a report card, on a phone held in a hand, captioned \"Important locations & Emergency Hotlines\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/Vw33q1egikTlDFrwZ2jxT1e3zt7zzWwMF_6xTAc8La1myWsi5-TndAjBMGeg1KN96Og-K_tHBaRRQyi_hCH2=w526-h296-rw",
+        "alt": "SAFE ICB dark LGU directory with a search bar and nearby listings, captioned \"Direct Community Feedback\"",
+        "presentation": "marketing"
+      }
+    ]
+  },
+  {
+    "id": "aero-app.play",
+    "brand": "aero-app",
+    "platform": "play",
+    "name": "AERO App",
+    "url": "https://play.google.com/store/apps/details?id=com.dgsi.aeroapp",
+    "publisher": "Dynamic Global Soft Inc.",
+    "installs": "1+",
+    "rating": null,
+    "asOf": "2026-10-19",
+    "iconUrl": "https://play-lh.googleusercontent.com/0e0vUGRxsLhkajdobYkMlEge-1SbKnr0O-CoGmnXJZnm6PheIj8jeG1a4rYixDhMWJ9k9WABVclTt_qPm5pN",
+    "screenshots": [
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/yQZ9W40bBIhW1yy-3P7OB40B4u3JuCS9qPUMmu7a4jesyIWGmyM4OcvzaZv2x3HDw4BZlOUKduMFzlglDmcqtA=w526-h296-rw",
+        "alt": "AERO App sign-in screen with the Abra de Ilog seal, on a phone held in a hand, captioned \"AERO APP\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/lwW6ECpJOPam3Pj98l99joV-Hn05QFk0gafQaN9PuuDFLdnUvdNXzYZYWeCGewZ4AQHs1vdzlQAg3tgjTNAOYR8=w526-h296-rw",
+        "alt": "AERO App dark dashboard with a weather card, 5-day forecast and announcements, captioned \"Dashboard & Weather Forecast\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/Fr87rMZRtUZtTfeZbNcU3DkvueA05fey2cIlB6BSTYNbJXqudKdpdnPwltQ-Z_JURXC_oj7Wm7L-XQdcL2oAdg=w526-h296-rw",
+        "alt": "AERO App dark news feed with photo headlines, captioned \"Official LGU News & Announcements\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/KTUZeNn2UDnFLnEt28gE18nQZ8IIj4K4BK8ku7r7jGyAeOJe3PlCWnPXBjPFPqVV0a0yp_GOqAYDZLNgmfVouw=w526-h296-rw",
+        "alt": "AERO App dark hazard map with a fire pin and a report card, on a phone held in a hand, captioned \"Important locations & Emergency Hotlines\"",
+        "presentation": "marketing"
+      },
+      {
+        "sourceUrl": "https://play-lh.googleusercontent.com/qCoopuWu3irrfb5amM5_v6zZYWe-F3qWgeG_t6DfluaPbOGXZ0S3tWPWf_MD-cqt3PZaXcMhiIR7WSaEDkSq=w526-h296-rw",
+        "alt": "AERO App dark LGU directory with a search bar and nearby listings, captioned \"Direct Community Feedback\"",
+        "presentation": "marketing"
+      }
+    ]
+  }
+]
