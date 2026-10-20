@@ -1,18 +1,18 @@
-import { PendingReplica, type ReplicaComponent } from '@/components/replicas/kit';
+import './sme.css';
+import type { ReplicaComponent } from '@/components/replicas/kit';
 import type { SmeFigureId } from '@/content/types';
+import { smeAiReplicas } from './ai';
+import { smeCoreReplicas } from './core';
+
+export type { SmeAiFigureId } from './ai';
+export type { SmeCoreFigureId } from './core';
 
 /**
- * SME Panindio replicas, one per figure 1.1–1.9 (exhaustive by type). W3 replaces each
- * PendingReplica with its screen in wave 2a; pendingFigureIds() counts what is left.
+ * SME Panindio replicas, one per figure 1.1–1.9 (exhaustive by type), merged from two halves so
+ * two builders can work in parallel: core/ (1.1–1.5) and ai/ (1.6–1.9). Each half is typed
+ * against its own figure-id subset, so a figure can live in only one of them.
+ *
+ * This module is the single import of sme.css (the SME app tokens). Every SME screen is reached
+ * through the registry, so the tokens load wherever an SME replica renders.
  */
-export const smeReplicas = {
-  '1.1': PendingReplica,
-  '1.2': PendingReplica,
-  '1.3': PendingReplica,
-  '1.4': PendingReplica,
-  '1.5': PendingReplica,
-  '1.6': PendingReplica,
-  '1.7': PendingReplica,
-  '1.8': PendingReplica,
-  '1.9': PendingReplica,
-} satisfies Record<SmeFigureId, ReplicaComponent>;
+export const smeReplicas = { ...smeCoreReplicas, ...smeAiReplicas } satisfies Record<SmeFigureId, ReplicaComponent>;

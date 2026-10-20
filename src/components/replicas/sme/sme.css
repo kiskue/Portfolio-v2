@@ -1,0 +1,248 @@
+/*
+ * SME Panindio app tokens (research sme-app.json and sme-ai.json `designTokens`; hex values as
+ * shipped). Imported once, from src/components/replicas/sme/index.ts.
+ *
+ * Scope: .rx-canvas[data-app="sme"] (RCanvas sets data-app and data-theme). The kit already sets
+ * the base tokens on the same canvas in src/styles/replica.css (rToken.*: canvas, surface,
+ * raised, ink, borders, field, scrim, bubbles; light = the app theme, dark = the AI screen-local
+ * set #0F0F14 / #151A27 / #1E2435 / #4F9EFF). This file adds the SME palette by research role,
+ * as --rx-sme-* custom properties: everything the kit does not carry, plus a complete
+ * --rx-sme-ai-* family for the AI screens. Read them as var(--rx-sme-…) in rx-sme-* classes or
+ * inline styles.
+ *
+ * Families:
+ * - Fixed scales (never flip): navy, green, amber, orange i-dot, indigo, ink, splash, error,
+ *   warning, shimmer, the price tiers and the tri-colour stripe.
+ * - Module accents: delivery sky, credit violet, payment green, due and advance pills, module
+ *   amber, ROI purple, drawer icons, medals, map scrim, order-status pills, stock and
+ *   verification pills, and the customer and credit canvases.
+ * - Theme pairs (light here, dark in the second block):
+ *   --rx-sme-theme-*  the app-wide theme that shared molecules read even on the AI screens
+ *                     (TopNavBar, SectionHeader, StatTile, EmptyState, StockHealthIndicator).
+ *   --rx-sme-ai-*     the AI screens (1.6–1.9): surfaces and text (dark = #0F0F14 canvas,
+ *                     #151A27 card, #1E2435 raised, #4F9EFF accent), plus the AI chrome: label
+ *                     pills, action buttons, glow, shimmer, user bubble, projection line, send
+ *                     button, Activity icon, error bubble. Prefer these over rToken in AI screens.
+ *   --rx-sme-risk-*   low / medium / high: accent bar and glow, badge ink, badge fill.
+ *   --rx-sme-stock-*  restock health: low and out (ink, fill, border, bar).
+ *   The module accents with a published dark variant (violet, ROI purple, sky text) flip too.
+ *
+ * No animations here. App keyframes go under `[data-active] …` selectors only (the MOTION
+ * CONTRACT in src/styles/replica.css).
+ */
+
+/* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  .rx-canvas[data-app="sme"] {
+    /* ── Fixed scales ─────────────────────────────────────────────────────────────── */
+    --rx-sme-navy: #1e4d8c; /* primary-500: TopNavBar in both themes, active pills, primary buttons, prices */
+    --rx-sme-navy-600: #18407a; /* pressed fills; AI action-button text (light) */
+    --rx-sme-navy-700: #123265; /* chip text on tint */
+    --rx-sme-navy-400: #4e7ec9; /* Activity icon in the AI Business Insight header (light) */
+    --rx-sme-navy-200: #9fbbe6; /* AI action-button border (light) */
+    --rx-sme-navy-100: #c5d5f0; /* inactive pill borders, unselected filled chips */
+    --rx-sme-navy-50: #eaf0fa; /* inactive period pills, AI buttons, image placeholders, tinted surfaces */
+    --rx-sme-green: #27ae60; /* accent-500: PANINDIO lettering, income and profit, success, done steps, Cash */
+    --rx-sme-green-600: #209150; /* filled green CTAs, add-to-cart confirmation */
+    --rx-sme-green-700: #187540; /* readable green text on white */
+    --rx-sme-amber: #f5a623; /* highlight-400: awning stripe, bell badge, Popular pill, Card payment */
+    --rx-sme-orange: #f39c12; /* highlight-500: the dot on the i in PANINDIO */
+    --rx-sme-indigo: #5856d6; /* secondary-500: premium price tier, Maya */
+    --rx-sme-ink: #1a3a6b; /* primary text, the SME wordmark */
+    --rx-sme-ink-2: #6b7280; /* captions and labels */
+    --rx-sme-ink-strong: #111827; /* POS tile names */
+    --rx-sme-ink-name: #1f2937; /* ledger names, Sold out pill */
+    --rx-sme-ink-section: #374151; /* ledger section row */
+    --rx-sme-splash: #0b335f;
+    --rx-sme-error: #ff3b30; /* errors and losses */
+    --rx-sme-error-400: #ff5c55; /* cost bars and the COGS card */
+    --rx-sme-warning: #ff9500; /* waste rows, discount and VAT lines */
+    --rx-sme-shimmer: #e5e7eb;
+    --rx-sme-gray-100: #f3f4f6; /* refresh button, progress tracks */
+    --rx-sme-gray-300: #d1d5db; /* pending timeline dots */
+    /* POS price tiers: ≥₱500 indigo, ≥₱100 navy, otherwise green (sample-data smePriceTier). */
+    --rx-sme-tier-indigo: var(--rx-sme-indigo);
+    --rx-sme-tier-navy: var(--rx-sme-navy);
+    --rx-sme-tier-green: var(--rx-sme-green);
+    /* Tri-colour brand stripe (splash, customer header, login card): navy, amber, green thirds. */
+    --rx-sme-stripe: linear-gradient(
+      90deg,
+      #1e4d8c 0 33.333%,
+      #f5a623 33.333% 66.667%,
+      #27ae60 66.667% 100%
+    );
+
+    /* ── Module accents ───────────────────────────────────────────────────────────── */
+    --rx-sme-sky: #0ea5e9; /* delivery: rider marker, Call pill, route core (a surface only) */
+    --rx-sme-sky-deep: #0369a1; /* rider header band, route casing */
+    --rx-sme-sky-ink: #0369a1; /* AA sky text (#7DD3FC on dark) */
+    --rx-sme-violet: #6d28d9; /* credit module accent, FAB, give credit (#7C3AED on dark) */
+    --rx-sme-pay: #047857; /* payment fill, Paid figures */
+    --rx-sme-settled: #10b981; /* settled accent, Fully paid filter */
+    --rx-sme-settled-ink: #065f46;
+    --rx-sme-due-ink: #991b1b;
+    --rx-sme-due-bg: #fef2f2;
+    --rx-sme-advance-ink: #075985;
+    --rx-sme-advance-bg: #e0f2fe;
+    --rx-sme-target: #f59e0b; /* sales-target card, Due filter hue */
+    --rx-sme-target-ink: #92400e; /* Due filter text, small debts */
+    --rx-sme-roi: #7c3aed; /* ROI Outlook card (#A78BFA on dark) */
+    --rx-sme-drawer-overhead: #8b5cf6;
+    --rx-sme-drawer-suki: #ec4899;
+    --rx-sme-drawer-roi: #10b981;
+    --rx-sme-drawer-ai: #4f9eff;
+    --rx-sme-gold: #ffd700; /* top-3 debtor rank badges */
+    --rx-sme-silver: #c0c0c0;
+    --rx-sme-bronze: #cd7f32;
+    --rx-sme-map-scrim: rgb(0 0 0 / 0.55); /* map chips and controls */
+    --rx-sme-map-scrim-border: rgb(255 255 255 / 0.18);
+    --rx-sme-canvas-customer: #f0f4f8; /* order tracking canvas */
+    --rx-sme-canvas-credit: #f8f9ff; /* credit ledger canvas */
+    /* Order status pills (fill / text). */
+    --rx-sme-status-pending-bg: #fef9c3;
+    --rx-sme-status-pending-ink: #78350f;
+    --rx-sme-status-confirmed-bg: #eff6ff;
+    --rx-sme-status-confirmed-ink: #1e40af;
+    --rx-sme-status-preparing-bg: #fef3c7;
+    --rx-sme-status-preparing-ink: #92400e;
+    --rx-sme-status-ready-bg: #ecfdf5;
+    --rx-sme-status-ready-ink: #065f46;
+    --rx-sme-status-delivery-bg: #e0f2fe;
+    --rx-sme-status-delivery-ink: #075985;
+    --rx-sme-status-completed-bg: #f3f4f6;
+    --rx-sme-status-completed-ink: #374151;
+    --rx-sme-status-cancelled-bg: #fef2f2;
+    --rx-sme-status-cancelled-ink: #991b1b;
+    /* POS stock pills and the storefront verification pill and banner. */
+    --rx-sme-stock-ok-bg: #e9f7ef;
+    --rx-sme-stock-ok-ink: #27ae60;
+    --rx-sme-stock-none-bg: #fff5f5;
+    --rx-sme-stock-none-ink: #ff3b30;
+    --rx-sme-unverified-bg: #fef9c3;
+    --rx-sme-unverified-ink: #78350f;
+    --rx-sme-soldout-scrim: rgb(15 23 42 / 0.55);
+
+    /* ── App-wide theme (shared molecules), light ─────────────────────────────────── */
+    --rx-sme-theme-bg: #f2f5fa;
+    --rx-sme-theme-surface: #ffffff;
+    --rx-sme-theme-elevated: #ffffff;
+    --rx-sme-theme-input: #f8f9fc;
+    --rx-sme-theme-text: #1a3a6b;
+    --rx-sme-theme-text-2: #6b7280;
+    --rx-sme-theme-border: #d1dae8;
+    --rx-sme-theme-hairline: #e5eaf2;
+
+    /* ── AI screens, light (the app ships them dark; these are the documented light values) ── */
+    /* Surfaces and text mirror the kit's rToken values, named by their AI role. */
+    --rx-sme-ai-canvas: #f2f5fa; /* hub canvas, chat sheet body */
+    --rx-sme-ai-card: #ffffff; /* AI cards, chat header and composer, assistant bubbles */
+    --rx-sme-ai-raised: #f8f9fc; /* chat input */
+    --rx-sme-ai-border: #e5eaf2; /* card borders */
+    --rx-sme-ai-border-strong: #d1dae8; /* chat sheet and bubble borders */
+    --rx-sme-ai-title: #1a3a6b; /* section headers */
+    --rx-sme-ai-text: #1a3a6b;
+    --rx-sme-ai-body: #1a3a6b; /* insight body, 14/22 */
+    --rx-sme-ai-muted: #6b7280; /* hints, legends, labels, disclaimers */
+    --rx-sme-ai-scrim: rgb(0 0 0 / 0.5); /* behind the chat sheet */
+    --rx-sme-ai-accent: #1e4d8c; /* pill text and icons, accent bar, chart line, send button */
+    --rx-sme-ai-pill: #eaf0fa; /* Bot / FileText label pill */
+    --rx-sme-ai-glow: rgb(30 77 140 / 0.08); /* card glow, 0 4px 12px */
+    --rx-sme-ai-cta-bg: #eaf0fa; /* Generate report, Get AI advice, Explain forecast, Ask AI about this */
+    --rx-sme-ai-cta-border: #9fbbe6;
+    --rx-sme-ai-cta-ink: #18407a;
+    --rx-sme-ai-bold: #18407a; /* bold figures in markdown bullets */
+    --rx-sme-ai-shimmer: #e5e7eb;
+    --rx-sme-ai-user-bubble: #1e4d8c;
+    --rx-sme-ai-projection: rgb(30 77 140 / 0.5); /* dashed forecast line and dots */
+    --rx-sme-ai-send-off: #e5e7eb; /* send button with an empty composer */
+    --rx-sme-ai-chip: #ffffff; /* chat suggestion chips */
+    --rx-sme-ai-activity: #4e7ec9;
+    --rx-sme-ai-error-bg: #fff5f5;
+
+    /* ── Risk (1.1 ROI chips, 1.9 badge, accent bar and glow), light ──────────────── */
+    --rx-sme-risk-low: #27ae60;
+    --rx-sme-risk-low-ink: #187540;
+    --rx-sme-risk-low-bg: #e9f7ef;
+    --rx-sme-risk-medium: #f5a623;
+    --rx-sme-risk-medium-ink: #965f09;
+    --rx-sme-risk-medium-bg: #fef7e8;
+    --rx-sme-risk-high: #ff3b30;
+    --rx-sme-risk-high-ink: #cc2f26;
+    --rx-sme-risk-high-bg: #fff5f5;
+
+    /* ── Restock stock health (1.7), light ────────────────────────────────────────── */
+    --rx-sme-stock-low: #e07f00;
+    --rx-sme-stock-low-bg: #fffbeb;
+    --rx-sme-stock-low-border: #fde68a;
+    --rx-sme-stock-low-bar: #ff9500;
+    --rx-sme-stock-out: #ff3b30;
+    --rx-sme-stock-out-bg: #fff5f5;
+    --rx-sme-stock-out-border: transparent; /* the research gives a border for low stock only */
+    --rx-sme-stock-out-bar: #ff3b30;
+    --rx-sme-stock-ok: #27ae60;
+  }
+
+  /* SME dark: the AI screens (1.6–1.9). The TopNavBar stays navy (--rx-sme-navy). */
+  .rx-canvas[data-app="sme"][data-theme="dark"] {
+    --rx-sme-sky-ink: #7dd3fc;
+    --rx-sme-violet: #7c3aed;
+    --rx-sme-roi: #a78bfa;
+
+    /* App-wide dark ladder: shared molecules keep the global theme on the AI screens. */
+    --rx-sme-theme-bg: #0c1322;
+    --rx-sme-theme-surface: #141d2e;
+    --rx-sme-theme-elevated: #1c2740;
+    --rx-sme-theme-input: #19233a;
+    --rx-sme-theme-text: #ecf1f8;
+    --rx-sme-theme-text-2: #9fb0c8;
+    --rx-sme-theme-border: #2b3a55;
+    --rx-sme-theme-hairline: #1e2a40;
+
+    /* The AI screen-local dark set. */
+    --rx-sme-ai-canvas: #0f0f14;
+    --rx-sme-ai-card: #151a27;
+    --rx-sme-ai-raised: #1e2435;
+    --rx-sme-ai-border: rgb(255 255 255 / 0.08);
+    --rx-sme-ai-border-strong: rgb(255 255 255 / 0.08);
+    --rx-sme-ai-title: #ecf1f8;
+    --rx-sme-ai-text: #f1f5f9;
+    --rx-sme-ai-body: rgb(241 245 249 / 0.9);
+    --rx-sme-ai-muted: #94a3b8;
+    --rx-sme-ai-accent: #4f9eff;
+    --rx-sme-ai-pill: rgb(79 158 255 / 0.15);
+    --rx-sme-ai-glow: rgb(79 158 255 / 0.12);
+    --rx-sme-ai-cta-bg: #1e2a46;
+    --rx-sme-ai-cta-border: rgb(79 158 255 / 0.35);
+    --rx-sme-ai-cta-ink: #eaf2ff;
+    --rx-sme-ai-bold: #4f9eff;
+    --rx-sme-ai-shimmer: #1e2a3a;
+    --rx-sme-ai-user-bubble: #2563eb;
+    --rx-sme-ai-projection: rgb(79 158 255 / 0.55);
+    --rx-sme-ai-send-off: #1e2435;
+    --rx-sme-ai-chip: #1e2435;
+    --rx-sme-ai-activity: #4f9eff;
+    --rx-sme-ai-error-bg: rgb(255 107 107 / 0.1);
+
+    --rx-sme-risk-low: #3dd68c;
+    --rx-sme-risk-low-ink: #3dd68c;
+    --rx-sme-risk-low-bg: rgb(61 214 140 / 0.15);
+    --rx-sme-risk-medium: #ffb020;
+    --rx-sme-risk-medium-ink: #ffb020;
+    --rx-sme-risk-medium-bg: rgb(255 176 32 / 0.15);
+    --rx-sme-risk-high: #ff6b6b;
+    --rx-sme-risk-high-ink: #ff6b6b;
+    --rx-sme-risk-high-bg: rgb(255 107 107 / 0.15);
+
+    --rx-sme-stock-low: #ffb020;
+    --rx-sme-stock-low-bg: rgb(255 176 32 / 0.15);
+    --rx-sme-stock-low-border: transparent;
+    --rx-sme-stock-low-bar: #ffb020;
+    --rx-sme-stock-out: #ff6b6b;
+    --rx-sme-stock-out-bg: rgb(255 107 107 / 0.15);
+    --rx-sme-stock-out-border: transparent;
+    --rx-sme-stock-out-bar: #ff6b6b;
+    --rx-sme-stock-ok: #3dd68c;
+  }
+}

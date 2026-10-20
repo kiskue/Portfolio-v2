@@ -18,6 +18,13 @@ interface DevPage {
 const DEV_PAGES: readonly DevPage[] = [
   { href: '/dev/ui', label: 'UI primitives', note: 'every primitive in both themes' },
   { href: '/dev/replicas', label: 'Replicas', note: 'the phone frame, the replica kit and each figure' },
+  {
+    href: '/dev/figure/1.1',
+    label: 'Figure review',
+    note: 'one figure at a time: every state at full size, every brand, and the Citizen store screenshots',
+  },
+  { href: '/dev/map', label: 'Map', note: 'the shared fictional-town map: scenes, routes, pins and pucks' },
+  { href: '/dev/glimpse', label: 'Glimpse player', note: 'glimpse sequences, playback controls and reduced-motion posters' },
   { href: '/dev/store', label: 'Store assets', note: 'contact sheet for screenshot classification and alt text' },
 ];
 
