@@ -1,0 +1,576 @@
+/*
+ * The glimpse player (src/components/showcase/glimpse.tsx, design §5.3). Imported once, from
+ * glimpse.tsx. Hex values are allowed here: the tap ring mirrors the replicas' white-on-navy.
+ *
+ * Frames: every step of every track is server-rendered and stacked in one grid cell. The
+ * client parts only flip attributes (src/components/showcase/glimpse.client.tsx):
+ *   data-shown    the frame on screen (the server marks each track's poster frame);
+ *   data-enter    it has just replaced another frame: opacity 0 → 1 and 8px → 0 (logical),
+ *                 360ms ease-out; opacity only, 120ms, under reduced motion;
+ *   data-leaving  the frame it replaced, kept underneath (frozen) until the fade ends;
+ *   data-next     the frame coming next: rendered but invisible, ready to show;
+ *   none          content-visibility: hidden, so it costs no style, layout or paint.
+ * data-active (the replica motion contract) and data-paused do the rest: the tap rings below
+ * follow the same contract, since they sit outside .rx-canvas.
+ *
+ * Phone sizes: every phone in the player is size="inherit" and reads --ps from its track
+ * (.gl-ps-<size>, or the .gl-ps-auto-* container-query sizes of design §5.3).
+ */
+
+/* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  /* ─── Root and areas ──────────────────────────────────────────────────────────────── */
+
+  .gl {
+    container: glimpse / inline-size;
+    min-width: 0;
+  }
+
+  .gl-inner {
+    display: grid;
+    grid-template-areas: "picker" "head" "stage" "more";
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .gl-picker {
+    grid-area: picker;
+    display: none;
+    justify-content: center;
+  }
+
+  .gl-head {
+    grid-area: head;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  /* Lines reserved, so a longer caption never moves the phones (design §4.3): the app's label
+     line plus two caption lines; two lines in a hero, which has no label line. */
+  .gl-caption {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 3lh;
+    margin: 0;
+  }
+
+  .gl[data-layout="hero"] .gl-caption {
+    min-height: 2lh;
+  }
+
+  /* One caption item shows at a time; a block box keeps its label line a clean block. */
+  .gl-caption > span {
+    display: block;
+  }
+
+  .gl-toolbar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Controls work only with JavaScript; without it the space stays, empty. */
+  .gl:not([data-ready]) .gl-toolbar {
+    visibility: hidden;
+  }
+
+  .gl-stage {
+    grid-area: stage;
+    position: relative;
+    min-width: 0;
+  }
+
+  .gl-more {
+    grid-area: more;
+    display: none;
+    justify-content: center;
+  }
+
+  /* ─── Step dots (buttons) and story bars (decorative) ─────────────────────────────── */
+
+  .gl-dots {
+    display: flex;
+    align-items: center;
+  }
+
+  .gl-dot {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 9999px;
+    background: none;
+    color: var(--c-ink-3);
+    cursor: pointer;
+    transition: color var(--dur-1) ease-out;
+  }
+
+  .gl-dot:hover,
+  .gl-dot[aria-current="step"] {
+    color: var(--c-ink);
+  }
+
+  .gl-dot__mark {
+    width: 8px;
+    height: 8px;
+    border: 1.5px solid currentColor;
+    border-radius: 9999px;
+    transition: width var(--dur-2) var(--ease-out);
+  }
+
+  .gl-dot[aria-current="step"] .gl-dot__mark {
+    width: 16px;
+    background: currentColor;
+  }
+
+  .gl-bars {
+    display: inline-flex;
+    flex: none;
+    gap: 3px;
+    margin-inline-start: 6px;
+  }
+
+  .gl-bars__bar {
+    position: relative;
+    width: 12px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: color-mix(in srgb, currentColor 25%, transparent);
+  }
+
+  .gl-bars__fill {
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    transform-origin: 0 50%;
+    scale: 0 1;
+  }
+
+  .gl-bars__bar[data-position="done"] .gl-bars__fill {
+    scale: 1 1;
+  }
+
+  .gl-bars__bar[data-position="current"] .gl-bars__fill {
+    animation: gl-fill var(--gl-hold) linear forwards;
+    animation-play-state: paused;
+  }
+
+  .gl[data-status="playing"] .gl-bars__bar[data-position="current"] .gl-bars__fill {
+    animation-play-state: running;
+  }
+
+  /* ─── Columns: label chip above a linked phone ────────────────────────────────────── */
+
+  .gl-cols {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gl-col {
+    position: relative;
+    z-index: 0;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    transition: translate var(--dur-3) var(--ease-out);
+  }
+
+  .gl-col--centre {
+    z-index: 1;
+  }
+
+  .gl-col + .gl-col {
+    margin-inline-start: calc(-1 * var(--gl-overlap, 0px));
+  }
+
+  .gl-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    border-radius: 12px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* The chip never widens its column (inline-size containment): the phone sets the width, and
+     the chip aligns to the outer edge on the side columns so it never leaves the stage. */
+  .gl-chip-slot {
+    display: flex;
+    align-self: stretch;
+    justify-content: center;
+    contain: inline-size;
+  }
+
+  .gl-col--start .gl-chip-slot {
+    justify-content: flex-start;
+  }
+
+  .gl-col--end .gl-chip-slot {
+    justify-content: flex-end;
+  }
+
+  .gl-chip {
+    flex: none;
+    max-width: none;
+    white-space: nowrap;
+  }
+
+  /* Story bars only in the playing app's chip. */
+  .gl-col:not([data-current]) .gl-bars {
+    display: none;
+  }
+
+  /* ─── Tracks and frames ───────────────────────────────────────────────────────────── */
+
+  .gl-ps-xs {
+    --ps: 0.2899;
+  }
+  .gl-ps-sm {
+    --ps: 0.3768;
+  }
+  .gl-ps-md {
+    --ps: 0.5024;
+  }
+  .gl-ps-lg {
+    --ps: 0.6377;
+  }
+  .gl-ps-xl {
+    --ps: 0.8696;
+  }
+  .gl-ps-2xl {
+    --ps: 1.0145;
+  }
+
+  .gl-ps-auto-single,
+  .gl-ps-auto-centre,
+  .gl-ps-auto-side {
+    --ps: 0.5024;
+  }
+
+  .gl-ps-auto-hero {
+    --ps: 0.6377;
+  }
+
+  .gl-track {
+    position: relative;
+    display: grid;
+    isolation: isolate;
+  }
+
+  /* The playing app's extra glow (design §5.3), behind its phone. */
+  .gl-track::before {
+    content: "";
+    position: absolute;
+    inset: 4% -10% auto;
+    z-index: -1;
+    height: 70%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(var(--glow) / var(--glow-alpha)), transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-3) var(--ease-out);
+  }
+
+  .gl-frame {
+    position: relative;
+    grid-area: 1 / 1;
+    visibility: hidden;
+    opacity: 0;
+    content-visibility: hidden;
+  }
+
+  .gl-frame[data-next] {
+    content-visibility: visible;
+  }
+
+  .gl-frame[data-leaving] {
+    z-index: 0;
+    visibility: visible;
+    opacity: 1;
+    content-visibility: visible;
+  }
+
+  .gl-frame[data-shown] {
+    z-index: 1;
+    visibility: visible;
+    opacity: 1;
+    content-visibility: visible;
+  }
+
+  .gl-frame[data-shown][data-enter] {
+    animation: gl-step-in var(--dur-glimpse-enter) var(--ease-out) both;
+  }
+
+  /* ─── Tap rings: CSS only, under the motion contract ──────────────────────────────── */
+
+  /* A 390×844 layer over the phone's screen (inside the 12px bezel), scaled like the canvas. */
+  .gl-taps {
+    position: absolute;
+    top: calc(12px * var(--ps, 0.5024));
+    left: calc(12px * var(--ps, 0.5024));
+    z-index: 2;
+    display: block;
+    width: 390px;
+    height: 844px;
+    overflow: hidden;
+    border-radius: 42px;
+    pointer-events: none;
+    transform: scale(var(--ps, 0.5024));
+    transform-origin: 0 0;
+  }
+
+  .gl-tap {
+    position: absolute;
+    top: var(--tap-y);
+    left: var(--tap-x);
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.35);
+    box-shadow: 0 0 0 1px rgb(13 28 61 / 0.9);
+    opacity: 0;
+    scale: 0.6;
+  }
+
+  /* Rule 1: only in the active frame, from --tap-at. A hold keeps the ring for --tap-hold. */
+  [data-active] > .gl-taps .gl-tap {
+    animation:
+      gl-tap-in 180ms var(--ease-out) var(--tap-at) forwards,
+      gl-tap-out 270ms ease-in calc(var(--tap-at) + 180ms + var(--tap-hold, 0ms)) forwards;
+  }
+
+  /* Rule 3: frozen with the phone. */
+  [data-paused] .gl-tap {
+    animation-play-state: paused !important;
+  }
+
+  /* Rule 4: no tap rings under reduced motion (design §3.6: "no tap ripple"). */
+  :root[data-motion="reduce"] .gl-tap {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion]) .gl-tap {
+      display: none;
+    }
+  }
+
+  /* Reduced motion keeps a short opacity crossfade between steps (layered !important beats
+     the global animation reset in src/styles/motion.css). */
+  :root[data-motion="reduce"] .gl-frame[data-shown][data-enter] {
+    animation: gl-fade-in var(--dur-reduced) ease-out both !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion]) .gl-frame[data-shown][data-enter] {
+      animation: gl-fade-in var(--dur-reduced) ease-out both !important;
+    }
+  }
+
+  /* ─── Layout: trio (the Home Projects stage) ──────────────────────────────────────── */
+
+  /* Phones peek up from the bottom edge: the stage clips below (design §4.3). Each link clips
+     too, 12px past the stage (room for the rise), so no link box reaches content below the
+     card: hit areas and target-size geometry match what is painted. */
+  .gl[data-layout="trio"] .gl-stage {
+    height: var(--gl-stage-h, 360px);
+    padding-top: 14px;
+    overflow-x: visible;
+    overflow-y: clip;
+  }
+
+  .gl[data-layout="trio"] .gl-link {
+    max-height: calc(var(--gl-stage-h, 360px) - 2px);
+    overflow-x: visible;
+    overflow-y: clip;
+  }
+
+  .gl[data-layout="trio"] .gl-col[data-current] {
+    z-index: 2;
+    translate: 0 -12px;
+  }
+
+  .gl[data-layout="trio"] .gl-col[data-current] .gl-track::before {
+    opacity: 1;
+  }
+
+  :root[data-motion="reduce"] .gl[data-layout="trio"] .gl-col[data-current] {
+    translate: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion]) .gl[data-layout="trio"] .gl-col[data-current] {
+      translate: none;
+    }
+  }
+
+  /* Card widths <448 / 448–479 / 480–687 / ≥688 (design §5.3), as the player's own width
+     inside the card (20px padding, 1px border). A container query styles descendants, hence .gl-inner. */
+  @container glimpse (width >= 25rem) {
+    .gl[data-layout="trio"] .gl-inner {
+      --gl-overlap: 36px;
+      --gl-stage-h: 260px;
+    }
+    .gl-ps-auto-centre {
+      --ps: 0.3768;
+    }
+    .gl-ps-auto-side {
+      --ps: 0.2899;
+    }
+  }
+
+  @container glimpse (width >= 27rem) {
+    .gl[data-layout="trio"] .gl-inner {
+      --gl-overlap: 48px;
+      --gl-stage-h: 320px;
+    }
+    .gl-ps-auto-centre {
+      --ps: 0.5024;
+    }
+    .gl-ps-auto-side {
+      --ps: 0.3768;
+    }
+  }
+
+  @container glimpse (width >= 40rem) {
+    .gl[data-layout="trio"] .gl-inner {
+      --gl-overlap: 56px;
+      --gl-stage-h: 400px;
+    }
+    .gl-ps-auto-centre {
+      --ps: 0.6377;
+    }
+    .gl-ps-auto-side {
+      --ps: 0.5024;
+    }
+  }
+
+  /* ─── Layout: single phone (layout="single", and the trio below 400px) ─────────────── */
+
+  .gl[data-layout="single"] .gl-inner {
+    grid-template-areas: "picker" "stage" "head" "more";
+  }
+
+  .gl[data-layout="single"] :is(.gl-picker, .gl-more) {
+    display: flex;
+  }
+
+  /* One app at a time: switching apps is a cut; steps within an app still crossfade. */
+  .gl[data-layout="single"] .gl-col:not([data-current]) {
+    display: none;
+  }
+
+  .gl[data-layout="single"] .gl-chip-slot {
+    justify-content: center;
+  }
+
+  @container glimpse (width < 25rem) {
+    .gl[data-layout="trio"] .gl-inner {
+      grid-template-areas: "picker" "stage" "head" "more";
+    }
+    .gl[data-layout="trio"] :is(.gl-picker, .gl-more) {
+      display: flex;
+    }
+    .gl[data-layout="trio"] .gl-col:not([data-current]) {
+      display: none;
+    }
+    .gl[data-layout="trio"] .gl-col[data-current] {
+      translate: none;
+    }
+    .gl[data-layout="trio"] .gl-chip-slot {
+      justify-content: center;
+    }
+  }
+
+  /* ─── Layout: case-study hero ─────────────────────────────────────────────────────── */
+
+  .gl[data-layout="hero"] .gl-inner {
+    grid-template-areas: "stage" "head";
+    justify-items: center;
+  }
+
+  .gl[data-layout="hero"] .gl-head {
+    flex-direction: column-reverse;
+    align-items: center;
+    text-align: center;
+  }
+
+  .gl[data-layout="hero"] .gl-col:not([data-current]) {
+    display: none;
+  }
+
+  @container glimpse (width < 22rem) {
+    .gl-ps-auto-hero {
+      --ps: 0.5024;
+    }
+  }
+
+  /* ─── The phone morph (the site's one View Transition) ────────────────────────────── */
+
+  ::view-transition-group(.morph) {
+    animation-duration: var(--dur-morph);
+    animation-timing-function: var(--ease-emph);
+  }
+
+  /* ─── Keyframes ───────────────────────────────────────────────────────────────────── */
+
+  @keyframes gl-step-in {
+    from {
+      opacity: 0;
+      translate: 0 calc(8px * var(--ps, 0.5024));
+    }
+  }
+
+  @keyframes gl-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes gl-fill {
+    from {
+      scale: 0 1;
+    }
+    to {
+      scale: 1 1;
+    }
+  }
+
+  @keyframes gl-tap-in {
+    from {
+      opacity: 1;
+      scale: 0.6;
+    }
+    to {
+      opacity: 1;
+      scale: 1;
+    }
+  }
+
+  @keyframes gl-tap-out {
+    from {
+      opacity: 1;
+      scale: 1;
+    }
+    to {
+      opacity: 0;
+      scale: 1;
+    }
+  }
+}

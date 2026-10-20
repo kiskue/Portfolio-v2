@@ -1,0 +1,237 @@
+/*
+ * Replica charts (RLineChart, RBarPairs in kit/charts.tsx). Imported once, by charts.tsx.
+ * Sizes follow the SME app's charts: the forecast line chart (react-native-gifted-charts: 2 px
+ * lines, 2.5 px dots, a 6/5 dashed projection, 10 px y-labels, 9 px x-labels, 12 px end spacing)
+ * and the dashboard "Sales vs Costs" bars (10 px bars, a 6 px gap, 42 px slots, 3 px top radius,
+ * 9 px labels). Colours arrive as custom properties from the component props.
+ *
+ * MOTION CONTRACT (src/styles/replica.css): the optional reveal animates only under [data-active];
+ * the static chart is the poster.
+ */
+
+/* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  .rx-chart {
+    position: relative;
+    display: block;
+    width: 100%;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+
+  /* ─── Line chart ───────────────────────────────────────────────────────────────────── */
+
+  .rx-line {
+    display: grid;
+    grid-template-columns: var(--rx-chart-label-w) minmax(0, 1fr);
+    grid-template-rows: var(--rx-chart-h) auto;
+  }
+
+  .rx-line__y {
+    position: relative;
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .rx-line__ylabel {
+    position: absolute;
+    right: 6px;
+    transform: translateY(-50%);
+    color: var(--rx-chart-label);
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .rx-line__plot {
+    position: relative;
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .rx-line__rule,
+  .rx-line__axis {
+    position: absolute;
+    right: 0;
+    left: 0;
+    height: 1px;
+  }
+
+  .rx-line__rule {
+    margin-top: -0.5px;
+    background: var(--rx-chart-grid);
+  }
+
+  .rx-line__axis {
+    bottom: 0;
+    background: var(--rx-chart-axis);
+  }
+
+  /* The drawing area keeps the app's 12 px start and end spacing inside the plot. */
+  .rx-line__draw {
+    position: absolute;
+    inset: 0 12px;
+  }
+
+  .rx-line__svg {
+    position: absolute;
+    inset: 0;
+    display: block;
+    overflow: visible;
+  }
+
+  .rx-line__history,
+  .rx-line__projection {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rx-line__history {
+    stroke: var(--rx-chart-c);
+  }
+
+  .rx-line__projection {
+    stroke: var(--rx-chart-pc);
+    stroke-dasharray: 6 5;
+  }
+
+  .rx-line__dot {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%;
+    background: var(--rx-chart-c);
+  }
+
+  .rx-line__dot[data-kind="projection"] {
+    background: var(--rx-chart-pc);
+  }
+
+  .rx-line__x {
+    position: relative;
+    grid-row: 2;
+    grid-column: 2;
+    height: 16px;
+    margin: 0 12px;
+  }
+
+  .rx-line__xlabel {
+    position: absolute;
+    top: 4px;
+    transform: translateX(-50%);
+    color: var(--rx-chart-label);
+    font-size: 9px;
+    white-space: nowrap;
+  }
+
+  /* ─── Paired bars ──────────────────────────────────────────────────────────────────── */
+
+  .rx-bars__plot {
+    position: relative;
+    display: flex;
+    height: var(--rx-bars-h);
+    align-items: flex-end;
+  }
+
+  .rx-bars__base {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    background: var(--rx-bars-base);
+  }
+
+  .rx-bars__pair {
+    display: flex;
+    width: var(--rx-bars-slot);
+    flex: none;
+    align-items: flex-end;
+    justify-content: center;
+    gap: var(--rx-bars-gap);
+    height: 100%;
+  }
+
+  .rx-bars__bar {
+    display: block;
+    width: var(--rx-bars-w);
+    border-radius: 3px 3px 0 0;
+    transform-origin: 50% 100%;
+  }
+
+  .rx-bars__bar[data-series="a"] {
+    background: var(--rx-bars-a);
+  }
+
+  .rx-bars__bar[data-series="b"] {
+    background: var(--rx-bars-b);
+  }
+
+  .rx-bars__labels {
+    display: flex;
+    margin-top: 4px;
+  }
+
+  .rx-bars__label {
+    width: var(--rx-bars-slot);
+    flex: none;
+    overflow: hidden;
+    color: var(--rx-chart-label);
+    font-size: 9px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ─── Motion: only under [data-active] (contract rule 1) ──────────────────────────── */
+
+  [data-active] .rx-line[data-reveal] .rx-line__draw {
+    animation: rx-chart-draw var(--rx-chart-rd) cubic-bezier(0.22, 1, 0.36, 1) var(--rx-chart-rs) both;
+  }
+
+  [data-active] .rx-bars[data-reveal] .rx-bars__bar {
+    animation: rx-chart-grow var(--rx-chart-rd) cubic-bezier(0.22, 1, 0.36, 1) var(--rx-chart-rs) both;
+  }
+
+  /* Motion guards (contract rules 3 and 4) for charts outside a replica canvas. */
+  [data-paused] .rx-chart *,
+  [data-paused] .rx-chart *::before,
+  [data-paused] .rx-chart *::after {
+    animation-play-state: paused !important;
+  }
+
+  :root[data-motion="reduce"] .rx-chart *,
+  :root[data-motion="reduce"] .rx-chart *::before,
+  :root[data-motion="reduce"] .rx-chart *::after {
+    animation: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion]) .rx-chart *,
+    :root:not([data-motion]) .rx-chart *::before,
+    :root:not([data-motion]) .rx-chart *::after {
+      animation: none !important;
+    }
+  }
+
+  @keyframes rx-chart-draw {
+    from {
+      clip-path: inset(-6px 100% -6px -6px);
+    }
+    to {
+      clip-path: inset(-6px -6px -6px -6px);
+    }
+  }
+
+  @keyframes rx-chart-grow {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+}

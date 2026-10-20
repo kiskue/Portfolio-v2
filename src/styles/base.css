@@ -2,9 +2,13 @@
 @layer base {
   html {
     background-color: var(--c-bg);
-    /* Dialog scroll lock causes no layout shift (§3.1). */
+    /* The page never shifts when a scrollbar comes or goes (§3.1). */
     scrollbar-gutter: stable;
-    /* Focus is never hidden under the sticky top bar (2.4.11, §4.1). */
+    /*
+     * Focus and anchor targets are never hidden under sticky bars (2.4.11, §4.1): 76px clears
+     * the 60–64px top bar below 1280px; 24px is breathing room beside the docked sidebar.
+     * Case-study pages add their section pill on top of this (128px / 88px).
+     */
     scroll-padding-top: 76px;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -14,6 +18,28 @@
     html {
       scroll-padding-top: 24px;
     }
+  }
+
+  /*
+   * Radix dialogs lock scroll through react-remove-scroll-bar: <body data-scroll-locked> gets
+   * overflow: hidden plus a margin-right equal to the scrollbar it hides, so nothing moves. A
+   * stable gutter would reserve that width a second time, and the fixed scrim cannot paint into
+   * a gutter, which left a bare strip at the right edge. While locked, the margin alone keeps
+   * the layout still, so the gutter is dropped and the scrim covers the full width.
+   */
+  html:has(> body[data-scroll-locked]) {
+    scrollbar-gutter: auto;
+  }
+
+  /*
+   * No theme crossfade (PLAN → Motion). The display store sets this attribute for the one style
+   * recalc that switches theme or motion, so colour transitions on links and buttons do not
+   * animate the switch. Layered !important beats the unlayered reduced-motion rules.
+   */
+  html[data-display-switching] *,
+  html[data-display-switching] *::before,
+  html[data-display-switching] *::after {
+    transition: none !important;
   }
 
   /* Next 16 reads data-scroll-behavior to switch smoothing off during route changes. */

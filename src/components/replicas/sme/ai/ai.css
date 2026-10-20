@@ -1,0 +1,839 @@
+/*
+ * SME Panindio AI replicas (1.6–1.9): the rx-sme-ai-* parts. Imported once, from ./index.ts.
+ *
+ * Colours come from the --rx-sme-* tokens in ../sme.css (the AI screen-local set: #0F0F14 canvas,
+ * #151A27 card, #1E2435 raised, #4F9EFF accent). The few values the app draws that sme.css does
+ * not carry are declared below as --rx-sme-ai-x-* on the same canvas, light first, then dark,
+ * with the app source they come from.
+ *
+ * Sizes are the app's StyleSheet values in logical px. React Native boxes are border-box, and so
+ * is every element here (Tailwind's preflight), so a min-height includes its padding as in RN.
+ *
+ * Motion: only the 1.6 insight swap animates, declared under [data-active] (MOTION CONTRACT in
+ * src/styles/replica.css). Static styles are the poster; [data-paused] and reduced motion are
+ * enforced by replica.css for everything inside .rx-canvas.
+ */
+
+/* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  /* ── Local tokens (light) ─────────────────────────────────────────────────────── */
+  .rx-canvas[data-app="sme"] {
+    /* AIInsightCard riskTokens().glowColor */
+    --rx-sme-ai-x-glow-low: rgb(39 174 96 / 0.08);
+    --rx-sme-ai-x-glow-medium: rgb(245 166 35 / 0.08);
+    --rx-sme-ai-x-glow-high: rgb(255 59 48 / 0.08);
+    /* StockHealthIndicator: inventoryAccents LIGHT_HEALTH border and barBg */
+    --rx-sme-ai-x-stock-low-border: #fde68a;
+    --rx-sme-ai-x-stock-out-border: #ffd6d6;
+    --rx-sme-ai-x-stock-low-track: #fef3c7;
+    --rx-sme-ai-x-stock-out-track: #ffebeb;
+    /* StatTile: the dark-only hairline (light lifts the tile with a shadow instead) */
+    --rx-sme-ai-x-stat-border: transparent;
+    /* AIChatSheet: input border and placeholder, error bubble */
+    --rx-sme-ai-x-input-border: #d1dae8;
+    --rx-sme-ai-x-placeholder: #9ca3af;
+    --rx-sme-ai-x-error-icon: #ff3b30;
+    --rx-sme-ai-x-error-ink: #e03428;
+    --rx-sme-ai-x-error-border: #ffd6d6;
+    /* Business ROI: breakeven bar ≥ 50% and the ROI health colour (10–20%), and the bar track */
+    --rx-sme-ai-x-amber: #ff9500;
+    --rx-sme-ai-x-track: #e5e7eb;
+  }
+
+  /* ── Local tokens (dark: the AI screens as shipped) ───────────────────────────── */
+  .rx-canvas[data-app="sme"][data-theme="dark"] {
+    --rx-sme-ai-x-glow-low: rgb(61 214 140 / 0.12);
+    --rx-sme-ai-x-glow-medium: rgb(255 176 32 / 0.12);
+    --rx-sme-ai-x-glow-high: rgb(255 107 107 / 0.12);
+    --rx-sme-ai-x-stock-low-border: rgb(255 176 32 / 0.35);
+    --rx-sme-ai-x-stock-out-border: rgb(255 107 107 / 0.35);
+    --rx-sme-ai-x-stock-low-track: rgb(255 176 32 / 0.12);
+    --rx-sme-ai-x-stock-out-track: rgb(255 107 107 / 0.12);
+    --rx-sme-ai-x-stat-border: var(--rx-sme-theme-hairline);
+    --rx-sme-ai-x-input-border: rgb(255 255 255 / 0.12);
+    --rx-sme-ai-x-placeholder: rgb(255 255 255 / 0.35);
+    --rx-sme-ai-x-error-icon: #ff6b6b;
+    --rx-sme-ai-x-error-ink: #ff6b6b;
+    --rx-sme-ai-x-error-border: rgb(255 107 107 / 0.3);
+    --rx-sme-ai-x-amber: #ffb020;
+    --rx-sme-ai-x-track: rgb(255 255 255 / 0.08);
+  }
+
+  /* ── Screen: TopNavBar over the scroll (ai.tsx root and scroll) ────────────────── */
+
+  .rx-sme-ai-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--rx-sme-ai-canvas);
+  }
+
+  .rx-sme-ai-scroll {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: 16px 16px 0;
+  }
+
+  /* SectionHeader (h6 bold): 28 px above, 10 px below; the first of a slice sits at the top. */
+  .rx-sme-ai-title {
+    display: block;
+    flex: none;
+    margin: 28px 0 10px;
+    color: var(--rx-sme-ai-title);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 22.4px;
+  }
+
+  .rx-sme-ai-title[data-first] {
+    margin-top: 0;
+  }
+
+  /* Business ROI's section header: 20 px above, 10 px below, tile then 8 px, 16 px semibold. */
+  .rx-sme-ai-roi-title {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    margin: 20px 0 10px;
+    color: var(--rx-sme-ai-text);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22.4px;
+  }
+
+  /* ── AIInsightCard shell ──────────────────────────────────────────────────────── */
+
+  .rx-sme-ai-card {
+    flex: none;
+    margin-bottom: 4px;
+  }
+
+  .rx-sme-ai-card__top {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 16px 8px;
+  }
+
+  .rx-sme-ai-card__right {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .rx-sme-ai-card__bar {
+    display: block;
+    flex: none;
+    height: 3px;
+    margin: 0 16px 12px;
+    border-radius: 2px;
+    background: var(--rx-sme-ai-accent);
+  }
+
+  .rx-sme-ai-card__body {
+    display: block;
+    min-height: 60px;
+    padding: 0 16px 16px;
+  }
+
+  /* The report body: 4 px below, 56 px minimum (ai.tsx reportBody). */
+  .rx-sme-ai-card__body[data-look="report"] {
+    min-height: 56px;
+    padding-bottom: 4px;
+  }
+
+  /* Insight text: 14/22 in the slightly dimmed body ink. */
+  .rx-sme-ai-text {
+    display: block;
+    color: var(--rx-sme-ai-body);
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  /* The report's idle hint: 14/20 muted. */
+  .rx-sme-ai-hint {
+    display: block;
+    color: var(--rx-sme-ai-muted);
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* ── Pills ────────────────────────────────────────────────────────────────────── */
+
+  .rx-sme-ai-label {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: var(--rx-sme-ai-pill);
+    color: var(--rx-sme-ai-accent);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16.8px;
+    white-space: nowrap;
+  }
+
+  .rx-sme-ai-enhance {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--rx-sme-ai-accent) 10.2%, transparent);
+    color: var(--rx-sme-ai-accent);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16.8px;
+    white-space: nowrap;
+  }
+
+  /* Disabled while the request runs (Pressable opacity 0.7). */
+  .rx-sme-ai-enhance[data-state="loading"] {
+    opacity: 0.7;
+  }
+
+  .rx-sme-ai-enhance[data-state="done"] {
+    gap: 3px;
+  }
+
+  /* Android's small ActivityIndicator box (20 px). */
+  .rx-sme-ai-enhance__spin {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+  }
+
+  /*
+   * The three enhance frames share one right-aligned cell, as tall as the idle pill: the poster
+   * row keeps the idle card's height, and the 28 px loading pill overhangs it by 1.6 px.
+   */
+  .rx-sme-ai-enhance-seq {
+    grid-template-rows: 24.8px;
+    height: 24.8px;
+    align-items: center;
+    justify-items: end;
+  }
+
+  .rx-sme-ai-risk {
+    --rx-sme-ai-x-risk-ink: var(--rx-sme-risk-medium-ink);
+    --rx-sme-ai-x-risk-bg: var(--rx-sme-risk-medium-bg);
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    background: var(--rx-sme-ai-x-risk-bg);
+    color: var(--rx-sme-ai-x-risk-ink);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16.8px;
+    white-space: nowrap;
+  }
+
+  .rx-sme-ai-risk[data-risk="low"] {
+    --rx-sme-ai-x-risk-ink: var(--rx-sme-risk-low-ink);
+    --rx-sme-ai-x-risk-bg: var(--rx-sme-risk-low-bg);
+  }
+
+  .rx-sme-ai-risk[data-risk="high"] {
+    --rx-sme-ai-x-risk-ink: var(--rx-sme-risk-high-ink);
+    --rx-sme-ai-x-risk-bg: var(--rx-sme-risk-high-bg);
+  }
+
+  /* ── AI action button (RButton, soft look, recoloured) ────────────────────────── */
+
+  .rx-canvas .rx-btn.rx-sme-ai-cta {
+    display: flex;
+    width: auto;
+    align-self: stretch;
+    flex: none;
+  }
+
+  .rx-canvas .rx-btn.rx-sme-ai-cta > svg {
+    color: var(--rx-sme-ai-accent);
+  }
+
+  /* ── 1.6: the insight swap (computed line → AI paragraph) ─────────────────────── */
+
+  .rx-sme-ai-swap {
+    display: block;
+  }
+
+  .rx-sme-ai-swap__from {
+    overflow: hidden;
+  }
+
+  /* Poster: the AI paragraph is not there yet. */
+  .rx-sme-ai-swap__to {
+    max-height: 0;
+    overflow: hidden;
+  }
+
+  /* While active: the computed line leaves at --rx-sme-ai-swap-at ... */
+  [data-active] .rx-sme-ai-swap__from {
+    animation: rx-sme-ai-leave 1ms step-end var(--rx-sme-ai-swap-at) both;
+  }
+
+  /* ... and the paragraph's box opens one line at a time ahead of the typewriter. */
+  [data-active] .rx-sme-ai-swap__to {
+    animation: rx-sme-ai-grow var(--rx-sme-ai-swap-ms) linear var(--rx-sme-ai-swap-at) forwards;
+  }
+
+  @keyframes rx-sme-ai-leave {
+    from {
+      max-height: 400px;
+    }
+    to {
+      max-height: 0;
+    }
+  }
+
+  @keyframes rx-sme-ai-grow {
+    from {
+      max-height: 22px;
+    }
+    to {
+      max-height: var(--rx-sme-ai-swap-to);
+    }
+  }
+
+  /* ── Report bullets (react-native-markdown-display) ───────────────────────────── */
+
+  .rx-sme-ai-bullets {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 4px;
+    color: var(--rx-sme-ai-text);
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  .rx-sme-ai-bullet {
+    display: flex;
+    margin-bottom: 6px;
+  }
+
+  .rx-sme-ai-bullet__dot {
+    flex: none;
+    margin: 0 10px;
+    color: var(--rx-sme-ai-muted);
+  }
+
+  .rx-sme-ai-bullet__text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .rx-sme-ai-strong {
+    color: var(--rx-sme-ai-bold);
+    font-weight: 700;
+  }
+
+  /* ── Restock list (ai.tsx restockListCard + StockHealthIndicator) ─────────────── */
+
+  .rx-sme-ai-stock-list {
+    flex: none;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .rx-sme-ai-stock {
+    --rx-sme-ai-x-stock-ink: var(--rx-sme-stock-low);
+    --rx-sme-ai-x-stock-bg: var(--rx-sme-stock-low-bg);
+    --rx-sme-ai-x-stock-border: var(--rx-sme-ai-x-stock-low-border);
+    --rx-sme-ai-x-stock-bar: var(--rx-sme-stock-low-bar);
+    --rx-sme-ai-x-stock-track: var(--rx-sme-ai-x-stock-low-track);
+    --rx-sme-ai-x-stock-badge: var(--rx-sme-warning);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-sme-ai-stock[data-health="out"] {
+    --rx-sme-ai-x-stock-ink: var(--rx-sme-stock-out);
+    --rx-sme-ai-x-stock-bg: var(--rx-sme-stock-out-bg);
+    --rx-sme-ai-x-stock-border: var(--rx-sme-ai-x-stock-out-border);
+    --rx-sme-ai-x-stock-bar: var(--rx-sme-stock-out-bar);
+    --rx-sme-ai-x-stock-track: var(--rx-sme-ai-x-stock-out-track);
+    --rx-sme-ai-x-stock-badge: var(--rx-sme-error);
+  }
+
+  .rx-sme-ai-stock__name {
+    margin-bottom: 8px;
+    color: var(--rx-sme-ai-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 19.6px;
+  }
+
+  .rx-sme-ai-stock__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  /* The quantity tile: radius 12, 8 × 16 padding, right-aligned, tinted by health. */
+  .rx-sme-ai-stock__qty {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 8px 16px;
+    border: 1px solid var(--rx-sme-ai-x-stock-border);
+    border-radius: 12px;
+    background: var(--rx-sme-ai-x-stock-bg);
+    color: var(--rx-sme-ai-x-stock-ink);
+  }
+
+  .rx-sme-ai-stock__num {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 24px;
+  }
+
+  .rx-sme-ai-stock__unit {
+    font-size: 12px;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-stock__col {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 0;
+  }
+
+  /* The Badge atom (md): solid warning or error fill, white 12 px, and alignSelf flex-start. */
+  .rx-sme-ai-stock__badge {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    justify-content: center;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--rx-sme-ai-x-stock-badge);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 14.4px;
+    white-space: nowrap;
+  }
+
+  /* 12 px grey #94A3B8 (layoutSpec; the molecule reads the theme's #9FB0C8). */
+  .rx-sme-ai-stock__reorder {
+    margin-top: 6px;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-stock__bar {
+    margin-top: 8px;
+  }
+
+  .rx-sme-ai-stock__suggest {
+    margin-top: 8px;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 16.8px;
+  }
+
+  /* ── Sales forecast (ForecastSection) ─────────────────────────────────────────── */
+
+  .rx-sme-ai-chart {
+    flex: none;
+    margin-bottom: 12px;
+  }
+
+  .rx-sme-ai-legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .rx-sme-ai-legend__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-legend__solid {
+    width: 14px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--rx-sme-ai-accent);
+  }
+
+  .rx-sme-ai-legend__dash {
+    width: 14px;
+    height: 0;
+    border-top: 2px dashed var(--rx-sme-ai-projection);
+  }
+
+  .rx-sme-ai-stats {
+    display: flex;
+    flex: none;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  /* StatTile (compact): radius 24, 12 px padding, 6 px gaps; dark draws the 1 px hairline. */
+  .rx-sme-ai-stat {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--rx-sme-ai-x-stat-border);
+    border-radius: 24px;
+    background: var(--rx-sme-theme-surface);
+  }
+
+  .rx-sme-ai-stat__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .rx-sme-ai-stat__value,
+  .rx-sme-ai-stat__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rx-sme-ai-stat__value {
+    color: var(--rx-sme-ai-accent);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 25.2px;
+  }
+
+  .rx-sme-ai-stat__label {
+    color: var(--rx-sme-theme-text-2);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16.8px;
+  }
+
+  /* The grounding line under "Ask AI about this". */
+  .rx-sme-ai-disclaimer {
+    margin-top: 8px;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 16.8px;
+  }
+
+  /* ── Chat sheet (AIChatSheet) ─────────────────────────────────────────────────── */
+
+  .rx-canvas .rx-sheet.rx-sme-ai-sheet {
+    border: 1px solid var(--rx-sme-ai-border-strong);
+    box-shadow: none;
+  }
+
+  .rx-sme-ai-chat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rx-sme-ai-border-strong);
+    background: var(--rx-sme-ai-card);
+  }
+
+  .rx-sme-ai-chat-head__lead {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .rx-sme-ai-chat-head__titles {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-sme-ai-chat-head__title {
+    color: var(--rx-sme-ai-text);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 22.4px;
+  }
+
+  .rx-sme-ai-chat-head__sub {
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-chat-head__close {
+    display: flex;
+    flex: none;
+    color: var(--rx-sme-ai-muted);
+  }
+
+  /* The conversation: 16 px padding, 10 px between messages. */
+  .rx-sme-ai-chat-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    padding: 16px;
+  }
+
+  /*
+   * A thread that fits starts at the top; one that overflows keeps its newest message in view, as
+   * the app's scrollToEnd does. The spacer takes the free space when there is some; when there is
+   * none, flex-end lets the overflow leave through the top.
+   */
+  .rx-sme-ai-chat-body[data-look="thread"] {
+    justify-content: flex-end;
+  }
+
+  .rx-sme-ai-chat-body[data-look="thread"]::after {
+    flex: 1 0 0;
+    margin-top: -10px;
+    content: "";
+  }
+
+  .rx-sme-ai-chat-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 12px 0;
+  }
+
+  .rx-sme-ai-chat-greet {
+    margin-top: 12px;
+    color: var(--rx-sme-ai-muted);
+    font-size: 14px;
+    line-height: 20px;
+    text-align: center;
+  }
+
+  .rx-sme-ai-chat-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 18px;
+  }
+
+  .rx-sme-ai-chat-chip {
+    padding: 10px 14px;
+    border: 1px solid var(--rx-sme-ai-border-strong);
+    border-radius: 12px;
+    background: var(--rx-sme-ai-chip);
+    color: var(--rx-sme-ai-text);
+    font-size: 14px;
+    line-height: 19.6px;
+  }
+
+  /* RBubble with the app's corners: radius 16, a 4 px corner on the sender's side. */
+  .rx-bubble-row.rx-sme-ai-msg > .rx-bubble {
+    border-radius: 16px;
+  }
+
+  .rx-bubble-row.rx-sme-ai-msg > .rx-bubble[data-tail][data-from="them"] {
+    border-bottom-left-radius: 4px;
+  }
+
+  .rx-bubble-row.rx-sme-ai-msg > .rx-bubble[data-tail][data-from="me"] {
+    border-bottom-right-radius: 4px;
+  }
+
+  /* The owner's bubble has no border in the app (only the assistant's does). */
+  .rx-bubble-row.rx-sme-ai-msg > .rx-bubble[data-from="me"] {
+    border-width: 0;
+  }
+
+  /* The failed answer: 10% red over the sheet, a 30% red border. */
+  .rx-bubble-row.rx-sme-ai-msg > .rx-bubble[data-tone="error"] {
+    border-color: var(--rx-sme-ai-x-error-border);
+    background: var(--rx-sme-ai-error-bg);
+  }
+
+  .rx-sme-ai-err {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-sme-ai-err__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--rx-sme-ai-x-error-ink);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 19.6px;
+  }
+
+  .rx-sme-ai-err__head > svg {
+    color: var(--rx-sme-ai-x-error-icon);
+  }
+
+  .rx-sme-ai-err__body {
+    margin-top: 4px;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 17px;
+  }
+
+  /* The composer: 12 × 10 padding (34 px home-indicator inset below), 8 px gap, top hairline. */
+  .rx-sme-ai-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 10px 12px 34px;
+    border-top: 1px solid var(--rx-sme-ai-border-strong);
+    background: var(--rx-sme-ai-card);
+  }
+
+  .rx-sme-ai-composer__input {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+    height: 44px;
+    padding: 0 16px;
+    overflow: hidden;
+    border: 1px solid var(--rx-sme-ai-x-input-border);
+    border-radius: 22px;
+    background: var(--rx-sme-ai-raised);
+    color: var(--rx-sme-ai-x-placeholder);
+    font-size: 15px;
+    line-height: 20px;
+    white-space: nowrap;
+  }
+
+  /* Nothing typed: the grey send button. */
+  .rx-sme-ai-composer__send {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    background: var(--rx-sme-ai-send-off);
+    color: var(--rx-sme-ai-muted);
+  }
+
+  /* ── Business ROI: Breakeven Progress (BreakevenProgress molecule) ────────────── */
+
+  .rx-sme-ai-breakeven {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    margin-bottom: 20px;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--rx-sme-ai-card);
+  }
+
+  .rx-sme-ai-breakeven__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    color: var(--rx-sme-ai-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 19.6px;
+  }
+
+  .rx-sme-ai-breakeven__pct {
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--rx-sme-ai-x-amber) 10.2%, transparent);
+    color: var(--rx-sme-ai-x-amber);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-breakeven__track {
+    position: relative;
+    display: block;
+    height: 10px;
+    overflow: hidden;
+    border-radius: 5px;
+    background: var(--rx-sme-ai-x-track);
+  }
+
+  .rx-sme-ai-breakeven__fill {
+    display: block;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--rx-sme-ai-x-amber);
+  }
+
+  /* The milestone marker at 100%. */
+  .rx-sme-ai-breakeven__goal {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--rx-sme-ai-x-amber);
+  }
+
+  .rx-sme-ai-breakeven__units {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-breakeven__summary {
+    margin-top: 8px;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  /* The callout banner: 5% fill and a 20% border in the health colour, pulled up 10 px. */
+  .rx-sme-ai-callout {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    margin: -10px 0 16px;
+    padding: 8px 12px;
+    border: 1px solid color-mix(in srgb, var(--rx-sme-ai-x-amber) 20%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--rx-sme-ai-x-amber) 5.1%, transparent);
+    color: var(--rx-sme-ai-x-amber);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16.8px;
+  }
+}

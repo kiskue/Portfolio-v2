@@ -341,7 +341,7 @@ export const figures = [
     title: 'Incident report form',
     caption: 'Field report: GPS location, type, injuries and photos in one form',
     summary:
-      'Defensys Responder emergency ticket form: a live map with the current address and coordinates, emergency type, injury type, a description, photo tiles and a Create button. Fictional data.',
+      'Defensys Responder emergency ticket form: a live map with the current address and coordinates, emergency type, injury type and a description, above a Create button; the photo tiles follow below the fold. Fictional data.',
     purpose: 'Filing a new incident from the field with the GPS location, type, injury flag, description and photos.',
     priority: 'P1',
     theme: 'light',

@@ -1,0 +1,834 @@
+/*
+ * SME Panindio core screens (1.1–1.5): layout and the few app details the kit parts do not
+ * carry. Imported once, from ./index.ts. Hex values are the app's own (core/parts/palette.ts).
+ *
+ * Motion follows the MOTION CONTRACT in src/styles/replica.css: every animation here is declared
+ * under a `[data-active] …` selector, the static styles are the poster, and the paused and
+ * reduced-motion guards in replica.css cover everything inside .rx-canvas.
+ */
+
+/* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  /* ─── Screen root: fills the canvas, one column ─────────────────────────────────── */
+
+  .rx-sme-screen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* ─── Owner TopNavBar: the app's 44 px icon slots (glyphs 18 px from each edge) ────── */
+
+  .rx-sme-topbar .rx-appbar__row {
+    padding: 0 18px;
+  }
+
+  .rx-sme-topbar .rx-appbar__bell > .rx-badge {
+    top: -4px;
+    right: -4px;
+  }
+
+  /* ─── Customer header band (1.4, 1.5) ───────────────────────────────────────────── */
+
+  .rx-sme-chead {
+    position: relative;
+    z-index: 4;
+    flex: none;
+    padding: 52px 16px 16px;
+    overflow: hidden;
+    background: #1e4d8c;
+  }
+
+  .rx-sme-chead__stripe {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #1e4d8c 0 33.333%, #f5a623 33.333% 66.667%, #27ae60 66.667% 100%);
+  }
+
+  .rx-sme-chead__row {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .rx-sme-chead__back {
+    display: flex;
+    flex: none;
+    align-items: center;
+    width: 36px;
+    height: 44px;
+    margin-left: -6px;
+  }
+
+  .rx-sme-chead__titles {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-sme-chead__right {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+  }
+
+  .rx-sme-chead__slot {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+  }
+
+  .rx-sme-chead__slot > .rx-sme-chead__badge {
+    position: absolute;
+    top: 4px;
+    right: 2px;
+    border-width: 0;
+    font-weight: 600;
+  }
+
+  .rx-sme-chead__below {
+    margin-top: 8px;
+  }
+
+  /* ─── 1.1 Owner dashboard ───────────────────────────────────────────────────────── */
+
+  .rx-sme-period.rx-seg[data-look="pills"] {
+    gap: 6px;
+  }
+
+  .rx-sme-period.rx-seg[data-look="pills"] .rx-seg__opt {
+    height: auto;
+    min-height: 38px;
+    padding: 9px 4px;
+    border-color: #c5d5f0;
+    background: #eaf0fa;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 19.6px;
+  }
+
+  .rx-sme-period.rx-seg[data-look="pills"] .rx-seg__opt[data-on] {
+    border-color: #1e4d8c;
+    background: #1e4d8c;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .rx-sme-period__nav {
+    min-height: 38px;
+    padding: 6px 4px;
+    border: 1px solid #c5d5f0;
+    border-radius: 12px;
+    background: #eaf0fa;
+  }
+
+  .rx-sme-period__arrow {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    color: #6b7280;
+  }
+
+  .rx-sme-period__arrow[data-disabled] {
+    opacity: 0.28;
+  }
+
+  .rx-sme-period__label {
+    border-bottom: 1px solid rgb(31 41 55 / 0.25);
+  }
+
+  .rx-sme-target__edit {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: 6px;
+    border-radius: 8px;
+    background: #f3f4f6;
+  }
+
+  /* ─── 1.2 Point of sale ─────────────────────────────────────────────────────────── */
+
+  .rx-sme-pos__body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* FlatList, two columns: each tile keeps a 5 px margin and its own height. */
+  .rx-sme-pos__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .rx-sme-tile {
+    position: relative;
+    margin: 5px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .rx-sme-tile[data-out] {
+    opacity: 0.6;
+  }
+
+  .rx-sme-tile__bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+  }
+
+  .rx-sme-tile__stock {
+    align-self: flex-start;
+    margin-top: 6px;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+
+  .rx-sme-tile__stepper {
+    margin-top: 8px;
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+  }
+
+  .rx-sme-tile__unavailable {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(0 0 0 / 0.08);
+  }
+
+  .rx-sme-posbar {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid #e5eaf2;
+    background: #ffffff;
+  }
+
+  .rx-sme-posbar__scan {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 104px;
+    height: 56px;
+    padding: 0 16px;
+    border: 1.5px solid #1e4d8c;
+    border-radius: 12px;
+    color: #1e4d8c;
+  }
+
+  .rx-sme-posbar__checkout {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: 56px;
+    padding: 0 8px;
+    border-radius: 12px;
+    background: #1e4d8c;
+    box-shadow: 0 1px 3px rgb(10 31 61 / 0.05), 0 4px 12px rgb(10 31 61 / 0.07);
+    color: #ffffff;
+  }
+
+  /* The glimpse layer: the sheet fades in over everything, the app bar included. */
+  .rx-sme-pos__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 12;
+  }
+
+  .rx-sme-sheet {
+    box-shadow: 0 -4px 12px rgb(0 0 0 / 0.12);
+  }
+
+  .rx-sme-sheet > .rx-sheet__handle {
+    margin: 8px 0 4px;
+  }
+
+  .rx-sme-sheet__head {
+    padding: 8px 16px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .rx-sme-sheet__items {
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f8f9fa;
+  }
+
+  .rx-sme-sheet__item {
+    padding: 10px 12px;
+  }
+
+  .rx-sme-sheet__item + .rx-sme-sheet__item {
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .rx-sme-pay {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    padding: 10px 0;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 16px;
+    background: #f8f9fa;
+  }
+
+  .rx-sme-sheet__input {
+    padding: 10px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8f9fc;
+  }
+
+  .rx-sme-sheet__change {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: 1px solid #9ed9b9;
+    border-radius: 12px;
+    background: #e9f7ef;
+  }
+
+  .rx-sme-sheet__totals {
+    margin: 8px 16px 0;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #f8f9fa;
+  }
+
+  .rx-sme-sheet__total {
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .rx-sme-sheet__foot {
+    padding: 16px 16px 34px;
+    border-top: 1px solid #e5e7eb;
+    background: #ffffff;
+  }
+
+  .rx-sme-sheet__confirm,
+  .rx-sme-sheet__done {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 0;
+    border-radius: 16px;
+  }
+
+  .rx-sme-sheet__confirm {
+    background: #1e4d8c;
+    color: #ffffff;
+  }
+
+  .rx-sme-sheet__done {
+    border: 1px solid #9ed9b9;
+    background: #e9f7ef;
+  }
+
+  /* ─── 1.3 Credit ledger ─────────────────────────────────────────────────────────── */
+
+  .rx-sme-ledger__list {
+    flex: 1;
+    min-height: 0;
+    padding-top: 8px;
+    overflow: hidden;
+  }
+
+  .rx-sme-ledger__hero {
+    flex: none;
+    margin: 0 16px 8px;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 2px 5px rgb(10 31 61 / 0.06), 0 8px 22px rgb(10 31 61 / 0.09);
+  }
+
+  .rx-sme-ledger__stripe {
+    display: block;
+    height: 4px;
+    background: #6d28d9;
+  }
+
+  .rx-sme-ledger__stats {
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f9fafb;
+  }
+
+  .rx-sme-ledger__divider {
+    flex: none;
+    width: 1px;
+    margin: 10px 0;
+    background: #e5e7eb;
+  }
+
+  .rx-sme-ledger__pill {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+  }
+
+  .rx-sme-ledger__section {
+    flex: none;
+    padding: 8px 16px 6px;
+  }
+
+  .rx-sme-ledger__fab {
+    position: absolute;
+    right: 24px;
+    bottom: 28px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #6d28d9;
+    box-shadow: 0 4px 12px rgb(109 40 217 / 0.4);
+  }
+
+  .rx-sme-rank {
+    display: flex;
+    flex: none;
+    margin: 5px 16px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .rx-sme-rank__bar {
+    flex: none;
+    width: 3px;
+  }
+
+  .rx-sme-rank__badge {
+    display: flex;
+    flex: none;
+    justify-content: center;
+    min-width: 36px;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+  }
+
+  .rx-sme-rank__tag {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border: 1px solid transparent;
+    border-radius: 20px;
+  }
+
+  .rx-sme-rank__divider {
+    flex: none;
+    width: 1px;
+    height: 24px;
+    margin: 0 4px;
+    background: #e5e7eb;
+  }
+
+  /* ─── 1.4 Suki storefront ───────────────────────────────────────────────────────── */
+
+  .rx-sme-store__content {
+    flex: 1;
+    min-height: 0;
+    padding: 12px 16px 0;
+    overflow: hidden;
+  }
+
+  .rx-sme-store__greeting {
+    flex: none;
+    padding-top: 12px;
+  }
+
+  .rx-sme-store__status {
+    flex: none;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #fef9c3;
+  }
+
+  .rx-sme-store__banner {
+    flex: none;
+    margin-top: 14px;
+    padding: 14px;
+    border-left: 3px solid #f5a623;
+    border-radius: 12px;
+    background: #fef9c3;
+  }
+
+  .rx-sme-store__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-top: 3px;
+    border-radius: 50%;
+    background: #f5a623;
+  }
+
+  .rx-sme-store__chips {
+    flex: none;
+    margin: 16px -16px 0;
+    padding: 0 16px;
+  }
+
+  .rx-sme-store__chip {
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid #c5d5f0;
+    border-radius: 16px;
+    background: #c5d5f0;
+    color: #123265;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .rx-sme-store__chip[data-on] {
+    border-color: #1e4d8c;
+    background: #1e4d8c;
+    color: #ffffff;
+  }
+
+  .rx-sme-store__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 12px;
+  }
+
+  .rx-sme-pcard {
+    overflow: hidden;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 2px 5px rgb(10 31 61 / 0.06), 0 8px 22px rgb(10 31 61 / 0.09);
+  }
+
+  .rx-sme-pcard__media {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    background: #eaf0fa;
+  }
+
+  .rx-sme-pcard__soldout {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(15 23 42 / 0.55);
+  }
+
+  .rx-sme-pcard__soldout-pill {
+    display: flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #1f2937;
+  }
+
+  .rx-sme-pcard__popular {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 22px;
+    padding: 0 6px;
+    border: 0.5px solid rgb(26 58 107 / 0.28);
+    border-radius: 999px;
+    background: #f5a623;
+  }
+
+  .rx-sme-pcard__heart {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgb(15 23 42 / 0.55);
+  }
+
+  .rx-sme-pcard__control {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+  }
+
+  .rx-sme-pcard__stepper {
+    padding: 4px;
+    border: 0.5px solid #d1dae8;
+    border-radius: 999px;
+    background: #ffffff;
+  }
+
+  .rx-sme-store__cart {
+    position: absolute;
+    right: 16px;
+    bottom: 98px;
+    left: 16px;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 56px;
+    padding: 0 24px;
+    border: 1px solid #1e4d8c;
+    border-radius: 12px;
+    background: #1e4d8c;
+    box-shadow: 0 1px 3px rgb(10 31 61 / 0.05), 0 4px 12px rgb(10 31 61 / 0.07);
+    color: #ffffff;
+  }
+
+  .rx-sme-store__cart > svg {
+    margin-right: 8px;
+  }
+
+  .rx-sme-store__tabs.rx-tabbar[data-look="sme-glass"] {
+    padding-bottom: 34px;
+    border-top-color: #d1dae8;
+  }
+
+  /* ─── 1.5 Live delivery tracking ────────────────────────────────────────────────── */
+
+  /* The screen's bottom safe-area inset stays the canvas colour. */
+  .rx-sme-track {
+    padding-bottom: 34px;
+  }
+
+  .rx-sme-track__map {
+    position: relative;
+    flex: none;
+    height: 220px;
+    margin: 16px 16px 0;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgb(10 31 61 / 0.05), 0 4px 12px rgb(10 31 61 / 0.07);
+  }
+
+  .rx-sme-track__map[data-expanded] {
+    flex: 1;
+    height: auto;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .rx-sme-track__town {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-sme-track__topleft {
+    position: absolute;
+    top: 12px;
+    right: 68px;
+    left: 12px;
+    z-index: 2;
+  }
+
+  .rx-sme-track__eta {
+    padding: 6px 10px;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  .rx-sme-track__banner {
+    padding: 8px 12px;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    border-radius: 12px;
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  .rx-sme-track__controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+  }
+
+  .rx-sme-track__control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  .rx-sme-track__call {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 22px;
+    background: #0ea5e9;
+  }
+
+  /* The rider: a sky motorcycle badge. In the band it rides offset-path (set inline) to its end. */
+  .rx-sme-rider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #0ea5e9;
+    box-shadow: 0 0 0 1.5px rgb(3 105 161 / 0.55), 0 2px 6px rgb(15 23 42 / 0.3);
+    offset-distance: 100%;
+    offset-rotate: auto;
+  }
+
+  .rx-sme-track__scroll {
+    flex: 1;
+    min-height: 0;
+    padding: 16px 16px 0;
+    overflow: hidden;
+  }
+
+  .rx-sme-track__card {
+    flex: none;
+    padding: 16px;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgb(10 31 61 / 0.05), 0 4px 12px rgb(10 31 61 / 0.07);
+  }
+
+  .rx-sme-track__callbtn {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 1px solid #1e4d8c;
+    border-radius: 4px;
+  }
+
+  /* StatusTimeline: no inner core on the active dot, #D1DAE8 rails ahead, a 22 px last row. */
+  .rx-sme-timeline .rx-tl__core {
+    display: none;
+  }
+
+  .rx-sme-timeline .rx-tl__line {
+    min-height: 14px;
+    background: #d1dae8;
+  }
+
+  .rx-sme-timeline .rx-tl__step[data-state="done"] .rx-tl__line {
+    background: #27ae60;
+  }
+
+  .rx-sme-timeline .rx-tl__text {
+    padding: 2px 0 16px;
+  }
+
+  .rx-sme-timeline .rx-tl__label {
+    line-height: 19.6px;
+  }
+
+  .rx-sme-timeline .rx-tl__step:last-child {
+    min-height: 22px;
+  }
+
+  .rx-sme-timeline .rx-tl__step:last-child .rx-tl__text {
+    padding: 1px 0 0;
+  }
+
+  /* ─── Motion (contract rule 1: only under [data-active]) ───────────────────────── */
+
+  /* 1.5: the rider glides along the band's road, 2.6 s, then rests where the poster has it. */
+  [data-active] .rx-sme-track__map:not([data-expanded]) > .rx-sme-rider {
+    animation: rx-sme-glide 2600ms cubic-bezier(0.37, 0, 0.63, 1) 200ms both;
+  }
+
+  @keyframes rx-sme-glide {
+    from {
+      offset-distance: 0%;
+    }
+    to {
+      offset-distance: 100%;
+    }
+  }
+}

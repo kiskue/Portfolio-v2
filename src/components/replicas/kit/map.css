@@ -1,0 +1,1074 @@
+/*
+ * The fictional-town map (RMapCanvas, kit/map-canvas.tsx). Imported once, by map-canvas.tsx.
+ *
+ * Palettes: light is a native "standard" map style (the Google and Apple maps the apps embed:
+ * pale land, white streets with grey casings, yellow highway, blue water, green parks, grey
+ * building footprints); dark is the night basemap the Responder app switches to. Hex values are
+ * allowed here: replicas mirror what the apps show.
+ *
+ * MOTION CONTRACT (src/styles/replica.css): every animation below is declared under a
+ * [data-active] ancestor and the static styles are the poster. Glides, the trimmed route and the
+ * follow camera are driven entirely by keyframes (offset-path, transform, stroke-dashoffset), so
+ * removing [data-active] or reducing motion snaps them back to the poster. The paused and
+ * reduced-motion guards are repeated for .rx-map, so a map outside .rx-canvas obeys them too.
+ */
+
+/* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  /* ─── Root and palettes ────────────────────────────────────────────────────────────── */
+
+  .rx-map {
+    --rx-map-land: #f3f1ec;
+    --rx-map-park: #c9e7bd;
+    --rx-map-school: #efe7d6;
+    --rx-map-hospital: #f6dfdf;
+    --rx-map-market: #f3e3cc;
+    --rx-map-plaza: #e9e5de;
+    --rx-map-pitch: #bfe0b2;
+    --rx-map-track: #e3b79d;
+    --rx-map-sand: #efe3bd;
+    --rx-map-water: #a3d0f0;
+    --rx-map-water-edge: #8fc2e8;
+    --rx-map-building: #e4e1da;
+    --rx-map-building-edge: #d7d2c8;
+    --rx-map-landmark: #dcd7cd;
+    --rx-map-footpath: #a9cf9b;
+    --rx-map-minor: #ffffff;
+    --rx-map-minor-edge: #dedad2;
+    --rx-map-major: #ffffff;
+    --rx-map-major-edge: #cfc9be;
+    --rx-map-highway: #fbe29a;
+    --rx-map-highway-edge: #e9c36a;
+    --rx-map-traffic-free: #46b964;
+    --rx-map-traffic-slow: #f39c38;
+    --rx-map-traffic-jam: #e2483d;
+    --rx-map-label: #5e646d;
+    --rx-map-halo: #f3f1ec;
+    --rx-map-label-water: #3b78ae;
+    --rx-map-label-district: #8b9098;
+    --rx-map-callout: #ffffff;
+    --rx-map-callout-ink: #1f2937;
+    --rx-map-you: #1a73e8;
+    --rx-map-haze: #e9edf2;
+    --rx-map-puck-ring: #ffffff;
+    --rx-map-halo-fill: 12%;
+    --rx-map-halo-edge: 28%;
+    /* The responder puck: brand primary on light maps (MAP_BRAND_ACCENT). */
+    --rx-map-accent: var(--rx-primary, #0766be);
+
+    position: relative;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    isolation: isolate;
+    background: var(--rx-map-land);
+    color: var(--rx-map-label);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 10px;
+    line-height: 1.2;
+    letter-spacing: normal;
+    text-align: start;
+    user-select: none;
+  }
+
+  .rx-map[data-theme="dark"] {
+    --rx-map-land: #1d2531;
+    --rx-map-park: #1d3830;
+    --rx-map-school: #262a30;
+    --rx-map-hospital: #2e2329;
+    --rx-map-market: #2d2820;
+    --rx-map-plaza: #242b36;
+    --rx-map-pitch: #1f3a2c;
+    --rx-map-track: #4a3a33;
+    --rx-map-sand: #2b2a22;
+    --rx-map-water: #10233a;
+    --rx-map-water-edge: #16304e;
+    --rx-map-building: #252e3b;
+    --rx-map-building-edge: #2c3644;
+    --rx-map-landmark: #2b3544;
+    --rx-map-footpath: #2f5442;
+    --rx-map-minor: #2c3644;
+    --rx-map-minor-edge: #182029;
+    --rx-map-major: #394556;
+    --rx-map-major-edge: #182029;
+    --rx-map-highway: #64583f;
+    --rx-map-highway-edge: #3f3727;
+    --rx-map-traffic-free: #3aa357;
+    --rx-map-traffic-slow: #d8862e;
+    --rx-map-traffic-jam: #d1453b;
+    --rx-map-label: #9aa4b3;
+    --rx-map-halo: #1d2531;
+    --rx-map-label-water: #5f8fc4;
+    --rx-map-label-district: #7f8a99;
+    --rx-map-callout: #1f2937;
+    --rx-map-callout-ink: #f1f5f9;
+    --rx-map-you: #4c8df6;
+    --rx-map-haze: #131a24;
+    --rx-map-puck-ring: #0b1220;
+    --rx-map-halo-fill: 14%;
+    --rx-map-halo-edge: 32%;
+    /* getBrandAccent in dark mode: #60a5fa for every brand. */
+    --rx-map-accent: #60a5fa;
+  }
+
+  /* The 3D follow tilt: the camera turns about the puck; pins stand up (map-canvas.tsx). */
+  .rx-map[data-tilt] {
+    perspective: var(--rx-map-perspective, 760px);
+    perspective-origin: 50% 30%;
+  }
+
+  .rx-map__cam,
+  .rx-map__world {
+    position: absolute;
+    width: 0;
+    height: 0;
+    transform-origin: 0 0;
+  }
+
+  .rx-map__world {
+    top: 0;
+    left: 0;
+  }
+
+  .rx-map[data-tilt] .rx-map__cam,
+  .rx-map[data-tilt] .rx-map__world {
+    transform-style: preserve-3d;
+  }
+
+  .rx-map__base,
+  .rx-map__route {
+    position: absolute;
+    display: block;
+    overflow: visible;
+  }
+
+  /*
+   * Fog on the tilted ground: from 380 px ahead of the camera point it thickens into haze, opaque
+   * by about 780 px, which hides the far edge of the drawn town (TILT_REACH in map-canvas.tsx).
+   * It lies in the camera's plane after the world, so it covers the distant town while pins that
+   * stand up in front of it stay visible.
+   */
+  .rx-map__fog {
+    position: absolute;
+    top: -1860px;
+    left: -1600px;
+    width: 3200px;
+    height: 1480px;
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--rx-map-haze) 0%, transparent) 0%,
+      var(--rx-map-haze) 27%,
+      var(--rx-map-haze) 100%
+    );
+  }
+
+  /* ─── Town layers ──────────────────────────────────────────────────────────────────── */
+
+  .rx-map__land {
+    fill: var(--rx-map-land);
+  }
+
+  .rx-map__area[data-kind="park"] {
+    fill: var(--rx-map-park);
+  }
+
+  .rx-map__area[data-kind="school"] {
+    fill: var(--rx-map-school);
+  }
+
+  .rx-map__area[data-kind="hospital"] {
+    fill: var(--rx-map-hospital);
+  }
+
+  .rx-map__area[data-kind="market"] {
+    fill: var(--rx-map-market);
+  }
+
+  .rx-map__area[data-kind="plaza"] {
+    fill: var(--rx-map-plaza);
+  }
+
+  .rx-map__area[data-kind="pitch"] {
+    fill: var(--rx-map-pitch);
+    stroke: var(--rx-map-track);
+    stroke-width: 5;
+  }
+
+  .rx-map__sand {
+    fill: none;
+    stroke: var(--rx-map-sand);
+    stroke-width: 34;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rx-map__sea,
+  .rx-map__pond {
+    fill: var(--rx-map-water);
+  }
+
+  .rx-map__pond {
+    stroke: var(--rx-map-water-edge);
+    stroke-width: 1;
+  }
+
+  .rx-map__bank,
+  .rx-map__river {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rx-map__bank {
+    stroke: var(--rx-map-water-edge);
+    stroke-width: 46;
+  }
+
+  .rx-map__river {
+    stroke: var(--rx-map-water);
+    stroke-width: 43;
+  }
+
+  .rx-map__buildings,
+  .rx-map__landmarks {
+    fill: var(--rx-map-building);
+    stroke: var(--rx-map-building-edge);
+    stroke-width: 0.75;
+  }
+
+  .rx-map__landmarks {
+    fill: var(--rx-map-landmark);
+  }
+
+  .rx-map__footpath {
+    fill: none;
+    stroke: var(--rx-map-footpath);
+    stroke-width: 2;
+    stroke-dasharray: 4 3;
+    stroke-linecap: round;
+  }
+
+  .rx-map__road-edge,
+  .rx-map__road,
+  .rx-map__traffic {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rx-map__road-edge[data-kind="minor"] {
+    stroke: var(--rx-map-minor-edge);
+    stroke-width: 10;
+  }
+
+  .rx-map__road-edge[data-kind="major"] {
+    stroke: var(--rx-map-major-edge);
+    stroke-width: 14;
+  }
+
+  .rx-map__road-edge[data-kind="highway"] {
+    stroke: var(--rx-map-highway-edge);
+    stroke-width: 17;
+  }
+
+  .rx-map__road[data-kind="minor"] {
+    stroke: var(--rx-map-minor);
+    stroke-width: 7;
+  }
+
+  .rx-map__road[data-kind="major"] {
+    stroke: var(--rx-map-major);
+    stroke-width: 11;
+  }
+
+  .rx-map__road[data-kind="highway"] {
+    stroke: var(--rx-map-highway);
+    stroke-width: 14;
+  }
+
+  .rx-map__traffic {
+    stroke-linecap: butt;
+  }
+
+  .rx-map__traffic[data-road="major"] {
+    stroke-width: 6;
+  }
+
+  .rx-map__traffic[data-road="highway"] {
+    stroke-width: 8;
+  }
+
+  .rx-map__traffic[data-level="free"] {
+    stroke: var(--rx-map-traffic-free);
+  }
+
+  .rx-map__traffic[data-level="slow"] {
+    stroke: var(--rx-map-traffic-slow);
+  }
+
+  .rx-map__traffic[data-level="jam"] {
+    stroke: var(--rx-map-traffic-jam);
+  }
+
+  /* ─── Place labels and points of interest ──────────────────────────────────────────── */
+
+  .rx-map-label,
+  .rx-map-poi__label {
+    text-shadow:
+      1px 0 1px var(--rx-map-halo),
+      -1px 0 1px var(--rx-map-halo),
+      0 1px 1px var(--rx-map-halo),
+      0 -1px 1px var(--rx-map-halo),
+      0 0 3px var(--rx-map-halo);
+    white-space: nowrap;
+  }
+
+  .rx-map-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--rx-map-label);
+  }
+
+  .rx-map-label[data-kind="water"] {
+    font-size: 11px;
+    font-style: italic;
+    letter-spacing: 0.03em;
+    color: var(--rx-map-label-water);
+  }
+
+  .rx-map-label[data-kind="district"] {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--rx-map-label-district);
+  }
+
+  .rx-map-poi {
+    --rx-map-poi-c: #7f8b99;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    transform-origin: 0 0;
+  }
+
+  .rx-map-poi[data-kind="hospital"] {
+    --rx-map-poi-c: #d9505d;
+  }
+
+  .rx-map-poi[data-kind="school"] {
+    --rx-map-poi-c: #8f6d4f;
+  }
+
+  .rx-map-poi[data-kind="market"] {
+    --rx-map-poi-c: #3f7fdc;
+  }
+
+  .rx-map-poi[data-kind="park"] {
+    --rx-map-poi-c: #3a8f50;
+  }
+
+  .rx-map-poi[data-kind="fuel"] {
+    --rx-map-poi-c: #3b74c4;
+  }
+
+  .rx-map[data-theme="dark"] .rx-map-poi {
+    --rx-map-poi-c: #8d99a8;
+  }
+
+  .rx-map[data-theme="dark"] .rx-map-poi[data-kind="hospital"] {
+    --rx-map-poi-c: #e57f88;
+  }
+
+  .rx-map[data-theme="dark"] .rx-map-poi[data-kind="school"] {
+    --rx-map-poi-c: #b59577;
+  }
+
+  .rx-map[data-theme="dark"] .rx-map-poi[data-kind="market"] {
+    --rx-map-poi-c: #78a6ea;
+  }
+
+  .rx-map[data-theme="dark"] .rx-map-poi[data-kind="park"] {
+    --rx-map-poi-c: #6dbb83;
+  }
+
+  .rx-map[data-theme="dark"] .rx-map-poi[data-kind="fuel"] {
+    --rx-map-poi-c: #6f9fe0;
+  }
+
+  .rx-map-poi__icon {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    display: grid;
+    width: 16px;
+    height: 16px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--rx-map-poi-c);
+    box-shadow: 0 0 0 1.5px var(--rx-map-halo);
+  }
+
+  .rx-map-poi__icon svg {
+    display: block;
+  }
+
+  .rx-map-poi__label {
+    position: absolute;
+    top: -7px;
+    left: 11px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 14px;
+    color: var(--rx-map-poi-c);
+  }
+
+  /* ─── Pins ─────────────────────────────────────────────────────────────────────────── */
+
+  /*
+   * A pin is a 360 × 116 box with its anchor 180 px in and 76 px down (MAP_PIN_BOX): big enough
+   * for the art and a label on any side, because a pin standing up on a tilted map is painted only
+   * inside its own box. The anchor sits on the world origin until the transform moves it.
+   */
+  .rx-map-pin {
+    position: absolute;
+    top: -76px;
+    left: -180px;
+    width: 360px;
+    height: 116px;
+    transform-origin: 180px 76px;
+  }
+
+  .rx-map-pin__anchor,
+  .rx-map-puck__anchor {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+
+  .rx-map-pin__anchor {
+    top: 76px;
+    left: 180px;
+  }
+
+  .rx-map-pin__art {
+    position: absolute;
+    top: -39px;
+    left: -14px;
+    display: block;
+    overflow: visible;
+    filter: drop-shadow(0 1.5px 1.5px rgb(0 0 0 / 0.3));
+  }
+
+  .rx-map-pin[data-look="badge"] .rx-map-pin__art {
+    top: -18px;
+    left: -18px;
+  }
+
+  .rx-map-pin__shape {
+    fill: var(--rx-map-pin-c);
+    stroke: color-mix(in srgb, var(--rx-map-pin-c) 68%, #000000);
+    stroke-width: 1;
+  }
+
+  .rx-map-pin[data-look="badge"] .rx-map-pin__shape {
+    stroke: #ffffff;
+  }
+
+  .rx-map-pin__core {
+    fill: color-mix(in srgb, var(--rx-map-pin-c) 52%, #000000);
+  }
+
+  .rx-map-pin__glyph {
+    position: absolute;
+    top: -32px;
+    left: -6.5px;
+    display: block;
+  }
+
+  .rx-map-pin[data-look="badge"] .rx-map-pin__glyph {
+    top: -9px;
+    left: -9px;
+  }
+
+  /* The location dot: a ringed disc on a soft accuracy halo. */
+  .rx-map-pin[data-look="dot"] .rx-map-pin__anchor::before {
+    position: absolute;
+    top: -24px;
+    left: -24px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--rx-map-pin-c) 16%, transparent);
+    content: "";
+  }
+
+  .rx-map-pin__dot {
+    position: absolute;
+    top: -9px;
+    left: -9px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--rx-map-pin-c);
+    box-shadow:
+      0 0 0 3px #ffffff,
+      0 0 6px 3px rgb(0 0 0 / 0.22);
+  }
+
+  .rx-map-pin__pulse {
+    position: absolute;
+    top: -24px;
+    left: -24px;
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--rx-map-pin-c);
+    border-radius: 50%;
+    opacity: 0;
+  }
+
+  .rx-map-pin[data-look="pin"] .rx-map-pin__pulse {
+    top: -49.5px;
+  }
+
+  .rx-map-pin__label {
+    position: absolute;
+    padding: 3px 7px;
+    border-radius: 7px;
+    background: var(--rx-map-callout);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.24);
+    color: var(--rx-map-callout-ink);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 14px;
+    white-space: nowrap;
+  }
+
+  /* Label positions around each look's head: pin head centre (0, −25.5) r 12.5; dot r 9; badge r 18. */
+  .rx-map-pin[data-look="pin"] .rx-map-pin__label[data-side="right"] {
+    top: -35.5px;
+    left: 15px;
+  }
+
+  .rx-map-pin[data-look="pin"] .rx-map-pin__label[data-side="left"] {
+    top: -35.5px;
+    right: 15px;
+  }
+
+  .rx-map-pin[data-look="pin"] .rx-map-pin__label[data-side="top"] {
+    top: -44px;
+    left: 0;
+    transform: translate(-50%, -100%);
+  }
+
+  .rx-map-pin[data-look="pin"] .rx-map-pin__label[data-side="bottom"] {
+    top: 5px;
+    left: 0;
+    transform: translateX(-50%);
+  }
+
+  .rx-map-pin[data-look="dot"] .rx-map-pin__label[data-side="right"] {
+    top: -10px;
+    left: 16px;
+  }
+
+  .rx-map-pin[data-look="dot"] .rx-map-pin__label[data-side="left"] {
+    top: -10px;
+    right: 16px;
+  }
+
+  .rx-map-pin[data-look="dot"] .rx-map-pin__label[data-side="top"] {
+    top: -16px;
+    left: 0;
+    transform: translate(-50%, -100%);
+  }
+
+  .rx-map-pin[data-look="dot"] .rx-map-pin__label[data-side="bottom"] {
+    top: 16px;
+    left: 0;
+    transform: translateX(-50%);
+  }
+
+  .rx-map-pin[data-look="badge"] .rx-map-pin__label[data-side="right"] {
+    top: -10px;
+    left: 22px;
+  }
+
+  .rx-map-pin[data-look="badge"] .rx-map-pin__label[data-side="left"] {
+    top: -10px;
+    right: 22px;
+  }
+
+  .rx-map-pin[data-look="badge"] .rx-map-pin__label[data-side="top"] {
+    top: -22px;
+    left: 0;
+    transform: translate(-50%, -100%);
+  }
+
+  .rx-map-pin[data-look="badge"] .rx-map-pin__label[data-side="bottom"] {
+    top: 22px;
+    left: 0;
+    transform: translateX(-50%);
+  }
+
+  /* ─── Puck ─────────────────────────────────────────────────────────────────────────── */
+
+  /*
+   * The puck is a 100 px box at the world origin (MAP_PUCK_BOX) whose centre is the anchor: its
+   * transform-origin, so offset-path puts the centre on the route while it glides.
+   */
+  .rx-map-puck {
+    --rx-map-puck-size: 44px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100px;
+    height: 100px;
+    transform-origin: 50px 50px;
+  }
+
+  .rx-map-puck__anchor {
+    top: 50px;
+    left: 50px;
+  }
+
+  .rx-map-puck__art {
+    position: absolute;
+    top: calc(var(--rx-map-puck-size) / -2);
+    left: calc(var(--rx-map-puck-size) / -2);
+    display: block;
+    overflow: visible;
+    filter: drop-shadow(0 0 2px rgb(0 0 0 / 0.32));
+  }
+
+  .rx-map-puck__plate {
+    fill: var(--rx-map-puck-c);
+    stroke: var(--rx-map-puck-ring);
+  }
+
+  /* The SME rider badge keeps its white ring in both themes. */
+  .rx-map-puck[data-look="badge"] .rx-map-puck__plate {
+    stroke: #ffffff;
+  }
+
+  .rx-map-puck__ink {
+    fill: #ffffff;
+  }
+
+  /* The rider's helmet, ringed in the badge colour so it reads against the shoulders. */
+  .rx-map-puck__helmet {
+    fill: #ffffff;
+    stroke: var(--rx-map-puck-c, var(--rx-map-pin-c));
+  }
+
+  .rx-map-puck__cut {
+    fill: var(--rx-map-puck-c);
+  }
+
+  .rx-map-puck__halo,
+  .rx-map-puck__pulse {
+    position: absolute;
+    top: -32px;
+    left: -32px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+  }
+
+  .rx-map-puck__halo {
+    border: 1px solid color-mix(in srgb, var(--rx-map-puck-c) var(--rx-map-halo-edge), transparent);
+    background: color-mix(in srgb, var(--rx-map-puck-c) var(--rx-map-halo-fill), transparent);
+  }
+
+  .rx-map-puck__pulse {
+    border: 2px solid var(--rx-map-puck-c);
+    opacity: 0;
+  }
+
+  /* ─── Route ────────────────────────────────────────────────────────────────────────── */
+
+  .rx-map-route__casing,
+  .rx-map-route__core {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .rx-map-route__core {
+    stroke: currentColor;
+  }
+
+  /* ─── Motion: only under [data-active] (contract rule 1) ──────────────────────────── */
+
+  /* A glide in 1–6 segments: the puck along its route, the follow camera along the mirrored route. */
+  [data-active] .rx-map-puck[data-glide="1"],
+  [data-active] .rx-map__world[data-glide="1"] {
+    animation: rx-map-glide-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both;
+  }
+
+  [data-active] .rx-map-puck[data-glide="2"],
+  [data-active] .rx-map__world[data-glide="2"] {
+    animation:
+      rx-map-glide-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-glide-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards;
+  }
+
+  [data-active] .rx-map-puck[data-glide="3"],
+  [data-active] .rx-map__world[data-glide="3"] {
+    animation:
+      rx-map-glide-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-glide-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards,
+      rx-map-glide-3 var(--rx-map-gd-3) linear var(--rx-map-gt-3) forwards;
+  }
+
+  [data-active] .rx-map-puck[data-glide="4"],
+  [data-active] .rx-map__world[data-glide="4"] {
+    animation:
+      rx-map-glide-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-glide-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards,
+      rx-map-glide-3 var(--rx-map-gd-3) linear var(--rx-map-gt-3) forwards,
+      rx-map-glide-4 var(--rx-map-gd-4) linear var(--rx-map-gt-4) forwards;
+  }
+
+  [data-active] .rx-map-puck[data-glide="5"],
+  [data-active] .rx-map__world[data-glide="5"] {
+    animation:
+      rx-map-glide-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-glide-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards,
+      rx-map-glide-3 var(--rx-map-gd-3) linear var(--rx-map-gt-3) forwards,
+      rx-map-glide-4 var(--rx-map-gd-4) linear var(--rx-map-gt-4) forwards,
+      rx-map-glide-5 var(--rx-map-gd-5) linear var(--rx-map-gt-5) forwards;
+  }
+
+  [data-active] .rx-map-puck[data-glide="6"],
+  [data-active] .rx-map__world[data-glide="6"] {
+    animation:
+      rx-map-glide-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-glide-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards,
+      rx-map-glide-3 var(--rx-map-gd-3) linear var(--rx-map-gt-3) forwards,
+      rx-map-glide-4 var(--rx-map-gd-4) linear var(--rx-map-gt-4) forwards,
+      rx-map-glide-5 var(--rx-map-gd-5) linear var(--rx-map-gt-5) forwards,
+      rx-map-glide-6 var(--rx-map-gd-6) linear var(--rx-map-gt-6) forwards;
+  }
+
+  /* A trimmed route shrinks behind the gliding puck (same segments, same timing). */
+  [data-active] .rx-map-route__trim[data-glide="1"] {
+    animation: rx-map-trim-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both;
+  }
+
+  [data-active] .rx-map-route__trim[data-glide="2"] {
+    animation:
+      rx-map-trim-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-trim-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards;
+  }
+
+  [data-active] .rx-map-route__trim[data-glide="3"] {
+    animation:
+      rx-map-trim-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-trim-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards,
+      rx-map-trim-3 var(--rx-map-gd-3) linear var(--rx-map-gt-3) forwards;
+  }
+
+  [data-active] .rx-map-route__trim[data-glide="4"] {
+    animation:
+      rx-map-trim-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-trim-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards,
+      rx-map-trim-3 var(--rx-map-gd-3) linear var(--rx-map-gt-3) forwards,
+      rx-map-trim-4 var(--rx-map-gd-4) linear var(--rx-map-gt-4) forwards;
+  }
+
+  [data-active] .rx-map-route__trim[data-glide="5"] {
+    animation:
+      rx-map-trim-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-trim-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards,
+      rx-map-trim-3 var(--rx-map-gd-3) linear var(--rx-map-gt-3) forwards,
+      rx-map-trim-4 var(--rx-map-gd-4) linear var(--rx-map-gt-4) forwards,
+      rx-map-trim-5 var(--rx-map-gd-5) linear var(--rx-map-gt-5) forwards;
+  }
+
+  [data-active] .rx-map-route__trim[data-glide="6"] {
+    animation:
+      rx-map-trim-1 var(--rx-map-gd-1) linear var(--rx-map-gt-1) both,
+      rx-map-trim-2 var(--rx-map-gd-2) linear var(--rx-map-gt-2) forwards,
+      rx-map-trim-3 var(--rx-map-gd-3) linear var(--rx-map-gt-3) forwards,
+      rx-map-trim-4 var(--rx-map-gd-4) linear var(--rx-map-gt-4) forwards,
+      rx-map-trim-5 var(--rx-map-gd-5) linear var(--rx-map-gt-5) forwards,
+      rx-map-trim-6 var(--rx-map-gd-6) linear var(--rx-map-gt-6) forwards;
+  }
+
+  /* recolorAt: each stop fades the route colour in at its time; later stops win. */
+  [data-active] .rx-map-route[data-recolor="1"] {
+    animation: rx-map-rc-1 var(--rx-map-rcd-1) linear var(--rx-map-rct-1) forwards;
+  }
+
+  [data-active] .rx-map-route[data-recolor="2"] {
+    animation:
+      rx-map-rc-1 var(--rx-map-rcd-1) linear var(--rx-map-rct-1) forwards,
+      rx-map-rc-2 var(--rx-map-rcd-2) linear var(--rx-map-rct-2) forwards;
+  }
+
+  [data-active] .rx-map-route[data-recolor="3"] {
+    animation:
+      rx-map-rc-1 var(--rx-map-rcd-1) linear var(--rx-map-rct-1) forwards,
+      rx-map-rc-2 var(--rx-map-rcd-2) linear var(--rx-map-rct-2) forwards,
+      rx-map-rc-3 var(--rx-map-rcd-3) linear var(--rx-map-rct-3) forwards;
+  }
+
+  [data-active] .rx-map-route[data-recolor="4"] {
+    animation:
+      rx-map-rc-1 var(--rx-map-rcd-1) linear var(--rx-map-rct-1) forwards,
+      rx-map-rc-2 var(--rx-map-rcd-2) linear var(--rx-map-rct-2) forwards,
+      rx-map-rc-3 var(--rx-map-rcd-3) linear var(--rx-map-rct-3) forwards,
+      rx-map-rc-4 var(--rx-map-rcd-4) linear var(--rx-map-rct-4) forwards;
+  }
+
+  [data-active] .rx-map-route[data-recolor="5"] {
+    animation:
+      rx-map-rc-1 var(--rx-map-rcd-1) linear var(--rx-map-rct-1) forwards,
+      rx-map-rc-2 var(--rx-map-rcd-2) linear var(--rx-map-rct-2) forwards,
+      rx-map-rc-3 var(--rx-map-rcd-3) linear var(--rx-map-rct-3) forwards,
+      rx-map-rc-4 var(--rx-map-rcd-4) linear var(--rx-map-rct-4) forwards,
+      rx-map-rc-5 var(--rx-map-rcd-5) linear var(--rx-map-rct-5) forwards;
+  }
+
+  [data-active] .rx-map-route[data-recolor="6"] {
+    animation:
+      rx-map-rc-1 var(--rx-map-rcd-1) linear var(--rx-map-rct-1) forwards,
+      rx-map-rc-2 var(--rx-map-rcd-2) linear var(--rx-map-rct-2) forwards,
+      rx-map-rc-3 var(--rx-map-rcd-3) linear var(--rx-map-rct-3) forwards,
+      rx-map-rc-4 var(--rx-map-rcd-4) linear var(--rx-map-rct-4) forwards,
+      rx-map-rc-5 var(--rx-map-rcd-5) linear var(--rx-map-rct-5) forwards,
+      rx-map-rc-6 var(--rx-map-rcd-6) linear var(--rx-map-rct-6) forwards;
+  }
+
+  /* Rings at rest are invisible; while active they pulse out from the dot and the puck. */
+  [data-active] .rx-map-pin__pulse {
+    animation: rx-map-pulse 2s ease-out infinite;
+  }
+
+  [data-active] .rx-map-puck__pulse {
+    animation: rx-map-pulse 2.2s ease-out 0.4s infinite;
+  }
+
+  /* ─── Motion guards (contract rules 3 and 4) for maps outside a replica canvas ─────── */
+
+  [data-paused] .rx-map *,
+  [data-paused] .rx-map *::before,
+  [data-paused] .rx-map *::after {
+    animation-play-state: paused !important;
+  }
+
+  :root[data-motion="reduce"] .rx-map *,
+  :root[data-motion="reduce"] .rx-map *::before,
+  :root[data-motion="reduce"] .rx-map *::after {
+    animation: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion]) .rx-map *,
+    :root:not([data-motion]) .rx-map *::before,
+    :root:not([data-motion]) .rx-map *::after {
+      animation: none !important;
+    }
+  }
+
+  /* ─── Keyframes ────────────────────────────────────────────────────────────────────── */
+
+  @keyframes rx-map-glide-1 {
+    from {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-0) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+    to {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-1) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+  }
+
+  @keyframes rx-map-glide-2 {
+    from {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-1) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+    to {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-2) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+  }
+
+  @keyframes rx-map-glide-3 {
+    from {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-2) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+    to {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-3) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+  }
+
+  @keyframes rx-map-glide-4 {
+    from {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-3) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+    to {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-4) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+  }
+
+  @keyframes rx-map-glide-5 {
+    from {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-4) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+    to {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-5) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+  }
+
+  @keyframes rx-map-glide-6 {
+    from {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-5) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+    to {
+      offset-path: var(--rx-map-path);
+      offset-rotate: var(--rx-map-rotate);
+      offset-distance: calc(var(--rx-map-g-6) * 1%);
+      transform: var(--rx-map-glide-transform);
+    }
+  }
+
+  @keyframes rx-map-trim-1 {
+    from {
+      stroke-dashoffset: calc(var(--rx-map-g-0) * -1px);
+    }
+    to {
+      stroke-dashoffset: calc(var(--rx-map-g-1) * -1px);
+    }
+  }
+
+  @keyframes rx-map-trim-2 {
+    from {
+      stroke-dashoffset: calc(var(--rx-map-g-1) * -1px);
+    }
+    to {
+      stroke-dashoffset: calc(var(--rx-map-g-2) * -1px);
+    }
+  }
+
+  @keyframes rx-map-trim-3 {
+    from {
+      stroke-dashoffset: calc(var(--rx-map-g-2) * -1px);
+    }
+    to {
+      stroke-dashoffset: calc(var(--rx-map-g-3) * -1px);
+    }
+  }
+
+  @keyframes rx-map-trim-4 {
+    from {
+      stroke-dashoffset: calc(var(--rx-map-g-3) * -1px);
+    }
+    to {
+      stroke-dashoffset: calc(var(--rx-map-g-4) * -1px);
+    }
+  }
+
+  @keyframes rx-map-trim-5 {
+    from {
+      stroke-dashoffset: calc(var(--rx-map-g-4) * -1px);
+    }
+    to {
+      stroke-dashoffset: calc(var(--rx-map-g-5) * -1px);
+    }
+  }
+
+  @keyframes rx-map-trim-6 {
+    from {
+      stroke-dashoffset: calc(var(--rx-map-g-5) * -1px);
+    }
+    to {
+      stroke-dashoffset: calc(var(--rx-map-g-6) * -1px);
+    }
+  }
+
+  @keyframes rx-map-rc-1 {
+    to {
+      color: var(--rx-map-rc-1);
+    }
+  }
+
+  @keyframes rx-map-rc-2 {
+    to {
+      color: var(--rx-map-rc-2);
+    }
+  }
+
+  @keyframes rx-map-rc-3 {
+    to {
+      color: var(--rx-map-rc-3);
+    }
+  }
+
+  @keyframes rx-map-rc-4 {
+    to {
+      color: var(--rx-map-rc-4);
+    }
+  }
+
+  @keyframes rx-map-rc-5 {
+    to {
+      color: var(--rx-map-rc-5);
+    }
+  }
+
+  @keyframes rx-map-rc-6 {
+    to {
+      color: var(--rx-map-rc-6);
+    }
+  }
+
+  @keyframes rx-map-pulse {
+    from {
+      opacity: 0.55;
+      transform: scale(0.55);
+    }
+    to {
+      opacity: 0;
+      transform: scale(1.5);
+    }
+  }
+}

@@ -1,46 +1,52 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { site } from '@/content/site';
+import { DecorLayer } from '@/components/layout/decor-layer';
+import { MobileFooter } from '@/components/layout/mobile-footer';
+import { ProfileRail } from '@/components/layout/profile-rail';
+import { SkipLink } from '@/components/layout/skip-link';
+import { TopBar } from '@/components/layout/top-bar';
 
-/**
- * STUB from the scaffold; the shell task replaces it with the profile rail, top bar and sheet.
- * Landmarks follow design §10. Fixed decor, toasts and portals must render OUTSIDE <main>:
- * <main> becomes a size container (cqi units, bento container queries), and a size container
- * would become the containing block for fixed-position descendants.
+/*
+ * The site shell (design §4.1, PLAN "Shell"). The sidebar/top-bar switch is CSS only (xl =
+ * 1280px), so server HTML and hydration always agree:
+ *
+ * - ≥1600 (3xl): the shell is centred at max 1560px; the 264px sidebar has borders on both sides.
+ * - 1280–1599 (xl): the sidebar docks flush left, sticky, full height, scrolling on its own.
+ * - <1280: a sticky top bar with a menu sheet that reuses the same ProfileRail, and a footer.
+ *
+ * <main id="content" tabindex="-1"> is the size container for every page (container-type:
+ * inline-size: the cqi type scale and the bento container queries). Its content box is at most
+ * 1200px and its padding is the page gutter, --gutter: 16px (20 from 360px), 24 from 768, 32
+ * from 1024, 40 from 1280 and 48 from 1440. Pages add no top padding of their own.
+ *
+ * A size container is the containing block of fixed-position descendants, so fixed layers
+ * (DecorLayer), portals (dialogs, popovers) and toasts always render OUTSIDE <main>.
  */
+
+const GUTTER = '[--gutter:1rem] min-[22.5rem]:[--gutter:1.25rem] md:[--gutter:1.5rem] lg:[--gutter:2rem] xl:[--gutter:2.5rem] min-[90rem]:[--gutter:3rem]';
+
 export function AppShell({ children }: { readonly children: ReactNode }) {
   return (
     <>
-      <a
-        href="#content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-control focus:bg-ink focus:px-4 focus:py-2 focus:text-button focus:text-raised"
-      >
-        Skip to content
-      </a>
-      <div className="mx-auto flex min-h-dvh max-w-[97.5rem] flex-col xl:flex-row">
+      <SkipLink />
+      <DecorLayer />
+      <div className={`relative isolate mx-auto flex min-h-dvh w-full flex-col xl:flex-row 3xl:max-w-[97.5rem] ${GUTTER}`}>
+        <TopBar />
         <aside
           aria-label="Profile and site navigation"
-          className="border-b border-line bg-sidebar p-6 xl:sticky xl:top-0 xl:h-dvh xl:w-66 xl:shrink-0 xl:border-e xl:border-b-0"
+          className="sticky top-0 hidden h-dvh w-66 shrink-0 self-start overflow-y-auto overscroll-contain border-e border-line bg-sidebar [scrollbar-width:thin] [view-transition-name:sidebar] xl:flex 3xl:border-s print:hidden"
         >
-          <p className="text-card-title">{site.name}</p>
-          <nav aria-label="Primary" className="mt-4">
-            <ul className="flex flex-wrap gap-1 xl:flex-col">
-              {site.nav.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    href={item.href}
-                    className="block rounded-control px-3 py-2 text-nav text-ink-2 hover:bg-nav-hover hover:text-ink"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <ProfileRail variant="sidebar" />
         </aside>
-        <main id="content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-10 sm:px-6 lg:px-10">
-          {children}
-        </main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main
+            id="content"
+            tabIndex={-1}
+            className="@container mx-auto w-full max-w-[calc(75rem+2*var(--gutter))] flex-1 px-(--gutter) pt-6 pb-16 outline-hidden md:pt-8 xl:pt-10"
+          >
+            {children}
+          </main>
+          <MobileFooter />
+        </div>
       </div>
     </>
   );

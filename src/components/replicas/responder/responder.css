@@ -1,0 +1,1770 @@
+/*
+ * Defensys Responder replica parts (figures 3.1–3.6). Imported once, from
+ * src/components/replicas/responder/index.ts. Values come from the research layoutSpecs
+ * (responder.json) and the app's UI source; hex as shipped.
+ *
+ * Brand colours only through the kit bridge: var(--rx-primary) (own bubbles, puck, pill
+ * labels, buttons, accent glyphs), var(--rx-secondary) / var(--rx-title-ink) (map header,
+ * through RAppBar). Everything else here is fixed in every brand: the dispatch sheet (#085499 /
+ * #33CCFF), proximity zones, duty states, map chrome, alert severity and the dark call palette.
+ *
+ * Kit overrides use compound selectors (.rx-btn.rx-responder-…) so they win over
+ * src/styles/replica.css whatever the load order.
+ *
+ * MOTION: every animation is declared under `[data-active] …` (the MOTION CONTRACT in
+ * src/styles/replica.css). Static styles are the poster; [data-paused] and reduced motion are
+ * enforced by the kit for everything inside .rx-canvas.
+ */
+
+/* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  /* ─── Pulsing dot (LIVE, zone badge, recording) ─────────────────────────────────── */
+
+  .rx-responder-pdot {
+    --rx-responder-pdot-c: #f87171;
+    --rx-responder-pdot-size: 8px;
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--rx-responder-pdot-size) + 8px);
+    height: calc(var(--rx-responder-pdot-size) + 8px);
+  }
+
+  .rx-responder-pdot__core,
+  .rx-responder-pdot__halo {
+    position: absolute;
+    width: var(--rx-responder-pdot-size);
+    height: var(--rx-responder-pdot-size);
+    border-radius: 50%;
+    background: var(--rx-responder-pdot-c);
+  }
+
+  .rx-responder-pdot__halo {
+    opacity: 0;
+  }
+
+  /* ─── Map header and duty chip (3.1–3.3) ────────────────────────────────────────── */
+
+  .rx-appbar.rx-responder-appbar {
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  }
+
+  .rx-responder-appbar .rx-appbar__row {
+    gap: 18px;
+    padding: 0 12px 0 16px;
+  }
+
+  .rx-responder-duty {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid rgb(9 7 7 / 0.07);
+    border-radius: 12px;
+    background: #f8f9fa;
+  }
+
+  .rx-responder-duty__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .rx-responder-duty__dot {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .rx-responder-duty__text {
+    color: #000000;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+  }
+
+  /* The native Switch: a 36×14 track, a 20px white thumb (#10b981 on, #d1d5db off). */
+  .rx-responder-switch {
+    position: relative;
+    flex: none;
+    width: 36px;
+    height: 20px;
+  }
+
+  .rx-responder-switch__track {
+    position: absolute;
+    top: 3px;
+    right: 0;
+    left: 0;
+    height: 14px;
+    border-radius: 7px;
+    background: #d1d5db;
+  }
+
+  .rx-responder-switch[data-on] .rx-responder-switch__track {
+    background: #10b981;
+  }
+
+  .rx-responder-switch__thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow:
+      0 1px 3px rgb(0 0 0 / 0.3),
+      0 0 1px rgb(0 0 0 / 0.25);
+  }
+
+  .rx-responder-switch[data-on] .rx-responder-switch__thumb {
+    transform: translateX(16px);
+  }
+
+  /* ─── Public alert strip ────────────────────────────────────────────────────────── */
+
+  .rx-responder-alert {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    min-height: 56px;
+    padding: 8px 12px;
+  }
+
+  .rx-responder-alert__copy {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-responder-alert__kicker {
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    letter-spacing: 0.6px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .rx-responder-alert__title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 19px;
+  }
+
+  .rx-responder-alert__more {
+    flex: none;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgb(28 25 23 / 0.18);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    white-space: nowrap;
+  }
+
+  /* ─── Map screen frame, puck and floating chrome ────────────────────────────────── */
+
+  .rx-responder-map {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .rx-responder-mapscreen {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-responder-mapzone {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .rx-responder-puck {
+    position: absolute;
+    z-index: 1;
+    width: 44px;
+    height: 44px;
+    color: var(--rx-primary);
+  }
+
+  .rx-responder-puck__art {
+    position: relative;
+    display: block;
+    filter: drop-shadow(0 2px 3px rgb(15 23 42 / 0.35));
+  }
+
+  .rx-responder-puck__accuracy {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border: 1px solid color-mix(in srgb, var(--rx-primary) 28%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--rx-primary) 12%, transparent);
+  }
+
+  .rx-responder-glass-stack {
+    position: absolute;
+    top: 12px;
+    right: 170px;
+    left: 16px;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .rx-responder-glass {
+    border: 1px solid rgb(0 0 0 / 0.08);
+    border-radius: 14px;
+    background: rgb(255 255 255 / 0.94);
+    box-shadow: 0 2px 5px rgb(0 0 0 / 0.18);
+  }
+
+  .rx-responder-sharing {
+    display: flex;
+    align-items: stretch;
+    border-left-width: 4px;
+  }
+
+  .rx-responder-sharing__body {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 4px 0 7px;
+  }
+
+  .rx-responder-sharing__title {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    white-space: nowrap;
+  }
+
+  .rx-responder-sharing__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px 0 4px;
+  }
+
+  .rx-responder-eta {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-left-width: 4px;
+  }
+
+  .rx-responder-eta__time {
+    margin-left: 8px;
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 21px;
+  }
+
+  .rx-responder-eta__dist {
+    margin-left: 8px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+  }
+
+  .rx-responder-vehicle {
+    align-self: stretch;
+    padding: 10px 12px;
+  }
+
+  .rx-responder-vehicle__row {
+    display: flex;
+    align-items: center;
+  }
+
+  .rx-responder-vehicle__name {
+    flex: 1;
+    min-width: 0;
+    margin-left: 8px;
+    overflow: hidden;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .rx-responder-vehicle__seat,
+  .rx-responder-vehicle__count {
+    color: rgb(100 116 139 / 0.75);
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 15px;
+  }
+
+  .rx-responder-vehicle__seat {
+    margin-left: 8px;
+  }
+
+  .rx-responder-vehicle__count {
+    margin-left: 4px;
+  }
+
+  .rx-responder-vehicle__pips {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 8px;
+  }
+
+  .rx-responder-vehicle__pip {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: rgb(15 23 42 / 0.06);
+  }
+
+  .rx-responder-vehicle__pip[data-state="taken"] {
+    background: rgb(15 23 42 / 0.16);
+  }
+
+  .rx-responder-vehicle__pip[data-state="me"] {
+    background: var(--rx-primary);
+  }
+
+  .rx-responder-fabs {
+    position: absolute;
+    right: 16px;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .rx-responder-fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border: 1px solid rgb(0 0 0 / 0.08);
+    border-radius: 24px;
+    background: rgb(255 255 255 / 0.92);
+    box-shadow: 0 2px 5px rgb(0 0 0 / 0.18);
+    color: #085499;
+  }
+
+  .rx-responder-fab[data-on] {
+    border-color: #085499;
+    background: #085499;
+    color: #ffffff;
+  }
+
+  /* The action pill (kit RTabBar responder-pill): py 16 and a white 30% edge. */
+  .rx-tabbar[data-look="responder-pill"].rx-responder-pill {
+    padding: 16px 8px;
+    border: 1px solid rgb(255 255 255 / 0.3);
+  }
+
+  /* ─── Dispatch sheet (3.2, 3.3): fixed navy and cyan in every brand ─────────────── */
+
+  .rx-sheet.rx-responder-sheet {
+    box-shadow: 0 -6px 20px rgb(15 23 42 / 0.14);
+  }
+
+  /* gorhom's handle: 10px container padding plus the 8px indicator margin. */
+  .rx-responder-sheet > .rx-sheet__handle {
+    margin: 18px 0;
+    border-radius: 99px;
+  }
+
+  .rx-responder-sheet__content {
+    padding: 4px 12px 36px;
+  }
+
+  .rx-responder-band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #085499;
+  }
+
+  .rx-responder-band__lead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .rx-responder-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding: 5px 7px;
+    border: 1px solid rgb(248 113 113 / 0.35);
+    border-radius: 9px;
+    background: rgb(248 113 113 / 0.18);
+    color: #f87171;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 13px;
+    letter-spacing: 1px;
+  }
+
+  .rx-responder-band__titles {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-responder-band__eyebrow {
+    margin-bottom: 1px;
+    color: rgb(255 255 255 / 0.4);
+    font-size: 8px;
+    font-weight: 500;
+    line-height: 12px;
+    letter-spacing: 1.2px;
+  }
+
+  .rx-responder-band__title {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 24px;
+    letter-spacing: 0.5px;
+  }
+
+  .rx-responder-join {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border: 1px solid rgb(51 204 255 / 0.45);
+    border-radius: 9px;
+    background: rgb(51 204 255 / 0.15);
+    color: #33ccff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .rx-responder-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgb(9 7 7 / 0.07);
+    background: #ffffff;
+  }
+
+  .rx-responder-toolbar__group {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .rx-responder-toolbar__divider {
+    flex: none;
+    width: 1px;
+    height: 38px;
+    border-radius: 1px;
+    background: rgb(9 7 7 / 0.07);
+  }
+
+  .rx-responder-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 64px;
+    padding: 9px 16px;
+    border: 1px solid rgb(51 204 255 / 0.16);
+    border-radius: 12px;
+    background: rgb(51 204 255 / 0.07);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 0.07);
+  }
+
+  .rx-responder-tile__label {
+    color: #33ccff;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 13.5px;
+    letter-spacing: 0.6px;
+  }
+
+  .rx-responder-tile[data-disabled] {
+    border-color: rgb(209 213 219 / 0.55);
+    background: rgb(209 213 219 / 0.4);
+    opacity: 0.5;
+  }
+
+  .rx-responder-tile[data-disabled] .rx-responder-tile__label {
+    color: #9ca3af;
+  }
+
+  /* Distance card: zone parts read --rx-responder-zone (fill 10%, edge 28%). */
+  .rx-responder-dcard-wrap {
+    padding: 10px 0 4px;
+  }
+
+  .rx-responder-dcard {
+    --rx-responder-zone: #f87171;
+    position: relative;
+    padding: 14px 14px 12px;
+    overflow: hidden;
+    border: 1px solid rgb(8 84 153 / 0.09);
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--rx-responder-zone) 12%, transparent);
+  }
+
+  .rx-responder-dcard > .rx-responder-dcard__strip,
+  .rx-responder-dcard__strip-seq {
+    position: absolute;
+    top: 0;
+    right: 22%;
+    left: 22%;
+    height: 2px;
+  }
+
+  .rx-responder-dcard__strip {
+    --rx-responder-zone: #f87171;
+    display: block;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: var(--rx-responder-zone);
+    opacity: 0.65;
+  }
+
+  .rx-responder-dcard__row {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .rx-responder-dcard__tile {
+    --rx-responder-zone: #f87171;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border: 1px solid color-mix(in srgb, var(--rx-responder-zone) 28%, transparent);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--rx-responder-zone) 10%, transparent);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--rx-responder-zone) 18%, transparent);
+    color: var(--rx-responder-zone);
+  }
+
+  .rx-responder-dcard__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .rx-responder-dcard__heading {
+    margin-bottom: 3px;
+    color: rgb(100 116 139 / 0.75);
+    font-size: 9px;
+    font-weight: 500;
+    line-height: 13.5px;
+    letter-spacing: 1px;
+  }
+
+  .rx-responder-dcard__dist {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    margin-bottom: 6px;
+  }
+
+  .rx-responder-dcard__count {
+    color: #0f172a;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 34px;
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rx-responder-dcard__unit {
+    color: rgb(100 116 139 / 0.55);
+    font-size: 13px;
+    line-height: 19.5px;
+  }
+
+  .rx-responder-zone {
+    --rx-responder-zone: #f87171;
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding: 3px 10px 3px 4px;
+    border: 1px solid color-mix(in srgb, var(--rx-responder-zone) 28%, transparent);
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--rx-responder-zone) 10%, transparent);
+    white-space: nowrap;
+  }
+
+  .rx-responder-zone__label {
+    color: var(--rx-responder-zone);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    letter-spacing: 0.8px;
+  }
+
+  .rx-responder-zone__sub {
+    color: rgb(100 116 139 / 0.55);
+    font-size: 9px;
+    line-height: 13.5px;
+    letter-spacing: 0.2px;
+  }
+
+  .rx-responder-updates {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 11px;
+    border: 1px solid rgb(8 84 153 / 0.22);
+    border-radius: 10px;
+    background: rgb(8 84 153 / 0.08);
+    box-shadow: 0 2px 6px rgb(51 204 255 / 0.14);
+    color: #33ccff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    letter-spacing: 0.7px;
+    white-space: nowrap;
+  }
+
+  /* The ticket's info card. */
+  .rx-responder-info {
+    display: flex;
+    flex-direction: column;
+    margin-top: 8px;
+    padding: 16px;
+    border: 1px solid rgb(9 7 7 / 0.07);
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.055);
+  }
+
+  .rx-responder-info__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+
+  .rx-responder-info__type {
+    padding: 4px 10px;
+    border: 1px solid rgb(8 84 153 / 0.2);
+    border-radius: 8px;
+    background: rgb(8 84 153 / 0.08);
+    color: #085499;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16.5px;
+    letter-spacing: 0.4px;
+  }
+
+  .rx-responder-info__date {
+    color: rgb(100 116 139 / 0.75);
+    font-size: 10px;
+    line-height: 15px;
+    letter-spacing: 0.2px;
+  }
+
+  .rx-responder-info__divider {
+    display: block;
+    flex: none;
+    height: 1px;
+    margin: 11px 0;
+    background: rgb(0 0 0 / 0.055);
+  }
+
+  .rx-responder-info__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .rx-responder-info__row[data-gap] {
+    margin-top: 7px;
+  }
+
+  .rx-responder-info__key {
+    flex: 1;
+    color: rgb(100 116 139 / 0.75);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 16.5px;
+    letter-spacing: 0.2px;
+  }
+
+  .rx-responder-info__value {
+    flex: 2;
+    overflow: hidden;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: end;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .rx-responder-info__txn {
+    padding: 3px 9px;
+    border: 1px solid rgb(8 84 153 / 0.18);
+    border-radius: 99px;
+    background: rgb(8 84 153 / 0.07);
+    color: #085499;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .rx-responder-info__label {
+    margin-bottom: 5px;
+    color: rgb(100 116 139 / 0.75);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 13.5px;
+    letter-spacing: 1px;
+  }
+
+  .rx-responder-info__text {
+    color: #334155;
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  .rx-responder-info__note {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 11px;
+    border: 1px solid rgb(251 191 36 / 0.35);
+    border-radius: 10px;
+    background: rgb(254 243 199 / 0.8);
+  }
+
+  .rx-responder-info__note .rx-responder-info__text {
+    color: #92400e;
+  }
+
+  .rx-responder-info__images-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .rx-responder-info__count {
+    padding: 2px 7px;
+    border-radius: 99px;
+    background: rgb(0 0 0 / 0.06);
+    color: rgb(100 116 139 / 0.75);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+  }
+
+  .rx-responder-info__images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Placeholder photos: abstract tiles, never a picture. */
+  .rx-responder-photo {
+    width: 106px;
+    height: 106px;
+    border: 1px solid rgb(9 7 7 / 0.07);
+    border-radius: 10px;
+    background: linear-gradient(160deg, #e2e8f0, #94a3b8);
+  }
+
+  .rx-responder-photo[data-tone="1"] {
+    background: linear-gradient(200deg, #f1f5f9, #64748b);
+  }
+
+  .rx-responder-footer {
+    padding: 12px;
+    border-top: 1px solid rgb(9 7 7 / 0.07);
+    background: #ffffff;
+  }
+
+  .rx-responder-footer__row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .rx-btn.rx-responder-footbtn {
+    flex: 1;
+    border-width: 1px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+  }
+
+  .rx-btn.rx-responder-footbtn[data-look="outline"] {
+    background: rgb(255 255 255 / 0.9);
+  }
+
+  .rx-btn.rx-responder-footbtn[data-look="solid"] {
+    box-shadow: 0 5px 10px rgb(8 84 153 / 0.35);
+  }
+
+  /* ─── Calls and the incident room (3.4): the fixed dark call palette ────────────── */
+
+  .rx-responder-call {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 56px 24px 50px;
+  }
+
+  .rx-responder-callpill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid rgb(255 255 255 / 0.14);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.13);
+    color: #60a5fa;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 21px;
+    letter-spacing: 0.2px;
+  }
+
+  .rx-responder-callpill[data-live] {
+    border-color: rgb(52 211 153 / 0.45);
+    color: #34d399;
+  }
+
+  .rx-responder-callpill__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #34d399;
+  }
+
+  .rx-responder-call__middle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .rx-responder-caller {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .rx-avatar.rx-responder-caller__avatar {
+    letter-spacing: 1px;
+  }
+
+  /* Reduced motion keeps a still ring at 1.3× so the screen still reads as ringing. */
+  .rx-responder-caller__still-ring {
+    position: absolute;
+    top: -16.8px;
+    left: 50%;
+    width: 145.6px;
+    height: 145.6px;
+    margin-left: -72.8px;
+    border: 1.5px solid #60a5fa;
+    border-radius: 50%;
+    opacity: 0.35;
+  }
+
+  .rx-responder-caller__role {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 12px;
+    padding: 4px 12px;
+    border: 1px solid #60a5fa;
+    border-radius: 999px;
+    background: rgb(96 165 250 / 0.18);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 15px;
+    letter-spacing: 0.8px;
+  }
+
+  .rx-responder-callnames {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+  }
+
+  .rx-responder-callnames__name {
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 42px;
+  }
+
+  .rx-responder-callnames__role {
+    color: rgb(255 255 255 / 0.72);
+    font-size: 15px;
+    line-height: 22.5px;
+  }
+
+  .rx-responder-callctx {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 16px;
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .rx-responder-callctx__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgb(255 255 255 / 0.72);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 19.5px;
+  }
+
+  .rx-responder-callctx__row[data-warn] {
+    color: #fbbf24;
+  }
+
+  .rx-responder-callctx__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fbbf24;
+  }
+
+  /* As tall as the incoming controls, so the caller stays anchored in every state. */
+  .rx-responder-callctl {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    min-height: 139px;
+  }
+
+  .rx-responder-callctl__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .rx-responder-callctl__row[data-gap="wide"] {
+    align-items: flex-end;
+    gap: 80px;
+  }
+
+  .rx-responder-callctl__hint {
+    color: rgb(255 255 255 / 0.72);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  :where(.rx-responder-call, .rx-responder-roombar) .rx-gbtn .rx-gbtn__caption {
+    color: rgb(255 255 255 / 0.72);
+    letter-spacing: 0.3px;
+  }
+
+  :where(.rx-responder-call, .rx-responder-roombar) .rx-gbtn[data-tone="glass"] .rx-gbtn__circle {
+    border-color: rgb(255 255 255 / 0.08);
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .rx-gbtn.rx-responder-glow .rx-gbtn__circle {
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--rx-gbtn-c) 50%, transparent);
+  }
+
+  .rx-gbtn.rx-responder-glass-on[data-tone="glass"] .rx-gbtn__circle {
+    border-color: #60a5fa;
+    background: rgb(96 165 250 / 0.18);
+  }
+
+  .rx-responder-room__shade {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, rgb(0 0 0 / 0.55) 0%, transparent 45%, rgb(0 0 0 / 0.7) 100%);
+  }
+
+  .rx-responder-roomhead {
+    position: absolute;
+    top: 56px;
+    right: 16px;
+    left: 16px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .rx-responder-roompill {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.45);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 18px;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+  }
+
+  .rx-responder-roompill__dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: #f43f5e;
+  }
+
+  .rx-responder-roomhead__end {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rx-responder-people {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.45);
+  }
+
+  .rx-responder-people > .rx-avatar + .rx-avatar {
+    margin-left: -8px;
+  }
+
+  .rx-responder-people__dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin-left: 8px;
+    border-radius: 50%;
+    background: #34d399;
+  }
+
+  .rx-responder-people__live {
+    margin-left: 6px;
+    color: rgb(255 255 255 / 0.72);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16.5px;
+    letter-spacing: 0.4px;
+  }
+
+  .rx-responder-roomhead__min {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 19px;
+    background: rgb(0 0 0 / 0.45);
+    color: #ffffff;
+  }
+
+  .rx-responder-activity {
+    position: absolute;
+    top: 112px;
+    right: 16px;
+    left: 16px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 16px;
+    background: rgb(10 12 20 / 0.62);
+  }
+
+  .rx-responder-activity__head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    color: rgb(255 255 255 / 0.5);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    letter-spacing: 1.2px;
+  }
+
+  .rx-responder-activity__dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #34d399;
+  }
+
+  .rx-responder-activity__line {
+    color: #e5e7eb;
+    font-size: 12px;
+    line-height: 17px;
+  }
+
+  .rx-responder-activity__line[data-kind="event"] {
+    color: rgb(255 255 255 / 0.5);
+    font-style: italic;
+  }
+
+  .rx-responder-ptt {
+    position: absolute;
+    right: 0;
+    bottom: 144px;
+    left: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .rx-responder-ptt__btn {
+    position: relative;
+    width: 100px;
+    height: 100px;
+  }
+
+  .rx-responder-ptt__glow {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    width: 120px;
+    height: 120px;
+    border-radius: 60px;
+    background: rgb(52 211 153 / 0.16);
+  }
+
+  .rx-responder-ptt__circle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    height: 100px;
+    border: 3px solid #34d399;
+    border-radius: 50px;
+    background: #34d399;
+  }
+
+  .rx-responder-ptt__label {
+    margin-top: 14px;
+    padding: 7px 16px 12px;
+    border: 1px solid rgb(52 211 153 / 0.45);
+    border-radius: 999px;
+    background: rgb(52 211 153 / 0.16);
+    color: #34d399;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 19.5px;
+    letter-spacing: 0.5px;
+  }
+
+  .rx-responder-roombar {
+    position: absolute;
+    bottom: 44px;
+    left: 50%;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border: 1px solid rgb(255 255 255 / 0.14);
+    border-radius: 999px;
+    background: rgb(14 16 26 / 0.72);
+    transform: translateX(-50%);
+  }
+
+  /* ─── Channels (3.5) ────────────────────────────────────────────────────────────── */
+
+  .rx-responder-channel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: #f2f5f9;
+  }
+
+  .rx-appbar.rx-responder-chanhead {
+    border-bottom: 1px solid rgb(15 23 42 / 0.1);
+  }
+
+  .rx-responder-chanhead .rx-appbar__row {
+    gap: 12px;
+    padding: 0 0 0 12px;
+  }
+
+  .rx-responder-chanhead__actions {
+    display: flex;
+    align-items: center;
+  }
+
+  .rx-responder-chanhead__target {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .rx-responder-chanhead__call {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 44px;
+    height: 44px;
+    margin-right: 8px;
+    padding: 0 4px;
+  }
+
+  .rx-responder-chanhead__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgb(22 101 52 / 0.1);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+  }
+
+  .rx-responder-thread {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 0;
+    padding: 8px 12px;
+    overflow: hidden;
+  }
+
+  .rx-bubble-row.rx-responder-msg {
+    gap: 3px;
+  }
+
+  .rx-responder-msg .rx-bubble__sender {
+    padding: 0 4px;
+    color: #475569;
+  }
+
+  .rx-responder-msg > .rx-bubble {
+    gap: 6px;
+    max-width: 78%;
+    padding: 9px 12px;
+  }
+
+  .rx-responder-msg > .rx-bubble[data-urgent] {
+    gap: 4px;
+    padding: 8px 11px;
+  }
+
+  .rx-bubble-row.rx-responder-msg--run {
+    margin-top: 2px;
+  }
+
+  .rx-responder-msg--run > .rx-bubble {
+    border-top-left-radius: 6px;
+  }
+
+  .rx-bubble-row.rx-responder-msg--block {
+    margin-top: 10px;
+  }
+
+  /* The StatusChip on an urgent bubble: px 12, py 6, 12px SemiBold, a 13px glyph. */
+  .rx-responder-msg > .rx-bubble > .rx-pill {
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  .rx-responder-msg > .rx-bubble > .rx-pill svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .rx-responder-msg .rx-voice {
+    gap: 8px;
+    min-width: 200px;
+  }
+
+  .rx-responder-msg > .rx-bubble[data-from="me"] .rx-voice__time {
+    color: rgb(255 255 255 / 0.85);
+  }
+
+  .rx-responder-msg > .rx-bubble[data-from="me"] .rx-bubble__lang {
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgb(255 255 255 / 0.2);
+  }
+
+  .rx-responder-mention {
+    padding: 0 2px;
+    border-radius: 4px;
+    background: rgb(180 83 9 / 0.14);
+    font-weight: 600;
+  }
+
+  .rx-responder-land {
+    display: grid;
+    grid-template-rows: 1fr;
+  }
+
+  .rx-responder-land__inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .rx-responder-composer {
+    display: flex;
+    flex: none;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 8px 12px 16px;
+    border-top: 1px solid rgb(15 23 42 / 0.1);
+    background: #ffffff;
+  }
+
+  .rx-responder-composer__left {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .rx-responder-composer__left > .rx-seq {
+    flex: 1;
+  }
+
+  .rx-responder-composer__bar {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    height: 44px;
+  }
+
+  .rx-responder-composer__add {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--rx-primary);
+  }
+
+  .rx-responder-composer__input {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid #7d8794;
+    border-radius: 22px;
+    background: #eef2f7;
+    color: #475569;
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .rx-responder-composer__lang {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--rx-primary) 12%, transparent);
+    color: var(--rx-primary);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+  }
+
+  .rx-responder-composer__bar[data-recording] {
+    gap: 0;
+    padding: 0 4px;
+  }
+
+  .rx-responder-composer__clock {
+    margin-left: 4px;
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 22px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rx-responder-composer__cancel {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 19px;
+  }
+
+  .rx-responder-mic {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: var(--rx-primary);
+    color: #ffffff;
+  }
+
+  .rx-responder-mic[data-held] {
+    transform: scale(1.25);
+  }
+
+  /* ─── Incident report form (3.6) ────────────────────────────────────────────────── */
+
+  .rx-responder-form {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: #f2f5f9;
+  }
+
+  .rx-appbar.rx-responder-formhead .rx-appbar__title {
+    font-weight: 700;
+  }
+
+  .rx-responder-formbar {
+    flex: none;
+    padding: 16px;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 27px;
+  }
+
+  .rx-responder-form__page {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    min-height: 0;
+    padding: 16px 16px 24px;
+    overflow: hidden;
+  }
+
+  .rx-responder-form__page > * {
+    flex: none;
+  }
+
+  .rx-responder-loc {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-responder-loc__map {
+    height: 192px;
+    overflow: hidden;
+    border-radius: 16px 16px 0 0;
+    box-shadow: var(--rx-shadow-lg);
+  }
+
+  .rx-responder-loc__foot {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    border-radius: 0 0 16px 16px;
+    background: #f4f1f1;
+    box-shadow: var(--rx-shadow-sm);
+  }
+
+  .rx-responder-loc__label {
+    margin-bottom: 4px;
+    color: #475569;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 21px;
+  }
+
+  .rx-responder-loc__address {
+    margin-bottom: 8px;
+    color: #334155;
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  .rx-responder-loc__coords {
+    display: flex;
+    justify-content: space-between;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 21px;
+  }
+
+  .rx-responder-photos {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .rx-responder-photos__label {
+    color: var(--rx-ink);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 21px;
+    white-space: pre;
+  }
+
+  .rx-responder-photos__opt {
+    color: var(--rx-ink-3);
+    font-weight: 400;
+  }
+
+  .rx-responder-photos__row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .rx-responder-photos__tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 120px;
+    height: 120px;
+    border: 1px solid #7d8794;
+    border-radius: 12px;
+    background: #eef2f7;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 19px;
+  }
+
+  .rx-responder-formfoot {
+    flex: none;
+    padding: 12px 16px;
+    border-top: 1px solid rgb(15 23 42 / 0.1);
+    background: #ffffff;
+  }
+
+  /* ─── Motion: every animation runs only under [data-active] (contract rule 1) ───── */
+
+  /* LIVE, zone and recording dots ping out to 2.4× every 1.2 s. */
+  [data-active] .rx-responder-pdot__halo {
+    animation: rx-responder-ping 1200ms ease-out infinite;
+  }
+
+  /* 3.1: the duty switch slides on when tapped. */
+  [data-active] .rx-responder-switch[data-flip] .rx-responder-switch__thumb {
+    animation: rx-responder-thumb 200ms ease-out var(--rx-responder-flip-at, 0ms) both;
+  }
+
+  [data-active] .rx-responder-switch[data-flip] .rx-responder-switch__track {
+    animation: rx-responder-track 200ms ease-out var(--rx-responder-flip-at, 0ms) both;
+  }
+
+  /* 3.2: the toast drops in, then the sheet rises to its snap. */
+  [data-active] .rx-responder-toast {
+    animation: rx-responder-drop 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+
+  [data-active] .rx-responder-sheet--rise {
+    animation: rx-responder-rise 420ms cubic-bezier(0.2, 0.9, 0.3, 1) var(--rx-responder-rise-at, 0ms) both;
+  }
+
+  /* 3.4: the still ring gives way to the expanding rings (it stays under reduced motion). */
+  [data-active] .rx-responder-caller__still-ring {
+    animation: rx-responder-gone 1ms both;
+  }
+
+  [data-active] .rx-responder-ptt__glow {
+    animation: rx-responder-breathe 900ms ease-in-out infinite alternate;
+  }
+
+  /* 3.5: the mic is pressed and released; the own voice note lands and pushes the list up. */
+  [data-active] .rx-responder-mic[data-press] {
+    animation:
+      rx-responder-press 160ms ease-out var(--rx-responder-hold-at, 0ms) both,
+      rx-responder-unpress 160ms ease-out var(--rx-responder-release-at, 0ms) forwards;
+  }
+
+  [data-active] .rx-responder-land[data-land] {
+    animation: rx-responder-land 360ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--rx-responder-land-at, 0ms) both;
+  }
+
+  @keyframes rx-responder-ping {
+    0%,
+    29% {
+      opacity: 0.7;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(2.4);
+    }
+  }
+
+  @keyframes rx-responder-thumb {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(16px);
+    }
+  }
+
+  @keyframes rx-responder-track {
+    from {
+      background: #d1d5db;
+    }
+    to {
+      background: #10b981;
+    }
+  }
+
+  @keyframes rx-responder-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes rx-responder-rise {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes rx-responder-gone {
+    from,
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes rx-responder-breathe {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.12);
+    }
+  }
+
+  @keyframes rx-responder-press {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.25);
+    }
+  }
+
+  @keyframes rx-responder-unpress {
+    from {
+      transform: scale(1.25);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes rx-responder-land {
+    from {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+    to {
+      grid-template-rows: 1fr;
+      opacity: 1;
+    }
+  }
+}

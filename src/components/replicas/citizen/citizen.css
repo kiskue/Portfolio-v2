@@ -1,0 +1,2050 @@
+/*
+ * Defensys Citizen replicas (figures 2.1–2.6): part styles and in-screen motion, from the
+ * research citizen.json designTokens and layoutSpecs and the shipped app's UI source.
+ * Imported once, from src/components/replicas/citizen/index.ts.
+ *
+ * Sizes are the app's device px. NativeWind on the device resolves 1rem = 14px, so its Tailwind
+ * classes appear here at 0.875× their web value (text-sm 12.25px, p-4 14px, rounded-2xl 14px).
+ * Unspecified line heights follow Poppins' natural 1.5em, as React Native renders them.
+ *
+ * White-label: brand hues are read ONLY through the --app-* bridge that replica.css maps to
+ * var(--rx-primary), var(--rx-secondary), var(--rx-accent) and var(--rx-lighttext); this file
+ * never sets a brand variable. Everything else is fixed by design and never follows the brand:
+ * the SOS red (#d84343 → #b02b2b), the emergency popup, severity and heat-index bands, hazard
+ * and earthquake hues, status colours and the dark call palette.
+ *
+ * Motion follows the MOTION CONTRACT in src/styles/replica.css: every animation is declared
+ * under a `[data-active] …` selector, the static styles are the poster, and replica.css
+ * freezes them under [data-paused] and removes them under reduced motion.
+ */
+
+/* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  .rx-canvas[data-app="citizen"] {
+    --rx-citizen-ink: #0f172a;
+    --rx-citizen-body: #334155;
+    --rx-citizen-muted: rgb(100 116 139 / 0.75);
+    --rx-citizen-meta: #6b7280;
+    --rx-citizen-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+    --rx-citizen-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --rx-citizen-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  }
+
+  /* ─── Screen scaffolding ──────────────────────────────────────────────────────────── */
+
+  .rx-citizen-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--rx-canvas);
+    color: var(--rx-citizen-ink);
+    line-height: 1.5;
+  }
+
+  .rx-citizen-fill {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .rx-citizen-clip {
+    overflow: hidden;
+  }
+
+  .rx-citizen-rule {
+    display: block;
+    flex: none;
+    height: 1px;
+    margin: 0 16px;
+    background: var(--rx-border-faint);
+  }
+
+  .rx-citizen-danger {
+    color: #d84343;
+  }
+
+  /* A filled pin (Ionicons "location"): the pin is solid and its hole is white. */
+  .rx-citizen-solid-pin circle {
+    fill: #ffffff;
+  }
+
+  /* A filled disc glyph (Ionicons alert-circle, information-circle): the mark turns white. */
+  .rx-citizen-glyph-solid > :not(circle) {
+    fill: none;
+    stroke: #ffffff;
+  }
+
+  /* ─── Header (native stack header) and brand mark ─────────────────────────────────── */
+
+  .rx-citizen-header {
+    box-shadow: 0 1px 0 rgb(9 7 7 / 0.07);
+  }
+
+  /* The brand's public store icon (--app-logo, inline background-image) as a 30 px tile. */
+  .rx-citizen-brandmark {
+    display: block;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background-color: #ffffff;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 130%;
+    box-shadow: 0 0 0 1px rgb(9 7 7 / 0.08);
+  }
+
+  /* ─── Tab bar: the kit's citizen-floating bar re-laid out to the shipped geometry ─── */
+
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] {
+    padding: 0 8px;
+    border-color: rgb(9 7 7 / 0.07);
+    background: rgb(248 249 250 / 0.8);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.32),
+      0 6px 32px rgb(0 0 0 / 0.1);
+  }
+
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] .rx-tabbar__item,
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] .rx-tabbar__item[data-on] {
+    position: relative;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 3px;
+    height: 100%;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: #334155;
+  }
+
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] .rx-tabbar__item[data-on] {
+    color: var(--rx-accent);
+  }
+
+  /* The sliding pill behind the active tab's icon AND label: 68.5 × 52, radius 20, 6 px from the top. */
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] .rx-tabbar__item[data-on]::before {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    width: 68.5px;
+    height: 52px;
+    margin-left: -34.25px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--rx-accent) 10%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rx-accent) 45%, transparent);
+    content: "";
+  }
+
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] .rx-tabbar__item > svg {
+    position: relative;
+    margin: 1px 0;
+  }
+
+  /* Every tab lays out its label; only the active one shows it (TabItem.tsx). */
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] .rx-tabbar__label,
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] .rx-tabbar__item[data-on] .rx-tabbar__label {
+    position: relative;
+    display: block;
+    color: var(--rx-accent);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 13px;
+    letter-spacing: 0.1px;
+    opacity: 0;
+  }
+
+  .rx-tabbar.rx-citizen-tabbar[data-look="citizen-floating"] .rx-tabbar__item[data-on] .rx-tabbar__label {
+    opacity: 1;
+  }
+
+  /* The SOS centres on the bar's outer top edge (the centre slot starts inside its 1 px border). */
+  .rx-tabbar.rx-citizen-tabbar .rx-tabbar__center-inner {
+    top: -1px;
+  }
+
+  /* ─── SOS button (fixed emergency palette) ────────────────────────────────────────── */
+
+  .rx-citizen-sos {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 6px 28px rgb(216 67 67 / 0.42);
+  }
+
+  /* The one-shot "launch committed" ring; at rest it is fully faded out. */
+  .rx-citizen-sos__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: #d84343;
+    opacity: 0;
+  }
+
+  .rx-citizen-sos__face {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #d84343 0%, #d84343 25%, #b02b2b 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.32);
+  }
+
+  .rx-citizen-sos__label {
+    color: #ffffff;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 22px;
+    letter-spacing: 0.5px;
+  }
+
+  .rx-citizen-sos[data-state="offline"] .rx-citizen-sos__face {
+    background: #6b7280;
+  }
+
+  .rx-citizen-sos__badge {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 2px solid #6b7280;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #6b7280;
+  }
+
+  .rx-citizen-offline {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 10.5px;
+    background: linear-gradient(90deg, #ef4444, #b91c1c);
+    color: #ffffff;
+    font-size: 10.5px;
+    line-height: 14px;
+  }
+
+  /* ─── ModuleHeader: the Home section band ─────────────────────────────────────────── */
+
+  .rx-citizen-module {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10.5px 10.5px 14px;
+    background: linear-gradient(99deg, var(--rx-primary), var(--rx-secondary));
+  }
+
+  .rx-citizen-module__lead {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .rx-citizen-module__icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin-right: 10.5px;
+    border-radius: 50%;
+    background: #ffedd5;
+    color: #f97316;
+  }
+
+  .rx-citizen-module__icon[data-tone="glass"] {
+    background: rgb(255 255 255 / 0.2);
+    color: #ffffff;
+  }
+
+  .rx-citizen-module__titles {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-citizen-module__title {
+    color: #ffffff;
+    font-size: 15.75px;
+    font-weight: 700;
+    line-height: 24.5px;
+  }
+
+  .rx-citizen-module__subtitle {
+    margin-top: 1.75px;
+    overflow: hidden;
+    color: rgb(255 255 255 / 0.6);
+    font-size: 10.5px;
+    line-height: 14px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .rx-citizen-module__action {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.64);
+    color: var(--rx-primary);
+    font-size: 12.25px;
+    font-weight: 600;
+    line-height: 17.5px;
+  }
+
+  /* ─── 2.1 Weather-station card ────────────────────────────────────────────────────── */
+
+  .rx-citizen-home {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-citizen-station {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    margin: 8px 10px 4px;
+    overflow: hidden;
+    border-radius: 20px;
+    background: var(--rx-surface);
+    box-shadow: 0 2px 20px rgb(0 0 0 / 0.07);
+  }
+
+  .rx-citizen-station__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px 10px;
+  }
+
+  .rx-citizen-station__dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+  }
+
+  .rx-citizen-station__id {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-citizen-station__name {
+    overflow: hidden;
+    color: var(--rx-citizen-ink);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .rx-citizen-station__addr {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--rx-citizen-muted);
+    font-size: 10px;
+    line-height: 15px;
+    white-space: nowrap;
+  }
+
+  .rx-citizen-live {
+    flex: none;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: rgb(34 197 94 / 0.1);
+    color: #22c55e;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 15px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .rx-citizen-station__pick {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--rx-primary) 8%, transparent);
+    color: var(--rx-primary);
+  }
+
+  .rx-citizen-hero {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px 10px;
+  }
+
+  .rx-citizen-hero__temp {
+    display: flex;
+    flex: none;
+    align-items: baseline;
+    gap: 1px;
+    margin-right: 2px;
+  }
+
+  .rx-citizen-hero__deg {
+    color: var(--rx-citizen-ink);
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 39px;
+  }
+
+  .rx-citizen-hero__unit {
+    color: var(--rx-citizen-muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .rx-citizen-hero__mid {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .rx-citizen-hero__hi {
+    color: var(--rx-citizen-muted);
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  .rx-citizen-hero__aqi {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 2px;
+    padding: 2px 5px;
+    border-radius: 5px;
+    background: rgb(34 197 94 / 0.1);
+    color: #22c55e;
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  .rx-citizen-hero__aqi::before {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+  }
+
+  .rx-citizen-chip {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 3px;
+    padding: 5px 8px;
+    border-radius: 8px;
+  }
+
+  .rx-citizen-chip[data-tone="humidity"] {
+    background: rgb(59 130 246 / 0.07);
+    color: #3b82f6;
+  }
+
+  .rx-citizen-chip[data-tone="wind"] {
+    background: rgb(99 102 241 / 0.07);
+    color: #6366f1;
+  }
+
+  .rx-citizen-chip__stack {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-citizen-chip__cap {
+    color: var(--rx-citizen-muted);
+    font-size: 8px;
+    line-height: 10px;
+  }
+
+  .rx-citizen-chip__val {
+    color: var(--rx-citizen-ink);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 13px;
+  }
+
+  .rx-citizen-chip[data-tone="wind"] .rx-citizen-chip__val {
+    line-height: 16.5px;
+  }
+
+  .rx-citizen-chip__unit {
+    color: var(--rx-citizen-muted);
+    font-size: 9px;
+  }
+
+  .rx-citizen-acc {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 11px 16px;
+  }
+
+  .rx-citizen-acc__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .rx-citizen-acc__label {
+    flex: 1;
+    color: var(--rx-citizen-muted);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16.5px;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+  }
+
+  .rx-citizen-acc__pill {
+    padding: 3px 7px;
+    border-radius: 7px;
+    background: rgb(34 197 94 / 0.1);
+    color: #22c55e;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 15px;
+  }
+
+  .rx-citizen-acc__chev {
+    color: var(--rx-citizen-muted);
+  }
+
+  /* Heat index: fixed PAGASA bands and the Extreme Caution advisory. */
+  .rx-citizen-hi {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 16px 14px;
+  }
+
+  .rx-citizen-hi__row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .rx-citizen-hi__label {
+    flex: 1;
+    color: var(--rx-citizen-muted);
+    font-size: 11px;
+    line-height: 16.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .rx-citizen-hi__value {
+    color: var(--rx-citizen-ink);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 24px;
+  }
+
+  .rx-citizen-hi__bar .rx-segbar__marker {
+    border-width: 2.5px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+  }
+
+  .rx-citizen-hi__bar .rx-segbar__ticks {
+    color: var(--rx-citizen-muted);
+    font-size: 9px;
+    line-height: 13.5px;
+  }
+
+  .rx-citizen-hi__bar .rx-segbar__tick {
+    text-align: center;
+  }
+
+  .rx-citizen-hi__bar .rx-segbar__tick:first-child {
+    text-align: left;
+  }
+
+  .rx-citizen-hi__bar .rx-segbar__tick:last-child {
+    text-align: right;
+  }
+
+  .rx-citizen-hi__advisory {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-left: 3px solid #c2410c;
+    border-radius: 12px;
+    background: #fff7ed;
+  }
+
+  .rx-citizen-hi__alert {
+    margin-top: 1px;
+    color: #c2410c;
+  }
+
+  .rx-citizen-hi__copy {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .rx-citizen-hi__level {
+    margin-bottom: 2px;
+    color: #c2410c;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16.5px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .rx-citizen-hi__text {
+    color: #9a3412;
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  /* ─── Defensight Safety Brief (severity accent fixed; avatar and toggle follow the brand) ── */
+
+  .rx-citizen-brief {
+    --rx-citizen-sev: #f97316;
+    display: flex;
+    flex-direction: column;
+    margin: 12px 16px;
+    padding: 14px;
+    border: 1px solid color-mix(in srgb, var(--rx-citizen-sev) 16%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--rx-citizen-sev) 6%, transparent);
+  }
+
+  .rx-citizen-brief__head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 8px;
+  }
+
+  .rx-citizen-davatar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--rx-accent) 12%, transparent);
+    color: var(--rx-accent);
+  }
+
+  .rx-citizen-dmark {
+    display: block;
+    flex: none;
+  }
+
+  .rx-citizen-brief__title {
+    flex: 1;
+    color: var(--rx-citizen-muted);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .rx-citizen-brief__lang {
+    display: flex;
+    flex: none;
+    padding: 2px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--rx-primary) 8%, transparent);
+  }
+
+  .rx-citizen-brief__opt {
+    padding: 3px 9px;
+    border-radius: 6px;
+    color: var(--rx-citizen-muted);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 15px;
+  }
+
+  .rx-citizen-brief__opt[data-on] {
+    background: var(--rx-primary);
+    color: #ffffff;
+  }
+
+  .rx-citizen-brief__headline {
+    margin-bottom: 4px;
+    color: var(--rx-citizen-ink);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 19px;
+  }
+
+  .rx-citizen-brief__body {
+    color: var(--rx-citizen-body);
+    font-size: 12px;
+    line-height: 17px;
+  }
+
+  .rx-citizen-brief__tips {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .rx-citizen-brief__tip {
+    position: relative;
+    padding-left: 10px;
+    color: var(--rx-citizen-body);
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .rx-citizen-brief__tip::before {
+    position: absolute;
+    top: 6px;
+    left: 0;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--rx-citizen-sev);
+    content: "";
+  }
+
+  .rx-citizen-brief__ask {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding: 9px 12px;
+    border: 1px solid color-mix(in srgb, var(--rx-citizen-sev) 22%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--rx-citizen-sev) 8%, transparent);
+    color: var(--rx-citizen-sev);
+  }
+
+  .rx-citizen-brief__ask-label {
+    flex: 1;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 17.25px;
+  }
+
+  .rx-citizen-brief__note {
+    margin-top: 10px;
+    color: var(--rx-citizen-muted);
+    font-size: 9px;
+    line-height: 12px;
+  }
+
+  /* ─── 2.2 Home feed ───────────────────────────────────────────────────────────────── */
+
+  /*
+   * The app's BAR_SCROLL_INSET (bar margin 12 + bar 64 + 12) measured from where the bar sits on
+   * this canvas (28 px up), so at full scroll the last card clears the bar by 12 px, as shipped.
+   */
+  .rx-citizen-feed {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 104px;
+  }
+
+  .rx-citizen-feed__services {
+    display: block;
+    flex: none;
+    margin: 2px 0;
+    overflow: hidden;
+  }
+
+  .rx-citizen-feed__carousel {
+    display: flex;
+    flex: none;
+    height: 160px;
+  }
+
+  .rx-citizen-feed__list {
+    display: flex;
+    flex-direction: column;
+    padding: 7px;
+  }
+
+  .rx-citizen-feed__more {
+    padding: 10.5px 0;
+    border: 1px solid var(--rx-border-faint);
+    border-radius: 14px;
+    background: var(--rx-surface);
+    color: #2563eb;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 21px;
+    text-align: center;
+  }
+
+  .rx-citizen-feed__quakes {
+    display: flex;
+    flex-direction: column;
+    padding: 7px 7px 3.5px;
+  }
+
+  /* Hazard report card (severity hue fixed per case type). */
+  .rx-citizen-hazard {
+    --rx-citizen-hue: #6b7280;
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: 112px;
+    margin-bottom: 3.5px;
+    padding: 14px;
+    overflow: hidden;
+    border: 1px solid var(--rx-border-faint);
+    border-radius: 14px;
+    background: var(--rx-surface);
+    box-shadow: var(--rx-citizen-shadow-sm);
+  }
+
+  .rx-citizen-hazard__icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 49px;
+    height: 49px;
+    margin-right: 14px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--rx-citizen-hue) 8%, transparent);
+    color: var(--rx-citizen-hue);
+  }
+
+  .rx-citizen-hazard__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-citizen-hazard__type {
+    margin-bottom: 3.5px;
+    overflow: hidden;
+    color: var(--rx-citizen-ink);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 21px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .rx-citizen-hazard__note {
+    display: -webkit-box;
+    margin-bottom: 7px;
+    overflow: hidden;
+    color: var(--rx-citizen-muted);
+    font-size: 12.25px;
+    line-height: 17.5px;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .rx-citizen-hazard__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 14px;
+    color: var(--rx-citizen-muted);
+    font-size: 10.5px;
+    line-height: 14px;
+  }
+
+  .rx-citizen-hazard__metaitem {
+    display: inline-flex;
+    align-items: center;
+    gap: 3.5px;
+    margin-bottom: 3.5px;
+  }
+
+  .rx-citizen-hazard__metaitem:first-child {
+    font-weight: 500;
+  }
+
+  .rx-citizen-hazard__metaitem:last-child,
+  .rx-citizen-hazard__metaitem svg {
+    color: #6b7280;
+  }
+
+  .rx-citizen-hazard__chev {
+    flex: none;
+    margin-left: 7px;
+    color: #9ca3af;
+  }
+
+  /* Earthquake row (intensity tile colours fixed by magnitude). */
+  .rx-citizen-quake {
+    display: flex;
+    flex: none;
+    margin-bottom: 3.5px;
+    padding: 14px;
+    border: 1px solid var(--rx-border-faint);
+    border-radius: 14px;
+    background: var(--rx-surface);
+  }
+
+  .rx-citizen-quake__mag {
+    position: relative;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    height: 70px;
+    border-radius: 14px;
+    background: var(--rx-citizen-mag-fill);
+    color: var(--rx-citizen-mag-ink);
+  }
+
+  .rx-citizen-quake__mag::before {
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--rx-citizen-mag-ring);
+    border-radius: 14px;
+    opacity: 0.3;
+    content: "";
+  }
+
+  .rx-citizen-quake__value {
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 28px;
+  }
+
+  .rx-citizen-quake__label {
+    margin-top: 1.75px;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 14px;
+  }
+
+  .rx-citizen-quake__new {
+    position: absolute;
+    top: -3.5px;
+    right: -3.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 14px;
+  }
+
+  .rx-citizen-quake__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    margin-left: 14px;
+  }
+
+  .rx-citizen-quake__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 3.5px;
+  }
+
+  .rx-citizen-quake__ago {
+    display: inline-flex;
+    align-items: center;
+    gap: 3.5px;
+    color: var(--rx-citizen-muted);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 14px;
+  }
+
+  .rx-citizen-quake__dist {
+    display: inline-flex;
+    align-items: center;
+    gap: 3.5px;
+    padding: 3.5px 7px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.64);
+    color: var(--rx-primary);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 14px;
+  }
+
+  .rx-citizen-quake__place {
+    display: -webkit-box;
+    margin-bottom: 3.5px;
+    overflow: hidden;
+    color: var(--rx-citizen-ink);
+    font-size: 12.25px;
+    font-weight: 600;
+    line-height: 17.5px;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .rx-citizen-quake__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10.5px;
+    color: var(--rx-citizen-body);
+    font-size: 10.5px;
+    line-height: 14px;
+  }
+
+  .rx-citizen-quake__depth {
+    display: inline-flex;
+    align-items: center;
+    gap: 3.5px;
+  }
+
+  .rx-citizen-quake__depth svg,
+  .rx-citizen-quake__sep {
+    color: var(--rx-citizen-muted);
+  }
+
+  .rx-citizen-quake__chev {
+    flex: none;
+    align-self: center;
+    margin-left: 7px;
+    color: #d1d5db;
+  }
+
+  /* Announcement card: an abstract colour field stands in for the cover photo. */
+  .rx-citizen-annc {
+    position: relative;
+    flex: 1;
+    height: 150px;
+    margin: 3.5px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #9ca3af;
+    box-shadow: var(--rx-citizen-shadow-lg);
+  }
+
+  .rx-citizen-annc__photo {
+    position: absolute;
+    inset: -14px;
+    background:
+      radial-gradient(42% 70% at 18% 34%, #9cc3dc 0%, transparent 72%),
+      radial-gradient(36% 60% at 74% 62%, #d6b98a 0%, transparent 70%),
+      radial-gradient(30% 46% at 52% 12%, #eef3f6 0%, transparent 72%),
+      linear-gradient(135deg, #46627c 0%, #2a3f53 100%);
+    filter: blur(5px);
+  }
+
+  .rx-citizen-annc__photo::after {
+    position: absolute;
+    inset: 0;
+    background: rgb(15 23 42 / 0.42);
+    content: "";
+  }
+
+  .rx-citizen-annc__text {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    left: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-citizen-annc__eyebrow {
+    color: var(--rx-lighttext);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 14px;
+    text-transform: uppercase;
+  }
+
+  .rx-citizen-annc__date,
+  .rx-citizen-annc__excerpt {
+    color: #e5e7eb;
+    font-size: 12.25px;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-annc__title {
+    overflow: hidden;
+    color: #ffffff;
+    font-size: 15.75px;
+    font-weight: 700;
+    line-height: 24.5px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .rx-citizen-annc__excerpt {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  /* News card: the cover is an abstract colour field too. */
+  .rx-citizen-news {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    margin: 7px 7px 0;
+    overflow: hidden;
+    border: 1px solid var(--rx-border-faint);
+    border-radius: 14px;
+    background: var(--rx-surface);
+    box-shadow: var(--rx-citizen-shadow-lg);
+  }
+
+  .rx-citizen-news__cover {
+    position: relative;
+    display: block;
+    height: 140.4px;
+    background:
+      radial-gradient(40% 60% at 72% 30%, #f3d9a6 0%, transparent 70%),
+      radial-gradient(50% 70% at 24% 70%, #7e9a6b 0%, transparent 72%),
+      radial-gradient(30% 40% at 50% 92%, #5b6b7a 0%, transparent 70%),
+      linear-gradient(160deg, #a9c3d6 0%, #6f8798 60%, #4b5f6e 100%);
+  }
+
+  .rx-citizen-news__new {
+    position: absolute;
+    top: 10.5px;
+    right: 10.5px;
+    display: flex;
+    align-items: center;
+    gap: 5.25px;
+    padding: 5.25px 10.5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 14px;
+    letter-spacing: 0.025em;
+  }
+
+  .rx-citizen-news__dot {
+    width: 5.25px;
+    height: 5.25px;
+    border-radius: 50%;
+    background: #ffffff;
+  }
+
+  .rx-citizen-news__stamp {
+    position: absolute;
+    bottom: 10.5px;
+    left: 10.5px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5.25px 10.5px;
+    border-radius: 7px;
+    background: rgb(0 0 0 / 0.6);
+    color: #ffffff;
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 14px;
+  }
+
+  .rx-citizen-news__content {
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .rx-citizen-news__headline {
+    display: -webkit-box;
+    margin-bottom: 10.5px;
+    overflow: hidden;
+    color: var(--rx-citizen-ink);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 21px;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .rx-citizen-news__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .rx-citizen-news__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3.5px;
+    color: var(--rx-secondary);
+    font-size: 12.25px;
+    font-weight: 600;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-news__ago {
+    display: inline-flex;
+    align-items: center;
+    gap: 3.5px;
+    color: var(--rx-citizen-muted);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 14px;
+  }
+
+  /* ─── 2.3 SOS confirmation (fixed emergency palette) ──────────────────────────────── */
+
+  .rx-citizen-sosm {
+    border: 1px solid var(--rx-border-faint);
+    box-shadow: var(--rx-citizen-shadow-2xl);
+  }
+
+  .rx-citizen-sosm__head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10.5px;
+    margin-bottom: 21px;
+  }
+
+  .rx-citizen-sosm__titles {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .rx-citizen-sosm__title {
+    color: var(--rx-citizen-ink);
+    font-size: 17.5px;
+    font-weight: 700;
+    line-height: 24.5px;
+  }
+
+  .rx-citizen-sosm__sub {
+    margin-top: 3.5px;
+    color: var(--rx-citizen-muted);
+    font-size: 12.25px;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-sosm__body {
+    display: block;
+    margin-bottom: 21px;
+    color: var(--rx-citizen-muted);
+    font-size: 14px;
+    line-height: 22.75px;
+  }
+
+  .rx-citizen-sosm__timer {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 21px;
+  }
+
+  .rx-citizen-sosm__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 7px;
+  }
+
+  .rx-citizen-sosm__label {
+    color: var(--rx-citizen-muted);
+    font-size: 12.25px;
+    font-weight: 600;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-sosm__count {
+    color: var(--rx-citizen-ink);
+    font-size: 26.25px;
+    font-weight: 700;
+    line-height: 31.5px;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rx-citizen-sosm__actions {
+    display: flex;
+    gap: 10.5px;
+  }
+
+  .rx-btn.rx-citizen-sosm__btn {
+    flex: 1 1 0;
+    padding: 0;
+  }
+
+  .rx-citizen-sosm__foot {
+    display: block;
+    margin-top: 14px;
+    color: #6b7280;
+    font-size: 10.5px;
+    line-height: 14px;
+    text-align: center;
+  }
+
+  /* The press flow (state idle): the popup is not up until the SOS is pressed. */
+  .rx-citizen-sosflow--press .rx-modal {
+    opacity: 0;
+  }
+
+  /* ─── 2.4 Live call (fixed dark call palette) ─────────────────────────────────────── */
+
+  .rx-citizen-call {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #0f3460;
+  }
+
+  .rx-citizen-call > .rx-seq__frame {
+    position: relative;
+  }
+
+  .rx-citizen-call__screen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* 21 / 28 content padding inside the safe area: the pill sits 42 px under the status bar's 28 px pad. */
+  .rx-citizen-call__ui {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 114px 21px 97px;
+    color: #ffffff;
+  }
+
+  .rx-citizen-call__top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .rx-citizen-call__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 21px;
+    padding: 7px 14px;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.15);
+    font-size: 12.25px;
+    font-weight: 500;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-call__dots {
+    margin-left: -1px;
+  }
+
+  .rx-citizen-call__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 21px;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    border-radius: 14px;
+    background: rgb(255 255 255 / 0.1);
+    box-shadow: var(--rx-citizen-shadow-2xl);
+    text-align: center;
+  }
+
+  .rx-citizen-call__title {
+    color: #ffffff;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 28px;
+  }
+
+  .rx-citizen-call__queue {
+    margin-top: 3.5px;
+    color: rgb(255 255 255 / 0.7);
+    font-size: 15.75px;
+    font-weight: 700;
+    line-height: 24.5px;
+  }
+
+  .rx-citizen-call__caption {
+    margin-top: 3.5px;
+    color: rgb(255 255 255 / 0.7);
+    font-size: 12.25px;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-call__center {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .rx-citizen-call__pulse {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    height: 70px;
+    border: 2px solid rgb(255 255 255 / 0.5);
+    border-radius: 50%;
+    color: #ffffff;
+  }
+
+  .rx-citizen-call__bottom {
+    display: flex;
+    justify-content: center;
+  }
+
+  .rx-citizen-call__controls {
+    display: flex;
+    gap: 10.5px;
+  }
+
+  /* The speaker is on: an active control gets the 2 px ring at 40%. */
+  .rx-citizen-callbtn .rx-gbtn__circle {
+    border: 2px solid rgb(255 255 255 / 0.4);
+  }
+
+  /* call-end: the handset laid flat. */
+  .rx-citizen-hangup .rx-gbtn__circle {
+    border-color: rgb(255 255 255 / 0.2);
+  }
+
+  .rx-citizen-hangup .rx-gbtn__circle > svg {
+    fill: currentColor;
+    transform: rotate(135deg);
+  }
+
+  /* ─── 2.5 Hazards tab and Hazard Location map ─────────────────────────────────────── */
+
+  .rx-seg.rx-citizen-toptabs {
+    position: relative;
+    z-index: 3;
+    flex: none;
+  }
+
+  .rx-seg.rx-citizen-toptabs[data-look="tabs"] .rx-seg__opt {
+    height: 52px;
+  }
+
+  .rx-citizen-hlist {
+    display: flex;
+    flex-direction: column;
+    padding: 7px 7px 0;
+    overflow: hidden;
+  }
+
+  .rx-citizen-hlist__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  .rx-citizen-hlist__rows > .rx-citizen-hazard {
+    margin-bottom: 0;
+  }
+
+  .rx-citizen-hmap {
+    background: #e5e7eb;
+  }
+
+  .rx-citizen-hmap__map {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .rx-citizen-hmap__strip {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    padding: 10.5px 14px;
+    background: var(--rx-surface);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .rx-citizen-hmap__title {
+    color: var(--rx-citizen-ink);
+    font-size: 15.75px;
+    font-weight: 700;
+    line-height: 24.5px;
+  }
+
+  .rx-citizen-hmap__meta {
+    margin-top: 1.75px;
+    color: var(--rx-citizen-muted);
+    font-size: 10.5px;
+    line-height: 14px;
+  }
+
+  .rx-citizen-hmap__card {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    left: 14px;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    border: 1px solid var(--rx-border-faint);
+    border-radius: 21px;
+    background: var(--rx-surface);
+    box-shadow: var(--rx-citizen-shadow-2xl);
+  }
+
+  .rx-citizen-hmap__handle {
+    flex: none;
+    align-self: center;
+    width: 42px;
+    height: 3.5px;
+    margin-bottom: 14px;
+    border-radius: 999px;
+    background: var(--rx-primary);
+  }
+
+  .rx-citizen-hmap__address {
+    margin-bottom: 7px;
+    color: var(--rx-citizen-ink);
+    font-size: 15.75px;
+    font-weight: 700;
+    line-height: 24.5px;
+  }
+
+  .rx-citizen-hmap__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .rx-citizen-hmap__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10.5px;
+    border: 1px solid var(--rx-border-faint);
+    border-radius: 7px;
+    background: var(--rx-surface);
+    color: var(--rx-citizen-ink);
+    font-size: 12.25px;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-hmap__chip[data-tone="distance"] {
+    background: #e3f0f6;
+    color: var(--rx-primary);
+  }
+
+  /* The list → map flow (state list): the modal waits below the canvas until the Flood tap. */
+  .rx-citizen-hflow {
+    --rx-citizen-map-at: 1700ms;
+    position: absolute;
+    inset: 0;
+  }
+
+  .rx-citizen-hflow__modal {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    transform: translateY(100%);
+  }
+
+  /* ─── Form fields (fieldTokens.ts): typed values in #334155, focus = accent border + ring ── */
+
+  .rx-citizen-screen .rx-field__value:not([data-placeholder]) {
+    color: var(--rx-citizen-body);
+  }
+
+  .rx-citizen-screen .rx-field__chev {
+    color: #475569;
+  }
+
+  .rx-citizen-screen .rx-field[data-focused] .rx-field__box {
+    border-color: var(--rx-accent);
+  }
+
+  /* ─── 2.6 Report incident ─────────────────────────────────────────────────────────── */
+
+  .rx-citizen-rhero {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    padding: 14px 21px 28px;
+    background: var(--rx-surface-2);
+    box-shadow: var(--rx-citizen-shadow-sm);
+  }
+
+  .rx-citizen-rhero__title {
+    color: var(--rx-primary);
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 28px;
+  }
+
+  .rx-citizen-rhero__sub {
+    margin-top: 3.5px;
+    color: var(--rx-citizen-muted);
+    font-size: 12.25px;
+    line-height: 17.5px;
+  }
+
+  .rx-btn.rx-citizen-rhero__submit {
+    margin-top: 21px;
+  }
+
+  .rx-citizen-rbody {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 14px 14px 24px;
+  }
+
+  .rx-citizen-loc {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    margin-bottom: 7px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: rgb(241 247 247 / 0.86);
+    box-shadow: var(--rx-citizen-shadow-lg);
+  }
+
+  .rx-citizen-loc__map {
+    position: relative;
+    display: block;
+    height: 182px;
+  }
+
+  .rx-citizen-loc__live {
+    position: absolute;
+    top: 10.5px;
+    right: 10.5px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5.25px 10.5px;
+    border-radius: 999px;
+    background: rgb(247 244 244 / 0.92);
+    box-shadow: var(--rx-citizen-shadow-lg);
+    color: var(--rx-citizen-ink);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 14px;
+  }
+
+  .rx-citizen-loc__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+  }
+
+  .rx-citizen-loc__details {
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .rx-citizen-loc__row {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 10.5px;
+  }
+
+  .rx-citizen-loc__pin {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 35px;
+    height: 35px;
+    margin: 1.75px 10.5px 0 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--rx-primary) 10%, transparent);
+    color: #d84343;
+  }
+
+  .rx-citizen-loc__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-citizen-loc__label {
+    margin-bottom: 3.5px;
+    color: var(--rx-citizen-ink);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 14px;
+  }
+
+  .rx-citizen-loc__address {
+    color: var(--rx-citizen-muted);
+    font-size: 12.25px;
+    font-weight: 500;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-loc__refresh {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 3.5px;
+    margin-left: 8px;
+    padding: 7px 10.5px;
+    border-radius: 7px;
+    background: #fdf2f8;
+    color: var(--rx-primary);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 14px;
+  }
+
+  .rx-citizen-loc__coords {
+    display: flex;
+    margin-top: 7px;
+    padding: 10.5px;
+    border: 1px solid var(--rx-border-faint);
+    border-radius: 10.5px;
+    background: var(--rx-surface);
+  }
+
+  .rx-citizen-loc__coord {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .rx-citizen-loc__key {
+    margin-bottom: 1.75px;
+    color: #6b7280;
+    font-size: 10.5px;
+    line-height: 14px;
+  }
+
+  .rx-citizen-loc__val {
+    color: var(--rx-citizen-ink);
+    font-size: 12.25px;
+    font-weight: 600;
+    line-height: 17.5px;
+  }
+
+  .rx-citizen-loc__sep {
+    width: 1px;
+    margin: 0 10.5px;
+    background: #6b7280;
+  }
+
+  .rx-citizen-rcard {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    padding: 14px;
+    border: 1px solid var(--rx-border-faint);
+    border-radius: 14px;
+    background: var(--rx-surface);
+    box-shadow: var(--rx-citizen-shadow-sm);
+  }
+
+  .rx-citizen-rcard--photos {
+    margin: 7px 0;
+  }
+
+  .rx-citizen-rcard__head {
+    display: flex;
+    align-items: center;
+  }
+
+  .rx-citizen-rcard__tile {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-right: 10.5px;
+    border-radius: 7px;
+    background: rgb(234 228 228 / 0.38);
+  }
+
+  .rx-citizen-rcard__titles {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rx-citizen-rcard__title {
+    color: var(--rx-citizen-ink);
+    font-size: 15.75px;
+    font-weight: 600;
+    line-height: 24.5px;
+  }
+
+  .rx-citizen-rcard__title--brand {
+    color: var(--rx-primary);
+  }
+
+  .rx-citizen-rcard__sub {
+    margin-top: 1.75px;
+    color: #6b7280;
+    font-size: 10.5px;
+    line-height: 14px;
+  }
+
+  .rx-citizen-rcard__buttons {
+    display: flex;
+    gap: 10.5px;
+    margin: 14px 0 7px;
+  }
+
+  .rx-citizen-rcam {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    padding: 7px 10.5px;
+    border: 1px solid #7d8794;
+    border-radius: 7px;
+    background: var(--rx-surface);
+    box-shadow: var(--rx-citizen-shadow-sm);
+    color: var(--rx-citizen-body);
+  }
+
+  .rx-citizen-rcam__label {
+    margin-top: 7px;
+    font-size: 10.5px;
+    line-height: 14px;
+    text-align: center;
+  }
+
+  .rx-citizen-rinfo {
+    display: flex;
+    flex: none;
+    margin-bottom: 7px;
+    padding: 14px;
+    border-radius: 10.5px;
+    background: #e3f0f6;
+    color: var(--rx-primary);
+  }
+
+  .rx-citizen-rinfo__text {
+    flex: 1;
+    margin-left: 10.5px;
+    font-size: 10.5px;
+    line-height: 17.5px;
+  }
+
+  /* ─── Motion: in-screen animations, only under [data-active] (contract rule 1) ────── */
+
+  /* 2.3 idle: SOS pressed at 0.9 s (90 ms dip to 0.92), the commit ring, then the popup. */
+  [data-active] .rx-citizen-sosflow--press .rx-citizen-sos {
+    animation: rx-citizen-sos-press 300ms ease-out 900ms both;
+  }
+
+  [data-active] .rx-citizen-sosflow--press .rx-citizen-sos__ring {
+    animation: rx-citizen-sos-commit 620ms cubic-bezier(0.33, 1, 0.68, 1) 990ms both;
+  }
+
+  [data-active] .rx-citizen-sosflow--press .rx-modal {
+    animation: rx-citizen-fade-in 240ms ease-out var(--rx-citizen-sos-at) both;
+  }
+
+  [data-active] .rx-citizen-sosflow .rx-citizen-sosm {
+    animation: rx-citizen-pop-in 340ms cubic-bezier(0.34, 1.3, 0.64, 1) var(--rx-citizen-sos-at) both;
+  }
+
+  /* The bar steps 100% → 80% → 60% with the seconds (5 → 4 → 3). */
+  [data-active] .rx-citizen-sosflow .rx-citizen-sosm__bar > .rx-progress__fill {
+    animation: rx-citizen-sos-bar 2200ms linear var(--rx-citizen-sos-at) both;
+  }
+
+  /* Confirm Call pressed at 3.3 s (active:bg-red-700). */
+  [data-active] .rx-citizen-sosflow--press .rx-citizen-sosm__confirm {
+    animation: rx-citizen-confirm-press 280ms ease-out 3300ms both;
+  }
+
+  /* 2.5 list: the Flood card is tapped at 1.2 s, the map modal slides up, then its card rises. */
+  [data-active] .rx-citizen-hflow .rx-citizen-hlist__rows > .rx-citizen-hazard:first-child {
+    animation: rx-citizen-tap 300ms ease-out 1200ms both;
+  }
+
+  [data-active] .rx-citizen-hflow__modal {
+    animation: rx-citizen-sheet-up 420ms cubic-bezier(0.32, 0.72, 0, 1) 1320ms both;
+  }
+
+  [data-active] .rx-citizen-hmap__card {
+    animation: rx-citizen-rise 380ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--rx-citizen-map-at, 150ms) both;
+  }
+
+  /* 2.6: the Live Location dot breathes while the form scrolls. */
+  [data-active] .rx-citizen-loc__dot {
+    animation: rx-citizen-breathe 1.4s ease-in-out infinite;
+  }
+
+  @keyframes rx-citizen-sos-press {
+    0% {
+      transform: scale(1);
+    }
+    30% {
+      transform: scale(0.92);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes rx-citizen-sos-commit {
+    from {
+      opacity: 0.45;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(1.9);
+    }
+  }
+
+  @keyframes rx-citizen-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes rx-citizen-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes rx-citizen-sos-bar {
+    0%,
+    45.45% {
+      width: 100%;
+      animation-timing-function: ease-out;
+    }
+    54.55%,
+    90.91% {
+      width: 80%;
+      animation-timing-function: ease-out;
+    }
+    100% {
+      width: 60%;
+    }
+  }
+
+  @keyframes rx-citizen-confirm-press {
+    0% {
+      background: #dc2626;
+      transform: scale(1);
+    }
+    40% {
+      background: #b91c1c;
+      transform: scale(0.97);
+    }
+    100% {
+      background: #b91c1c;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes rx-citizen-tap {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    30% {
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes rx-citizen-sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes rx-citizen-rise {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes rx-citizen-breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
