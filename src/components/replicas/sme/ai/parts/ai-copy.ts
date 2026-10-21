@@ -26,4 +26,5 @@ export const AI_COPY = {
   roiSection: 'AI Business Insight',
   roiLabel: 'AI Insight',
   breakevenSection: 'Breakeven Progress',
+  topProducts: 'Top Products by Revenue',
 } as const;

@@ -35,6 +35,8 @@
     /* Business ROI: breakeven bar ≥ 50% and the ROI health colour (10–20%), and the bar track */
     --rx-sme-ai-x-amber: #ff9500;
     --rx-sme-ai-x-track: #e5e7eb;
+    /* Business ROI ProductRow: the revenue bar's track (gray-100; DARK_SURFACE in dark) */
+    --rx-sme-ai-x-product-track: var(--rx-sme-gray-100);
   }
 
   /* ── Local tokens (dark: the AI screens as shipped) ───────────────────────────── */
@@ -50,6 +52,7 @@
     --rx-sme-ai-x-error-border: rgb(255 107 107 / 0.3);
     --rx-sme-ai-x-amber: #ffb020;
     --rx-sme-ai-x-track: rgb(255 255 255 / 0.08);
+    --rx-sme-ai-x-product-track: var(--rx-sme-ai-raised);
   }
 
   /* ── Screen: TopNavBar over the scroll (ai.tsx root and scroll) ────────────────── */
@@ -729,6 +732,17 @@
 
   /* ── Business ROI: Breakeven Progress (BreakevenProgress molecule) ────────────── */
 
+  /*
+   * The card reads two colours from inline custom properties (breakeven.tsx): --rx-sme-ai-x-fill,
+   * the molecule's bar colour by progress, and --rx-sme-ai-x-health, the screen's ROI health
+   * colour for the callout. Both default to amber, this shop's colours.
+   */
+  .rx-sme-ai-breakeven,
+  .rx-sme-ai-callout {
+    --rx-sme-ai-x-fill: var(--rx-sme-ai-x-amber);
+    --rx-sme-ai-x-health: var(--rx-sme-ai-x-amber);
+  }
+
   .rx-sme-ai-breakeven {
     display: flex;
     flex: none;
@@ -753,8 +767,8 @@
   .rx-sme-ai-breakeven__pct {
     padding: 3px 8px;
     border-radius: 20px;
-    background: color-mix(in srgb, var(--rx-sme-ai-x-amber) 10.2%, transparent);
-    color: var(--rx-sme-ai-x-amber);
+    background: color-mix(in srgb, var(--rx-sme-ai-x-fill) 10.2%, transparent);
+    color: var(--rx-sme-ai-x-fill);
     font-size: 12px;
     font-weight: 700;
     line-height: 16.8px;
@@ -773,7 +787,7 @@
     display: block;
     height: 10px;
     border-radius: 5px;
-    background: var(--rx-sme-ai-x-amber);
+    background: var(--rx-sme-ai-x-fill);
   }
 
   /* The milestone marker at 100%. */
@@ -784,7 +798,7 @@
     bottom: 0;
     width: 2px;
     border-radius: 1px;
-    background: var(--rx-sme-ai-x-amber);
+    background: var(--rx-sme-ai-x-fill);
   }
 
   .rx-sme-ai-breakeven__units {
@@ -811,12 +825,99 @@
     gap: 8px;
     margin: -10px 0 16px;
     padding: 8px 12px;
-    border: 1px solid color-mix(in srgb, var(--rx-sme-ai-x-amber) 20%, transparent);
+    border: 1px solid color-mix(in srgb, var(--rx-sme-ai-x-health) 20%, transparent);
     border-radius: 8px;
-    background: color-mix(in srgb, var(--rx-sme-ai-x-amber) 5.1%, transparent);
-    color: var(--rx-sme-ai-x-amber);
+    background: color-mix(in srgb, var(--rx-sme-ai-x-health) 5.1%, transparent);
+    color: var(--rx-sme-ai-x-health);
     font-size: 12px;
     font-weight: 500;
     line-height: 16.8px;
+  }
+
+  /* ── Business ROI: Top Products by Revenue (ProductRow) ────────────────────────── */
+
+  .rx-sme-ai-products {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  /* Radius 12, a 1 px border, 12 px padding, 10 px between the badge and the text. */
+  .rx-sme-ai-product {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--rx-sme-ai-border-strong);
+    border-radius: 12px;
+    background: var(--rx-sme-ai-card);
+  }
+
+  /* The 34 px rank badge: the rank colour at 10% behind its 12 px bold number. */
+  .rx-sme-ai-product__rank {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-product__info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .rx-sme-ai-product__head {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  /* One line, ellipsised (numberOfLines 1). */
+  .rx-sme-ai-product__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--rx-sme-ai-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 19.6px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rx-sme-ai-product__units {
+    flex: none;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-product__bar {
+    margin-bottom: 4px;
+  }
+
+  .rx-sme-ai-product__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--rx-sme-ai-muted);
+    font-size: 12px;
+    line-height: 16.8px;
+  }
+
+  .rx-sme-ai-product__revenue {
+    font-weight: 600;
   }
 }

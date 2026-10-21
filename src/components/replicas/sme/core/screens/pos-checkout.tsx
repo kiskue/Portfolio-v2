@@ -17,10 +17,11 @@ const STATES = ['grid', 'checkout', 'confirmed'] as const satisfies readonly Pos
 /**
  * When the sheet opens and when the sale confirms in the glimpse (glimpses.ts SME_POS: taps on
  * Checkout at 1200 ms and on Confirm Sale at 2900 ms, inside a 4.4 s hold): each 180 ms after
- * its tap, when the tap ring has fully scaled in.
+ * its tap, when the tap ring has fully scaled in. tests/unit/registry.sme.test.ts checks them
+ * against the glimpse data.
  */
-const SHEET_AT_MS = 1380;
-const CONFIRMED_AT_MS = 3080;
+export const POS_TIMING = { sheetAtMs: 1380, confirmedAtMs: 3080 } as const;
+const { sheetAtMs: SHEET_AT_MS, confirmedAtMs: CONFIRMED_AT_MS } = POS_TIMING;
 
 /** Tiles from this index on (the fourth row, y 713.6) only peek above the docked bar (y 763). */
 const PEEK_FROM = 6;

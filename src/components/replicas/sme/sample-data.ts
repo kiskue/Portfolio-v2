@@ -20,7 +20,9 @@ import { formatNumber } from '@/lib/format';
  * - Business ROI is one set of figures: 18.5% on a ₱300,000 investment, ₱55,500 net profit
  *   all-time, Medium Risk (1.1 Business ROI card, 1.6 report, 1.9). The dashboard's "ROI
  *   Outlook" card is the ROI calculator's own scenario (a separate store in the app), so its Low
- *   Risk and "Break-even: 7mo 12d" are not 1.9's risk.
+ *   Risk and "Break-even: 7mo 12d" are not 1.9's risk. The 1.9 low and high states keep the
+ *   app's own example sentences, and their Breakeven Progress is sized to those sentences; the
+ *   Top Products rows under it are this shop's (Ube Pandesal's 800 packs, as in the 1.6 report).
  * - The forecast (1.7) is drawn from October 1–18. Those 18 days plus today's ₱1,800 make the
  *   month's ₱48,250, and the daily target is ₱2,500 (72% met), in line with that pace.
  * - One catalog feeds POS (1.2), the storefront (1.4), the delivery order (1.5) and restock
@@ -351,6 +353,60 @@ const TOP_PRODUCT = { product: 'ube-pandesal', unitsAllTime: 800 } as const sati
 
 export type SmeRisk = FigureState<'1.9'>;
 
+/** Business ROI's Breakeven Progress (BreakevenProgress molecule): units sold against the break-even goal. */
+export interface SmeBreakeven {
+  readonly sold: number;
+  readonly goal: number;
+  /** Units still needed ("Need 3,960 more to break even", "Sell 3,960 more units…"). */
+  readonly remaining: number;
+  /** sold ÷ goal, capped at 100, rounded: the badge and the bar. */
+  readonly percent: number;
+}
+
+function breakeven(sold: number, goal: number): SmeBreakeven {
+  return { sold, goal, remaining: Math.max(0, goal - sold), percent: Math.round(Math.min(sold / goal, 1) * 100) };
+}
+
+/** One row of Business ROI's "Top Products by Revenue" (ProductRow): all-time units, revenue and contribution margin. */
+export interface SmeRoiProduct {
+  readonly product: SmeProductId;
+  readonly name: string;
+  readonly units: number;
+  readonly revenue: number;
+  /** Revenue after the product's own costs (the app's contributionMargin). */
+  readonly contribution: number;
+  /** "800 units". */
+  readonly unitsLabel: string;
+  /** "₱52,000". */
+  readonly revenueLabel: string;
+  /** "Margin: 46.2%". */
+  readonly marginLabel: string;
+  /** The 5 px bar: revenue against the best seller's, 0–100. */
+  readonly share: number;
+}
+
+/** All-time units and contribution per product; revenue is units at the catalog price. Best seller first. */
+const ROI_PRODUCTS = [
+  { product: TOP_PRODUCT.product, units: TOP_PRODUCT.unitsAllTime, contribution: 24024 },
+  { product: 'leche-flan', units: 150, contribution: 10395 },
+  { product: 'pancit-bilao', units: 50, contribution: 7965 },
+] as const satisfies readonly { product: SmeProductId; units: number; contribution: number }[];
+
+const ROI_PRODUCT_ROWS: readonly SmeRoiProduct[] = ROI_PRODUCTS.map((row) => {
+  const { name, price } = smeProduct(row.product);
+  const revenue = row.units * price;
+  const best = smeProduct(ROI_PRODUCTS[0].product).price * ROI_PRODUCTS[0].units;
+  return {
+    ...row,
+    name,
+    revenue,
+    unitsLabel: `${formatNumber(row.units)} units`,
+    revenueLabel: peso(revenue, 0),
+    marginLabel: `Margin: ${((row.contribution / revenue) * 100).toFixed(1)}%`,
+    share: Math.round((revenue / best) * 100),
+  };
+});
+
 /** The whole business since opening, and its rule-based risk (Medium: ROI 10–25%, payback within 24 months, profitable). */
 export const smeRoi = {
   ...ROI,
@@ -373,6 +429,18 @@ export const smeRoi = {
     low: 'Break even in 4 months 12 days at your current volume of 320 units a month. Gross margin is a healthy 42.5%.',
     high: 'At current prices, break-even takes 22 months — consider raising your price or cutting fixed costs to bring this under 18 months.',
   } satisfies Readonly<Record<SmeRisk, string>>,
+  /**
+   * Breakeven Progress under the 1.9 AI block, per state. medium is this shop (7,040 of 11,000
+   * units). low and high size the example shops to their own sentences: 1,408 units to go at
+   * 320 a month is 4 months 12 days, and 6,600 to go at 300 a month is 22 months.
+   */
+  breakeven: {
+    medium: breakeven(ROI.unitsSoldToDate, ROI.breakevenUnits),
+    low: breakeven(2192, 3600),
+    high: breakeven(2400, 9000),
+  } satisfies Readonly<Record<SmeRisk, SmeBreakeven>>,
+  /** "Top Products by Revenue" (1.9, below Breakeven Progress): all-time, best seller first. */
+  products: ROI_PRODUCT_ROWS,
   /** "Ask AI about this" opens the chat scoped to ROI. */
   chat: {
     title: 'Ask about your ROI',

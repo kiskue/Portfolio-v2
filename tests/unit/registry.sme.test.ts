@@ -6,8 +6,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { replicas } from '@/components/replicas/registry';
 import { smeReplicas } from '@/components/replicas/sme';
-import { smeAiReplicas } from '@/components/replicas/sme/ai';
-import { smeCoreReplicas } from '@/components/replicas/sme/core';
+import { ENHANCE_TIMING, smeAiReplicas } from '@/components/replicas/sme/ai';
+import { POS_TIMING, smeCoreReplicas } from '@/components/replicas/sme/core';
 import { SME_LOGO_FONT_PX, SME_LOGO_ICON_PX, SME_LOGO_SIZES, SmeLogo, type SmeLogoVariant } from '@/components/replicas/sme/parts/sme-logo';
 import {
   SME_CATALOG_SIZE,
@@ -37,6 +37,7 @@ import {
   type SmeRichText,
 } from '@/components/replicas/sme/sample-data';
 import { figures } from '@/content/apps/figures';
+import { glimpses } from '@/content/apps/glimpses';
 
 /*
  * The SME replicas' shared foundations: the core / ai split of the registry, the app tokens in
@@ -318,6 +319,67 @@ describe('SME sample data: business ROI (1.1 card, 1.6 report, 1.9)', () => {
     const { product, unitsAllTime } = smeRoi.topProduct;
     expect(flatten(smeInsight.report[2] ?? [])).toBe(`Best performer: Ube Pandesal, ${peso(unitsAllTime * smeProduct(product).price, 0)} from 800 packs.`);
     expect(unitsAllTime).toBeLessThan(smeRoi.unitsSoldToDate);
+  });
+
+  it('sizes each 1.9 state’s Breakeven Progress: this shop for medium, the example sentences for low and high', () => {
+    const states = figures.find((figure) => figure.id === '1.9')?.states ?? [];
+    expect(Object.keys(smeRoi.breakeven).sort()).toEqual([...states].sort());
+    for (const { sold, goal, remaining, percent } of Object.values(smeRoi.breakeven)) {
+      expect(remaining).toBe(Math.max(0, goal - sold));
+      expect(percent).toBe(Math.round(Math.min(sold / goal, 1) * 100));
+    }
+    // medium is this shop: the dashboard card's 64% and 3,960 units to go.
+    expect(smeRoi.breakeven.medium).toEqual({ sold: smeRoi.unitsSoldToDate, goal: smeRoi.breakevenUnits, remaining: 3960, percent: smeRoi.card.breakevenPercent });
+    // low: "Break even in 4 months 12 days at your current volume of 320 units a month".
+    expect(smeRoi.insight.low).toContain('4 months 12 days at your current volume of 320 units a month');
+    expect(smeRoi.breakeven.low.remaining / 320).toBeCloseTo(4 + 12 / 30, 9);
+    // high: "break-even takes 22 months" (at 300 units a month).
+    expect(smeRoi.insight.high).toContain('break-even takes 22 months');
+    expect(smeRoi.breakeven.high.remaining / 300).toBe(22);
+  });
+
+  it('lists Top Products by revenue from the catalog prices, led by the report’s best performer', () => {
+    const rows = smeRoi.products;
+    expect(rows.map((row) => [row.name, row.unitsLabel, row.revenueLabel, row.marginLabel, row.share])).toEqual([
+      ['Ube Pandesal (10s)', '800 units', '₱52,000', 'Margin: 46.2%', 100],
+      ['Leche Flan Tub', '150 units', '₱27,000', 'Margin: 38.5%', 52],
+      ['Pancit Bihon Bilao', '50 units', '₱22,500', 'Margin: 35.4%', 43],
+    ]);
+    for (const row of rows) {
+      expect(row.revenue).toBe(row.units * smeProduct(row.product).price);
+      expect(row.contribution).toBeLessThan(row.revenue);
+    }
+    expect(rows.map((row) => row.revenue)).toEqual([...rows.map((row) => row.revenue)].sort((a, b) => b - a));
+    expect(rows[0]?.product).toBe(smeRoi.topProduct.product);
+    expect(rows[0]?.units).toBe(smeRoi.topProduct.unitsAllTime);
+    // Every state's shop has sold at least the units these rows count.
+    const listed = sum(rows.map((row) => row.units));
+    for (const { sold } of Object.values(smeRoi.breakeven)) expect(listed).toBeLessThanOrEqual(sold);
+  });
+});
+
+describe('SME glimpse timelines follow the glimpse taps (glimpses.ts)', () => {
+  const step = (figure: string) => glimpses.find((glimpse) => glimpse.id === 'home.sme')?.steps.find((candidate) => candidate.figure === figure);
+  // The screen reacts about 180 ms after a tap, once the tap ring has scaled in.
+  const reacts = (atMs: number, tapMs: number | undefined): void => {
+    expect(tapMs).toBeDefined();
+    expect(atMs - (tapMs ?? 0)).toBeGreaterThanOrEqual(120);
+    expect(atMs - (tapMs ?? 0)).toBeLessThanOrEqual(260);
+  };
+
+  it('1.2 opens the checkout sheet after the Checkout tap and confirms after the Confirm Sale tap', () => {
+    const pos = step('1.2');
+    reacts(POS_TIMING.sheetAtMs, pos?.taps?.[0]?.atMs);
+    reacts(POS_TIMING.confirmedAtMs, pos?.taps?.[1]?.atMs);
+    expect(POS_TIMING.confirmedAtMs).toBeLessThan(pos?.holdMs ?? 0);
+  });
+
+  it('1.6 shows "Enhancing…" after the Enhance tap and finishes typing inside the hold', () => {
+    const ai = step('1.6');
+    expect(ENHANCE_TIMING.tapAtMs).toBe(ai?.taps?.[0]?.atMs);
+    reacts(ENHANCE_TIMING.enhancingAtMs, ai?.taps?.[0]?.atMs);
+    expect(ENHANCE_TIMING.arrivedAtMs).toBeGreaterThan(ENHANCE_TIMING.enhancingAtMs);
+    expect(ENHANCE_TIMING.arrivedAtMs + ENHANCE_TIMING.typingMs).toBeLessThan(ai?.holdMs ?? 0);
   });
 });
 

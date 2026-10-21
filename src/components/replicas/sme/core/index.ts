@@ -7,6 +7,8 @@ import { OwnerDashboard } from '@/components/replicas/sme/core/screens/owner-das
 import { PosCheckout } from '@/components/replicas/sme/core/screens/pos-checkout';
 import type { SmeFigureId } from '@/content/types';
 
+export { POS_TIMING } from '@/components/replicas/sme/core/screens/pos-checkout';
+
 /** The owner, customer and rider screens: dashboard, POS, credit ledger, storefront and delivery. */
 export type SmeCoreFigureId = Extract<SmeFigureId, '1.1' | '1.2' | '1.3' | '1.4' | '1.5'>;
 

@@ -8,6 +8,7 @@ import { EnhancePill, RiskBadge } from '@/components/replicas/sme/ai/parts/ai-pi
 import { AiScreen, RoiSectionTitle } from '@/components/replicas/sme/ai/parts/ai-screen';
 import { BreakevenSection } from '@/components/replicas/sme/ai/parts/breakeven';
 import { InsightText } from '@/components/replicas/sme/ai/parts/insight-text';
+import { TopProductsSection } from '@/components/replicas/sme/ai/parts/roi-products';
 import { SmeLogo } from '@/components/replicas/sme/parts/sme-logo';
 import { smeRoi } from '@/components/replicas/sme/sample-data';
 import type { FigureState } from '@/content/apps/figures';
@@ -15,14 +16,15 @@ import type { FigureState } from '@/content/apps/figures';
 const STATES = ['medium', 'low', 'high'] as const satisfies readonly [FigureState<'1.9'>, ...FigureState<'1.9'>[]];
 
 /**
- * FIG 1.9 · Business ROI scrolled to its AI block (business-roi.tsx section 5 and
+ * FIG 1.9 · Business ROI scrolled to its AI block (business-roi.tsx sections 5–7 and
  * AIInsightCard; research roi-ai-insight-risk), dark. The header has no title on this route, so
  * the TopNavBar shows the SME wordmark. The rule-based risk sets the badge, the accent bar and
  * the glow; "Enhance with AI" would let the model reword the sentence, and "Ask AI about this"
- * opens the chat scoped to ROI.
- * - medium (default): this shop (18.5% ROI on ₱300,000), followed by its Breakeven Progress.
- * - low, high: the app's own example sentences for those levels. They describe other shops, so
- *   this shop's breakeven figures are left out of those states.
+ * opens the chat scoped to ROI. Below the AI block the screen continues as the app does:
+ * Breakeven Progress with its callout, then Top Products by Revenue into the fold.
+ * - medium (default): this shop (18.5% ROI on ₱300,000; 7,040 of 11,000 units to break even).
+ * - low, high: the app's own example sentences for those levels, with Breakeven Progress sized
+ *   to each sentence (smeRoi.breakeven) and the bar and callout in that level's colours.
  */
 export function RoiInsightScreen({ state }: ReplicaProps): ReactNode {
   const risk = pickState(STATES, state);
@@ -47,7 +49,8 @@ export function RoiInsightScreen({ state }: ReplicaProps): ReactNode {
         <InsightText>{smeRoi.insight[risk]}</InsightText>
       </AiCard>
       <AiAction label={AI_COPY.askAbout} pad={12} style={{ marginBottom: 20 }} />
-      {risk === smeRoi.risk ? <BreakevenSection /> : null}
+      <BreakevenSection risk={risk} />
+      <TopProductsSection />
     </AiScreen>
   );
 }
