@@ -55,39 +55,37 @@ function ZoneWords({ zone }: { readonly zone: ZoneKey }): ReactNode {
 export function DistanceCard({ zone, distance, drive }: DistanceCardProps): ReactNode {
   const changes = drive ? Math.min(drive.zones.length - 1, MAX_ZONE_CHANGES) : 0;
   return (
-    <div className="rx-responder-dcard-wrap">
-      <div className="rx-responder-dcard" data-drive={changes > 0 ? String(changes) : undefined} style={cardStyle(zone, drive)}>
-        <span className="rx-responder-dcard__strip" />
-        <span className="rx-responder-dcard__row">
-          <span className="rx-responder-dcard__tile">
-            <RGlyph icon={LocateFixed} size={20} />
-          </span>
-          <span className="rx-responder-dcard__text">
-            <span className="rx-responder-dcard__heading">DISTANCE TO EMERGENCY</span>
+    <div className="rx-responder-dcard" data-drive={changes > 0 ? String(changes) : undefined} style={cardStyle(zone, drive)}>
+      <span className="rx-responder-dcard__strip" />
+      <span className="rx-responder-dcard__row">
+        <span className="rx-responder-dcard__tile">
+          <RGlyph icon={LocateFixed} size={20} />
+        </span>
+        <span className="rx-responder-dcard__text">
+          <span className="rx-responder-dcard__heading">DISTANCE TO EMERGENCY</span>
+          {drive ? (
+            <RStateSequence
+              className="rx-responder-dcard__count"
+              frames={drive.counts.map(([atMs, value]) => ({ atMs, node: metres(value) }))}
+              fadeMs={0}
+            />
+          ) : (
+            <span className="rx-responder-dcard__count">{metres(distance)}</span>
+          )}
+          <span className="rx-responder-zone">
+            <PulsingDot color="currentColor" size={6} />
             {drive ? (
-              <RStateSequence
-                className="rx-responder-dcard__count"
-                frames={drive.counts.map(([atMs, value]) => ({ atMs, node: metres(value) }))}
-                fadeMs={0}
-              />
+              <RStateSequence frames={drive.zones.map(({ atMs, zone: at }) => ({ atMs, node: <ZoneWords zone={at} /> }))} fadeMs={0} />
             ) : (
-              <span className="rx-responder-dcard__count">{metres(distance)}</span>
+              <ZoneWords zone={zone} />
             )}
-            <span className="rx-responder-zone">
-              <PulsingDot color="currentColor" size={6} />
-              {drive ? (
-                <RStateSequence frames={drive.zones.map(({ atMs, zone: at }) => ({ atMs, node: <ZoneWords zone={at} /> }))} fadeMs={0} />
-              ) : (
-                <ZoneWords zone={zone} />
-              )}
-            </span>
-          </span>
-          <span className="rx-responder-updates">
-            <span>VIEW UPDATES</span>
-            <RGlyph icon={ChevronsRight} size={14} />
           </span>
         </span>
-      </div>
+        <span className="rx-responder-updates">
+          <span>VIEW UPDATES</span>
+          <RGlyph icon={ChevronsRight} size={14} />
+        </span>
+      </span>
     </div>
   );
 }

@@ -39,10 +39,13 @@ const ANCHORS = [
   [NAV_TIMELINE.onSiteAt, responderDistance.onSite],
 ] as const;
 
-/** The card's side of the drive: the zone flips at each moment and the number counts between them. */
+/**
+ * The card's side of the drive: the zone flips at each moment and the number takes two readings
+ * per leg between them (the app's card counts toward each GPS fix; a fix comes every 10 m or 5 s).
+ */
 const DRIVE: DistanceDrive = {
   zones: [{ atMs: 0, zone: zoneFor(responderDistance.far) }, ...ANCHORS.slice(1).map(([atMs, metres]) => ({ atMs, zone: zoneFor(metres) }))],
-  counts: [[0, responderDistance.far], ...countFrames(ANCHORS, 4).slice(1)],
+  counts: [[0, responderDistance.far], ...countFrames(ANCHORS, 2).slice(1)],
 };
 
 /**

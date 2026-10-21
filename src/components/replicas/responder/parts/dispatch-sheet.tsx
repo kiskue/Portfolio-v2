@@ -54,7 +54,7 @@ export function DispatchSheet({ snap, stage, footer, riseAt, children }: Dispatc
       }
       footer={footer}
     >
-      <div className="rx-responder-sheet__content">{children}</div>
+      {children}
     </RBottomSheet>
   );
 }

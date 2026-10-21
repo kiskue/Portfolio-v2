@@ -379,8 +379,9 @@
     border-radius: 99px;
   }
 
-  .rx-responder-sheet__content {
-    padding: 4px 12px 36px;
+  /* The scrolling body (BottomSheetScrollView): 12px sides; the footer stays pinned below it. */
+  .rx-sheet.rx-responder-sheet > .rx-sheet__body {
+    padding: 4px 12px 0;
   }
 
   .rx-responder-band {
@@ -518,12 +519,9 @@
    * zone part reads currentColor (fill 10%, edge 28%, as the app's zone tokens). Texts set their
    * own ink.
    */
-  .rx-responder-dcard-wrap {
-    padding: 10px 0 4px;
-  }
-
   .rx-responder-dcard {
     position: relative;
+    margin: 10px 0 4px;
     padding: 14px 14px 12px;
     overflow: hidden;
     border: 1px solid rgb(8 84 153 / 0.09);
@@ -620,6 +618,16 @@
     white-space: nowrap;
   }
 
+  /*
+   * Sequence frames around inline-flex words (the zone pill, the duty label) are flex boxes, so
+   * a played state is exactly as tall as the still one (a block frame would add a line strut).
+   */
+  .rx-responder-zone > .rx-seq > .rx-seq__frame,
+  .rx-responder-duty > .rx-seq > .rx-seq__frame {
+    display: flex;
+    align-items: center;
+  }
+
   /* "FAR" 10px Bold, then its ::after "· Distance critical" 9px (data-sub). */
   .rx-responder-zone__label {
     display: inline-flex;
@@ -658,11 +666,11 @@
     white-space: nowrap;
   }
 
-  /* The ticket's info card. */
+  /* The ticket's info card, 12px under the distance card (its 4px margin collapses into this). */
   .rx-responder-info {
     display: flex;
     flex-direction: column;
-    margin-top: 8px;
+    margin-top: 12px;
     padding: 16px;
     border: 1px solid rgb(9 7 7 / 0.07);
     border-radius: 16px;
