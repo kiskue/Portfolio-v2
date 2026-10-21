@@ -1,6 +1,7 @@
 'use client';
 
-import { cloneElement, lazy, Suspense, useId, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react';
+import { lazy, Suspense, useId, useState, type ReactNode } from 'react';
+import type { ShellButton } from '@/components/layout/shell-button';
 
 /*
  * Display settings (design §9, PLAN → Motion): Theme System / Light / Dark and Motion System /
@@ -16,8 +17,6 @@ const DisplaySettingsPanel = lazy(loadPanel);
 const ROW = 'flex items-center gap-3';
 const classes = (...parts: (string | undefined)[]): string => parts.filter(Boolean).join(' ');
 
-type Trigger = ReactElement<ComponentProps<'button'>>;
-
 export interface DisplaySettingsProps {
   /**
    * 'popover': a Radix popover above the trigger (the rail footer on desktop).
@@ -25,8 +24,8 @@ export interface DisplaySettingsProps {
    * footer; never a popover nested in the sheet).
    */
   readonly presentation: 'popover' | 'inline';
-  /** The button that opens the settings, rendered on the server (e.g. the round accessibility button). */
-  readonly trigger: Trigger;
+  /** The button that opens the settings (e.g. the round accessibility button), prepared on the server with shellButton(). */
+  readonly trigger: ShellButton;
   /** Shown after the trigger in the same row, e.g. the © line (keep it free of focusable elements, so the panel stays the next tab stop). */
   readonly children?: ReactNode;
   readonly className?: string;
@@ -39,23 +38,37 @@ function PopoverPresentation({ trigger, children, className }: Omit<DisplaySetti
 
   // Until the popover code is in, a plain button stands in for the Radix trigger. Its click
   // swaps in the popover, which opens at once and moves focus inside.
-  const standIn = cloneElement(trigger, {
-    'aria-haspopup': 'dialog',
-    'aria-expanded': false,
-    onPointerEnter: preload,
-    onFocus: preload,
-    onTouchStart: preload,
-    onClick: () => {
-      setRequested(true);
-      setOpen(true);
-    },
-  });
+  const standIn = (
+    <button
+      type="button"
+      className={trigger.className}
+      aria-label={trigger.label}
+      aria-haspopup="dialog"
+      aria-expanded={false}
+      onPointerEnter={preload}
+      onFocus={preload}
+      onTouchStart={preload}
+      onClick={() => {
+        setRequested(true);
+        setOpen(true);
+      }}
+    >
+      {trigger.content}
+    </button>
+  );
+
+  // Built here, on the client, so Radix's Slot clones a real element (see ShellButton).
+  const radixTrigger = (
+    <button type="button" className={trigger.className} aria-label={trigger.label}>
+      {trigger.content}
+    </button>
+  );
 
   return (
     <div className={classes(ROW, className)}>
       {requested ? (
         <Suspense fallback={standIn}>
-          <DisplaySettingsPopover trigger={trigger} open={open} onOpenChange={setOpen} />
+          <DisplaySettingsPopover trigger={radixTrigger} open={open} onOpenChange={setOpen} />
         </Suspense>
       ) : (
         standIn
@@ -70,19 +83,22 @@ function InlinePresentation({ trigger, children, className }: Omit<DisplaySettin
   const panelId = useId();
   const preload = (): void => void loadPanel();
 
-  const toggle = cloneElement(trigger, {
-    'aria-expanded': open,
-    'aria-controls': panelId,
-    onPointerEnter: preload,
-    onFocus: preload,
-    onTouchStart: preload,
-    onClick: () => setOpen((value) => !value),
-  });
-
   return (
     <div className={classes('flex flex-col', className)}>
       <div className={ROW}>
-        {toggle}
+        <button
+          type="button"
+          className={trigger.className}
+          aria-label={trigger.label}
+          aria-expanded={open}
+          aria-controls={panelId}
+          onPointerEnter={preload}
+          onFocus={preload}
+          onTouchStart={preload}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {trigger.content}
+        </button>
         {children}
       </div>
       <div id={panelId} hidden={!open} className="mt-4">

@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { ExternalLink } from '@/components/ui/external-link';
 import { Icon } from '@/components/ui/icon';
 import { profile } from '@/content/profile';
@@ -7,6 +6,7 @@ import { AvailabilityPill } from '@/components/layout/availability-pill';
 import { Avatar } from '@/components/layout/avatar';
 import { DisplaySettings } from '@/components/layout/display-settings';
 import { NavList, type NavListItem } from '@/components/layout/nav-list';
+import { shellButton } from '@/components/layout/shell-button';
 import { SocialRow } from '@/components/layout/social-row';
 import { cn } from '@/lib/cn';
 
@@ -69,7 +69,7 @@ export function ProfileRail({ variant }: ProfileRailProps) {
 
       <DisplaySettings
         presentation={sidebar ? 'popover' : 'inline'}
-        trigger={<Button variant="primary" shape="circle" icon="accessibility" label="Display settings" />}
+        trigger={shellButton({ variant: 'primary', shape: 'circle', icon: 'accessibility', label: 'Display settings' })}
         className="border-t border-line pt-4"
       >
         <p className="text-[0.75rem] leading-4 text-ink-4">

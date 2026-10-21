@@ -1,6 +1,6 @@
-import { Button } from '@/components/ui/button';
 import { site } from '@/content/site';
 import { DisplaySettings } from '@/components/layout/display-settings';
+import { shellButton } from '@/components/layout/shell-button';
 import { SocialRow } from '@/components/layout/social-row';
 
 /**
@@ -15,11 +15,7 @@ export function MobileFooter() {
       <div className="mx-auto flex w-full max-w-[calc(75rem+2*var(--gutter))] flex-col gap-5 px-(--gutter) py-6">
         <DisplaySettings
           presentation="inline"
-          trigger={
-            <Button variant="secondary" size="sm" icon="accessibility">
-              Display settings
-            </Button>
-          }
+          trigger={shellButton({ variant: 'secondary', size: 'sm', icon: 'accessibility', text: 'Display settings' })}
         />
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <p className="text-[0.75rem] leading-4 text-ink-4">

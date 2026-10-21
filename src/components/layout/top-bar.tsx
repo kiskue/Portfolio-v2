@@ -1,4 +1,4 @@
-import { Button, ButtonLink } from '@/components/ui/button';
+import { ButtonLink } from '@/components/ui/button';
 import { SiteLink } from '@/components/ui/site-link';
 import { home } from '@/content/home';
 import { profile } from '@/content/profile';
@@ -6,6 +6,7 @@ import { site } from '@/content/site';
 import { Avatar } from '@/components/layout/avatar';
 import { MenuSheet } from '@/components/layout/menu-sheet';
 import { ProfileRail } from '@/components/layout/profile-rail';
+import { shellButton } from '@/components/layout/shell-button';
 
 /**
  * The sticky top bar below 1280px (design §4.1): 60px (64 from md), the sidebar colour at 85%
@@ -33,7 +34,7 @@ export function TopBar() {
             label={home.ctas.contact}
             className="size-11 max-[18.75rem]:hidden"
           />
-          <MenuSheet trigger={<Button variant="icon" shape="circle" icon="menu" label="Menu" className="size-11" />}>
+          <MenuSheet trigger={shellButton({ variant: 'icon', shape: 'circle', icon: 'menu', label: 'Menu', className: 'size-11' })}>
             <ProfileRail variant="sheet" />
           </MenuSheet>
         </div>

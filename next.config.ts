@@ -23,6 +23,9 @@ const nextConfig: NextConfig = {
   },
   // `next dev` writes AGENTS.md when it detects an AI coding agent; keep the repo free of it.
   agentRules: false,
+  // The dev route indicator sits on the rail's accessibility button (bottom-left) and intercepts
+  // its clicks; errors still surface in the dev overlay without it.
+  devIndicators: false,
   experimental: {
     // Off explicitly (create-next-app 16.4 turns it on). Telemetry itself has no config key:
     // it is controlled by NEXT_TELEMETRY_DISABLED=1 or `next telemetry disable`.

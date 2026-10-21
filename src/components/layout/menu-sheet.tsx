@@ -1,7 +1,8 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { cloneElement, lazy, Suspense, useEffect, useId, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import type { ShellButton } from '@/components/layout/shell-button';
 
 /** The sheet's dialog code (Radix) loads on first intent, keeping it out of every page's first load. */
 const loadDialog = () => import('@/components/layout/menu-sheet-dialog');
@@ -15,8 +16,8 @@ function preload(): void {
 }
 
 export interface MenuSheetProps {
-  /** The menu button, rendered on the server (a plain <button>). */
-  readonly trigger: ReactElement<ComponentProps<'button'>>;
+  /** The menu button, prepared on the server with shellButton(); this island renders the <button>. */
+  readonly trigger: ShellButton;
   /** The sheet's content: ProfileRail variant="sheet", rendered on the server. */
   readonly children: ReactNode;
 }
@@ -63,23 +64,26 @@ export function MenuSheet({ trigger, children }: MenuSheetProps) {
     return () => wide.removeEventListener('change', closeWhenWide);
   }, [open]);
 
-  const button = cloneElement(trigger, {
-    id: triggerId,
-    'aria-haspopup': 'dialog',
-    'aria-expanded': open,
-    'aria-controls': open ? bodyId : undefined,
-    onPointerEnter: preload,
-    onFocus: preload,
-    onTouchStart: preload,
-    onClick: () => {
-      setRequested(true);
-      setOpen(true);
-    },
-  });
-
   return (
     <>
-      {button}
+      <button
+        type="button"
+        id={triggerId}
+        className={trigger.className}
+        aria-label={trigger.label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? bodyId : undefined}
+        onPointerEnter={preload}
+        onFocus={preload}
+        onTouchStart={preload}
+        onClick={() => {
+          setRequested(true);
+          setOpen(true);
+        }}
+      >
+        {trigger.content}
+      </button>
       {requested ? (
         <Suspense fallback={null}>
           <MenuSheetDialog open={open} onOpenChange={setOpen} bodyId={bodyId}>

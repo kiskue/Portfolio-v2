@@ -13,5 +13,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/unit/**/*.test.ts'],
+    // A few suites render every replica or encode images with sharp; under the load of parallel
+    // builds on one machine they can exceed the 5 s default without being wrong.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });
