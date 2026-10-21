@@ -1,7 +1,7 @@
 import { Camera, Image as ImageGlyph } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { RAppBar, rBrand, RButton, RGlyph, RMapCanvas } from '@/components/replicas/kit';
-import { responderReport, responderScenes } from '@/components/replicas/responder/sample-data';
+import { MAP_SCENES, RAppBar, rBrand, RButton, RGlyph, RMapCanvas } from '@/components/replicas/kit';
+import { responderReport } from '@/components/replicas/responder/sample-data';
 
 /** The stack header on #f2f5f9 (back chevron, "Create Emergency Ticket" 16px Bold black) and the white sub-bar. */
 export function ReportHeader(): ReactNode {
@@ -23,15 +23,15 @@ export function ReportHeader(): ReactNode {
 }
 
 /**
- * The location card: a 192px live map (top radius 16, shadow-lg, traffic, a "Current Location"
- * pin) joined to a #f4f1f1 footer with the address and the coordinates at opposite ends.
+ * The location card: a 192px live map (top radius 16, shadow-lg; the town's 'field-report' scene
+ * with traffic and the native red "Current Location" pin) joined to a #f4f1f1 footer with the
+ * address and the coordinates at opposite ends.
  */
 export function LocationCard(): ReactNode {
-  const { you } = responderScenes.report;
   return (
     <div className="rx-responder-loc">
       <div className="rx-responder-loc__map">
-        <RMapCanvas theme="light" height={192} traffic pins={[{ x: you.x, y: you.y, kind: 'you', label: 'Current Location' }]} />
+        <RMapCanvas theme="light" height={MAP_SCENES['field-report'].height} scene="field-report" />
       </div>
       <div className="rx-responder-loc__foot">
         <span className="rx-responder-loc__label">Current Location</span>

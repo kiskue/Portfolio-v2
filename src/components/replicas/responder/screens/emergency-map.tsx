@@ -7,33 +7,34 @@ import { MapHeader } from '@/components/replicas/responder/parts/map-header';
 import { MapScreen } from '@/components/replicas/responder/parts/map-screen';
 import type { DutyStatus } from '@/components/replicas/responder/parts/palette';
 import { PublicAlertStrip } from '@/components/replicas/responder/parts/public-alert-strip';
-import { ResponderPuck } from '@/components/replicas/responder/parts/responder-puck';
 import { stateTuple } from '@/components/replicas/responder/parts/states';
-import { peerPins, responderScenes } from '@/components/replicas/responder/sample-data';
 import type { FigureState } from '@/content/apps/figures';
 
-/** 'online' plays the duty-switch glimpse while active (Offline → Connecting… → Online); the others are still. */
+/**
+ * 'offline' is the glimpse step (offline → online): while active the duty switch is tapped and
+ * the chip goes Connecting… then You're Online; its static picture stays You're Offline. 'online'
+ * (the glimpse poster) and 'connecting' are still.
+ */
 const VIEWS = {
-  online: { duty: 'online', animated: true },
-  offline: { duty: 'offline', animated: false },
-  connecting: { duty: 'connecting', animated: false },
-} as const satisfies Record<FigureState<'3.1'>, { readonly duty: DutyStatus; readonly animated: boolean }>;
+  online: { duty: 'online', goesOnline: false },
+  offline: { duty: 'offline', goesOnline: true },
+  connecting: { duty: 'connecting', goesOnline: false },
+} as const satisfies Record<FigureState<'3.1'>, { readonly duty: DutyStatus; readonly goesOnline: boolean }>;
 
 const STATES = stateTuple(VIEWS);
 
 /**
  * FIG 3.1 Emergency map, on duty: the header with the duty chip, the public-alert strip, the
- * glass stack (Limited sharing, Rescue Van 2), the heading puck among three fellow responders,
- * the locate FAB and the Report / Offline Respond / Call pill.
+ * glass stack (Limited sharing, Rescue Van 2), the map's 'duty' scene (the van puck at heading
+ * 40° among three fellow responders, with traffic), the locate FAB and the Report / Offline
+ * Respond / Call pill.
  */
 export function EmergencyMapScreen({ state }: ReplicaProps): ReactNode {
   const view = VIEWS[pickState(STATES, state)];
-  const { puck } = responderScenes.shift;
   return (
     <MapScreen
-      map={<RMapCanvas theme="light" height="full" traffic pins={peerPins} className="rx-responder-map" />}
-      puck={<ResponderPuck x={puck.x} y={puck.y} heading={puck.heading} accuracy={34} />}
-      header={<MapHeader duty={view.duty} animated={view.animated} />}
+      map={<RMapCanvas theme="light" height="full" scene="duty" className="rx-responder-map" />}
+      header={<MapHeader duty={view.duty} goesOnline={view.goesOnline} />}
       strip={<PublicAlertStrip />}
     >
       <GlassStack>

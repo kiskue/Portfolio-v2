@@ -28,11 +28,14 @@ export const ZONES = {
 
 export type ZoneKey = keyof typeof ZONES;
 
-/** The zone for a straight-line distance in metres (the app's getZone thresholds). */
+/** The app's getZone thresholds in metres: a distance at or under a limit is in that zone. */
+export const ZONE_LIMITS = { close: 500, near: 100, onSite: 20 } as const;
+
+/** The zone for a straight-line distance in metres. */
 export function zoneFor(distance: number): ZoneKey {
-  if (distance <= 20) return 'onSite';
-  if (distance <= 100) return 'near';
-  if (distance <= 500) return 'close';
+  if (distance <= ZONE_LIMITS.onSite) return 'onSite';
+  if (distance <= ZONE_LIMITS.near) return 'near';
+  if (distance <= ZONE_LIMITS.close) return 'close';
   return 'far';
 }
 
@@ -45,11 +48,10 @@ export const DUTY = {
 
 export type DutyStatus = keyof typeof DUTY;
 
-/** Map chrome: the location-sharing warning ink, muted glyphs and the fellow-responder pins. */
+/** Map chrome: the location-sharing warning ink and muted glyphs. */
 export const MAP_CHROME = {
   meta: '#475569',
   warn: '#b45309',
-  peer: '#16a34a',
 } as const;
 
 /** Public alert severity fills (shared with the Citizen apps). */

@@ -13,8 +13,8 @@ function DutyLabel({ status }: { readonly status: DutyStatus }): ReactNode {
 }
 
 /**
- * The native Switch, drawn: a 36×14 track with a 20px white thumb. `flipAt` (ms) slides it on
- * at that moment while active; its poster is the on position.
+ * The native Switch, drawn: a 36×14 track with a 20px white thumb. With `flipAt` (ms) it slides
+ * on at that moment while active; its static position is `on`.
  */
 function DutySwitch({ on, flipAt }: { readonly on: boolean; readonly flipAt?: number }): ReactNode {
   return (
@@ -33,18 +33,19 @@ function DutySwitch({ on, flipAt }: { readonly on: boolean; readonly flipAt?: nu
 export interface DutyChipProps {
   readonly status: DutyStatus;
   /**
-   * Play the 3.1 glimpse while active: You're Offline → (tap) Connecting… for 0.4 s → You're
-   * Online, with the switch sliding on. The poster is You're Online.
+   * Going on duty (the 3.1 glimpse, from 'offline'): while active the switch is tapped, slides on
+   * with Connecting… for 0.4 s, then the chip reads You're Online (DUTY_TIMELINE). The static
+   * picture stays `status`.
    */
-  readonly animated?: boolean;
+  readonly goesOnline?: boolean;
 }
 
 /**
  * The duty chip in the map header (OnlineStatusToggle): the dot and label show the live socket
  * state, the switch shows the responder's intent, so Connecting… keeps the switch on.
  */
-export function DutyChip({ status, animated = false }: DutyChipProps): ReactNode {
-  if (!animated) {
+export function DutyChip({ status, goesOnline = false }: DutyChipProps): ReactNode {
+  if (!goesOnline) {
     return (
       <span className="rx-responder-duty">
         <DutyLabel status={status} />
@@ -56,14 +57,13 @@ export function DutyChip({ status, animated = false }: DutyChipProps): ReactNode
     <span className="rx-responder-duty">
       <RStateSequence
         frames={[
-          { atMs: 0, node: <DutyLabel status="offline" /> },
+          { atMs: 0, node: <DutyLabel status={status} /> },
           { atMs: DUTY_TIMELINE.flipAt, node: <DutyLabel status="connecting" /> },
           { atMs: DUTY_TIMELINE.onlineAt, node: <DutyLabel status="online" /> },
         ]}
-        posterFrame={2}
         fadeMs={0}
       />
-      <DutySwitch on flipAt={DUTY_TIMELINE.flipAt} />
+      <DutySwitch on={DUTY[status].on} flipAt={DUTY_TIMELINE.flipAt} />
     </span>
   );
 }

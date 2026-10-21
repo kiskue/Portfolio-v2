@@ -1,6 +1,3 @@
-import type { MapPin } from '@/components/replicas/kit';
-import { MAP_CHROME } from '@/components/replicas/responder/parts/palette';
-
 /*
  * The one fictional dataset behind the Defensys Responder replicas (3.1–3.6), copied from the
  * research `signatureScreens[].sampleData` (responder.json). Screens and parts read names,
@@ -117,42 +114,13 @@ export const responderReport = {
   photos: 2,
 } as const;
 
-// ─── Map scenes (town coordinates = logical px of the 390×844 canvas) ────────────────────
+// ─── The map ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Where each map figure puts its overlays. RMapCanvas fills the whole canvas, so these are
- * also screen positions. 3.2 and 3.3 share one scene: the 'en-route' route (W6) should run from
- * the puck to the incident pin.
+/*
+ * The map figures use the shared town's scenes (kit MAP_SCENES: 'duty', 'dispatch', 'en-route',
+ * 'en-route-near', 'en-route-on-site', 'field-report'), so the puck, the route and the pins come
+ * from one geometry and line up. Only the incident's title is Responder data.
  */
-export const responderScenes = {
-  /** 3.1: the responder in follow mode, three fellow responders nearby. */
-  shift: {
-    puck: { x: 195, y: 470, heading: 40 },
-    peers: [
-      { x: 300, y: 336 },
-      { x: 92, y: 604 },
-      { x: 272, y: 590 },
-    ],
-  },
-  /**
-   * 3.2 (flat, north-up) and 3.3 (tilted 3D follow, heading-up): the puck in the lower third of
-   * the map above the 50% sheet, and the incident up the road.
-   */
-  incident: {
-    puck: { x: 195, y: 404 },
-    heading: { flat: 24, nav: 0 },
-    scene: { x: 250, y: 168 },
-  },
-  /** 3.6: the 192px map in the location card, centred on the current location. */
-  report: { you: { x: 195, y: 422 } },
-} as const;
 
-/** Fellow responders on the 3.1 map: green pins titled "Responder". */
-export const peerPins: readonly MapPin[] = responderScenes.shift.peers.map(
-  (peer): MapPin => ({ ...peer, kind: 'peer', color: MAP_CHROME.peer, label: 'Responder' }),
-);
-
-/** The emergency's map pin, titled as the app titles it ("Emergency FIRE"). */
-export function incidentPin(at: { readonly x: number; readonly y: number }): MapPin {
-  return { x: at.x, y: at.y, kind: 'incident', label: `Emergency ${responderTicket.type}` };
-}
+/** The emergency marker's title, as the app titles it ("Emergency FIRE"; MapKit shows it beside the pin). */
+export const incidentTitle = `Emergency ${responderTicket.type}`;
