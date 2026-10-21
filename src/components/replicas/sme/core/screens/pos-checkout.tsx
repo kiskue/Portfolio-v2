@@ -14,9 +14,13 @@ type PosState = FigureState<'1.2'>;
 
 const STATES = ['grid', 'checkout', 'confirmed'] as const satisfies readonly PosState[];
 
-/** When the sheet opens and when the sale confirms, in the glimpse (design §5.3: 1.4 s + 3.0 s). */
-const SHEET_AT_MS = 1400;
-const CONFIRMED_AT_MS = 3000;
+/**
+ * When the sheet opens and when the sale confirms in the glimpse (glimpses.ts SME_POS: taps on
+ * Checkout at 1200 ms and on Confirm Sale at 2900 ms, inside a 4.4 s hold): each 180 ms after
+ * its tap, when the tap ring has fully scaled in.
+ */
+const SHEET_AT_MS = 1380;
+const CONFIRMED_AT_MS = 3080;
 
 /** The search field, the stat pills and the two-column tile grid (FlatList with 5 px tile margins). */
 function ProductGrid(): ReactNode {
