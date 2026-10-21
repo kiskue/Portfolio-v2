@@ -343,35 +343,42 @@ export function MapRouteLayer({ route, points, trimFrom, glide }: MapRouteLayerP
       } as CSSProperties)
     : undefined;
 
+  const lines = (
+    <>
+      {route.casing ? (
+        <path
+          d={d}
+          pathLength={pathLength}
+          className="rx-map-route__casing"
+          stroke={route.casing}
+          strokeWidth={casingWidth}
+          strokeDasharray={casingDash}
+        />
+      ) : null}
+      <path d={d} pathLength={pathLength} className="rx-map-route__core" strokeWidth={width} strokeDasharray={coreDash} />
+    </>
+  );
+
+  // The svg is the route (.rx-map-route: its colour and recolorAt stops); the trim group exists
+  // only on a trimmed route, so an untrimmed one is the svg and its one or two paths.
   return (
     <svg
-      className="rx-map__route"
+      className="rx-map__route rx-map-route"
       width={box.x1 - box.x0}
       height={box.y1 - box.y0}
       viewBox={`${box.x0} ${box.y0} ${box.x1 - box.x0} ${box.y1 - box.y0}`}
-      style={{ left: `${box.x0}px`, top: `${box.y0}px` }}
+      style={{ left: `${box.x0}px`, top: `${box.y0}px`, color: route.color, ...recolor } as CSSProperties}
       aria-hidden="true"
       data-length={Math.round(polylineLength(points))}
+      data-recolor={stops.length > 0 ? String(stops.length) : undefined}
     >
-      <g
-        className="rx-map-route"
-        data-recolor={stops.length > 0 ? String(stops.length) : undefined}
-        style={{ color: route.color, ...recolor } as CSSProperties}
-      >
-        <g className="rx-map-route__trim" data-glide={trim && glide ? String(glide.segments) : undefined} style={trimStyle}>
-          {route.casing ? (
-            <path
-              d={d}
-              pathLength={pathLength}
-              className="rx-map-route__casing"
-              stroke={route.casing}
-              strokeWidth={casingWidth}
-              strokeDasharray={casingDash}
-            />
-          ) : null}
-          <path d={d} pathLength={pathLength} className="rx-map-route__core" strokeWidth={width} strokeDasharray={coreDash} />
+      {trim ? (
+        <g className="rx-map-route__trim" data-glide={glide ? String(glide.segments) : undefined} style={trimStyle}>
+          {lines}
         </g>
-      </g>
+      ) : (
+        lines
+      )}
     </svg>
   );
 }

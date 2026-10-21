@@ -388,11 +388,15 @@ export function GlimpseDots({ track, className, look = 'dots', labels, label, wh
       <span className={cn('gl-bars', className)} aria-hidden="true" hidden={hidden} data-glimpse-bars={track}>
         {Array.from({ length: count }, (_, index) => {
           const position = !progressing ? 'todo' : index < shownStep ? 'done' : index === shownStep ? 'current' : 'todo';
-          const fill: CSSProperties & Record<'--gl-hold', string> = { '--gl-hold': `${holdOf(playlist, track, index)}ms` };
+          const hold: CSSProperties & Record<'--gl-hold', string> = { '--gl-hold': `${holdOf(playlist, track, index)}ms` };
+          // The fill is the bar's ::before (glimpse.css); a new key restarts it when a step plays again.
           return (
-            <span key={index} className="gl-bars__bar" data-position={position}>
-              <span key={position === 'current' ? `fill-${state.seq}` : 'fill'} className="gl-bars__fill" style={fill} />
-            </span>
+            <span
+              key={position === 'current' ? `${index}-${state.seq}` : index}
+              className="gl-bars__bar"
+              data-position={position}
+              style={hold}
+            />
           );
         })}
       </span>
@@ -411,9 +415,7 @@ export function GlimpseDots({ track, className, look = 'dots', labels, label, wh
             aria-label={`Step ${index + 1} of ${count}${name ? `: ${name}` : ''}`}
             aria-current={index === shownStep ? 'step' : undefined}
             onClick={() => send({ type: 'GOTO', track, step: index })}
-          >
-            <span className="gl-dot__mark" />
-          </button>
+          />
         );
       })}
     </div>
@@ -471,6 +473,23 @@ export function GlimpseBrandName({ track, index, count, children }: GlimpseBrand
   const { playlist, state } = useGlimpseContext();
   const showing = brandIndexForRotation(count, trackRotation(playlist, state, track)) === index;
   return <span hidden={!showing}>{children}</span>;
+}
+
+export interface GlimpseSkinNameProps {
+  readonly track: number;
+  /** The track's skins in rotation order, exactly as published (e.g. "Smile SAFE Taytay", "1Hope"). */
+  readonly names: readonly string[];
+}
+
+/**
+ * The skin a track wears now, as " · <name>": one span whose text follows the rotation (the
+ * server renders the first skin, as the client does before playback). Same text as a
+ * GlimpseBrandName per skin, in one element instead of one per skin.
+ */
+export function GlimpseSkinName({ track, names }: GlimpseSkinNameProps): ReactNode {
+  const { playlist, state } = useGlimpseContext();
+  const name = names[brandIndexForRotation(names.length, trackRotation(playlist, state, track))];
+  return name ? <span data-glimpse-skin={track}>{` · ${name}`}</span> : null;
 }
 
 export interface GlimpseCurrentProps {

@@ -1,10 +1,11 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { GlimpsePlayer, type GlimpsePlayerProps } from '@/components/showcase/glimpse';
+import { GlimpsePlayer, type GlimpsePlayerProps, spokenLabel } from '@/components/showcase/glimpse';
 import { TapIndicator, TapLayer } from '@/components/showcase/tap-indicator';
 import { glimpses } from '@/content/apps/glimpses';
 import type { GlimpseId } from '@/content/types';
+import { ph } from '@/lib/placeholder';
 
 /*
  * The server-rendered glimpse player: what the HTML holds before JavaScript runs (design §5.3,
@@ -30,15 +31,17 @@ describe('GlimpsePlayer: the Home trio as server HTML', () => {
   const frames = tags(html, 'gl-frame');
   const homeSteps = glimpses.filter((glimpse) => HOME.includes(glimpse.id)).flatMap((glimpse) => glimpse.steps);
 
-  it('renders every step as a frame, plus the Responder poster frame', () => {
-    expect(frames).toHaveLength(homeSteps.length + 1);
-    expect(frames.filter((frame) => frame.includes('data-kind="poster"'))).toHaveLength(1);
+  it('renders every step as one frame: each Home poster step plays a state that is its own poster', () => {
+    // A poster step whose posterState differs from its state needs a second tree; Home has none
+    // (1.1 kpis, 2.1 top, 3.1 online), which keeps the trio inside the Home DOM budget.
+    expect(frames).toHaveLength(homeSteps.length);
+    expect(frames.filter((frame) => frame.includes('data-kind="poster"'))).toHaveLength(0);
   });
 
   it('shows exactly each track’s poster frame, with nothing active or queued', () => {
     const shown = frames.filter((frame) => frame.includes('data-shown=""'));
     expect(shown).toHaveLength(3);
-    expect(shown.filter((frame) => frame.includes('data-kind="poster"'))).toHaveLength(1);
+    expect(shown.every((frame) => frame.includes('data-step="0"'))).toBe(true);
     expect(html).not.toMatch(/data-active=""/);
     expect(html).not.toMatch(/data-leaving=""/);
     for (const frame of frames.filter((candidate) => !candidate.includes('data-shown'))) expect(frame).toContain('aria-hidden="true"');
@@ -67,29 +70,42 @@ describe('GlimpsePlayer: the Home trio as server HTML', () => {
       '/projects/defensys-citizen',
       '/projects/defensys-responder',
     ]);
-    for (const link of links) {
-      const id = /aria-labelledby="([^"]+)"/.exec(link)?.[1];
-      expect(id && html.includes(`id="${id}"`), link).toBe(true);
-    }
+    const names = links.map((link) => {
+      const id = /aria-labelledby="([^"]+)"/.exec(link)?.[1] ?? '';
+      return new RegExp(`<span class="sr-only" id="${id}">([^<]*)</span>`).exec(html)?.[1];
+    });
+    // The words a MetaLine gives a screen reader (" · " is aria-hidden, its sr-only separator ", ").
+    expect(names).toEqual([
+      'SME Panindio, Personal, private beta',
+      'Defensys Citizen, Company, live on the stores',
+      'Defensys Responder, Company, private distribution',
+    ]);
     // Nothing interactive inside a link (the step dots and Pause sit outside them).
     for (const block of html.split('class="gl-link"').slice(1)) expect(block.split('</a>')[0]).not.toMatch(/<(button|input|a)\b/);
   });
 
-  it('puts one tap ring in the frame of each tap (design §5.3 coordinates)', () => {
+  it('puts one tap ring in the frame of each tap (the measured coordinates in the glimpse data)', () => {
     const taps = homeSteps.flatMap((step) => step.taps ?? []);
     expect(count(html, 'class="gl-tap"')).toBe(taps.length);
-    expect(html).toContain('--tap-x:262px;--tap-y:806px;--tap-at:1200ms');
+    for (const tap of taps) expect(html).toContain(`--tap-x:${tap.x}px;--tap-y:${tap.y}px;--tap-at:${tap.atMs}ms`);
   });
 
   it('captions the poster step and keeps the other captions hidden', () => {
     const caption = /<p[^>]*data-glimpse-caption=""[^>]*>([\s\S]*?)<\/p>/.exec(html)?.[0] ?? '';
     expect(caption).toContain('aria-live="polite"');
-    const items = caption.match(/<span( hidden="")?><span class="block/g) ?? [];
+    // One label line per app (only the current app's shows) …
+    const labels = caption.match(/<span class="font-semibold text-ink-2"( hidden="")? data-glimpse-current="\d"/g) ?? [];
+    expect(labels).toHaveLength(3);
+    expect(labels.filter((label) => !label.includes('hidden'))).toHaveLength(1);
+    expect(caption).toContain('SME Panindio');
+    // … and one FIG line per step (only the poster step's shows).
+    const items = caption.match(/<span( hidden="")?><span class="inline-block w-14 font-mono/g) ?? [];
     expect(items).toHaveLength(homeSteps.length);
     expect(items.filter((item) => !item.includes('hidden'))).toHaveLength(1);
     expect(caption).toContain('FIG 1.1');
-    expect(caption).toContain(' · Smile SAFE Taytay');
-    expect(caption).toContain(' · 1Hope');
+    // The Citizen skin as served: Smile SAFE Taytay (the rotation's first skin) in each step's line.
+    expect(count(caption, ' · Smile SAFE Taytay')).toBe(3);
+    expect(caption).not.toContain('1Hope');
   });
 
   it('renders Pause, step dots for the current app only and the app picker', () => {
@@ -140,6 +156,19 @@ describe('GlimpsePlayer: sizes and layouts', () => {
   it('labels a multi-app player by its apps', () => {
     const html = render({ glimpses: HOME, layout: 'trio', size: 'inherit', morph: false });
     expect(html).toContain('aria-label="Previews of SME Panindio, Defensys Citizen and Defensys Responder. Fictional data."');
+  });
+});
+
+describe('spokenLabel', () => {
+  it('reads a stage label as MetaLine does, placeholders included', () => {
+    expect(spokenLabel(['SME Panindio', 'Personal', 'private beta'])).toBe('SME Panindio, Personal, private beta');
+    // site.placeholders is 'label': a whole-token segment reads with its sr-only " (placeholder)".
+    expect(spokenLabel(['Defensys Citizen', ph('Company or client'), 'live'])).toBe('Defensys Citizen, Company or client (placeholder), live');
+    expect(spokenLabel(['', 'Personal'])).toBe('Personal');
+  });
+
+  it('leaves a token inside a sentence to MetaLine', () => {
+    expect(spokenLabel(['Built at [[Company]] in 2025'])).toBeNull();
   });
 });
 

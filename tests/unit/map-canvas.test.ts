@@ -108,7 +108,8 @@ describe('RMapCanvas', () => {
     // Pins stand up on the tilted ground.
     expect(html).toContain('rotateX(-52deg)');
     // FAR → CLOSE → NEAR → ON SITE.
-    expect(html).toMatch(/class="rx-map-route" data-recolor="3" style="color:#f87171;--rx-map-rc-1:#fb923c;--rx-map-rct-1:1100ms/);
+    expect(html).toMatch(/class="rx-map__route rx-map-route"[^>]*style="left:-?\d+px;top:-?\d+px;color:#f87171;--rx-map-rc-1:#fb923c;--rx-map-rct-1:1100ms/);
+    expect(html).toMatch(/class="rx-map__route rx-map-route"[^>]*data-recolor="3"/);
   });
 
   it('keeps pins and the puck at their size when zoomed out', () => {

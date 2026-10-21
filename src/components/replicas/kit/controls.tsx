@@ -86,13 +86,14 @@ export function RButton({
       )}
     >
       {glyph}
+      {/* A lone label is a bare text node: the button is a flex box, so it lays out as a span would. */}
       {sublabel ? (
         <span className="rx-btn__text">
           <span>{label}</span>
           <span className="rx-btn__sub">{sublabel}</span>
         </span>
       ) : (
-        <span>{label}</span>
+        label
       )}
     </div>
   );
@@ -205,7 +206,7 @@ export function RPill({
     >
       {dot ? <span className="rx-pill__dot" data-pulse={dot === 'pulse' ? '' : undefined} /> : null}
       {icon ? <KitGlyph icon={icon} size={glyphSize} /> : null}
-      <span>{label}</span>
+      {label}
     </span>
   );
 }
