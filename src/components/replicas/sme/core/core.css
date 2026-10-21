@@ -2,9 +2,9 @@
  * SME Panindio core screens (1.1–1.5): layout and the few app details the kit parts do not
  * carry. Imported once, from ./index.ts. Hex values are the app's own (core/parts/palette.ts).
  *
- * Motion follows the MOTION CONTRACT in src/styles/replica.css: every animation here is declared
- * under a `[data-active] …` selector, the static styles are the poster, and the paused and
- * reduced-motion guards in replica.css cover everything inside .rx-canvas.
+ * No animations here: the core screens' motion comes from kit parts (RAutoScroll, RStateSequence,
+ * and RMapCanvas's rider glide), which follow the MOTION CONTRACT in src/styles/replica.css. Any
+ * animation added here goes under a `[data-active] …` selector; the static styles are the poster.
  */
 
 /* Same order as Tailwind's output, so this sheet can never reorder the layers if it loads first. */
@@ -743,24 +743,6 @@
     background: #0ea5e9;
   }
 
-  /* The rider: a sky motorcycle badge. In the band it rides offset-path (set inline) to its end. */
-  .rx-sme-rider {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: #0ea5e9;
-    box-shadow: 0 0 0 1.5px rgb(3 105 161 / 0.55), 0 2px 6px rgb(15 23 42 / 0.3);
-    offset-distance: 100%;
-    offset-rotate: auto;
-  }
-
   .rx-sme-track__scroll {
     flex: 1;
     min-height: 0;
@@ -814,21 +796,5 @@
 
   .rx-sme-timeline .rx-tl__step:last-child .rx-tl__text {
     padding: 1px 0 0;
-  }
-
-  /* ─── Motion (contract rule 1: only under [data-active]) ───────────────────────── */
-
-  /* 1.5: the rider glides along the band's road, 2.6 s, then rests where the poster has it. */
-  [data-active] .rx-sme-track__map:not([data-expanded]) > .rx-sme-rider {
-    animation: rx-sme-glide 2600ms cubic-bezier(0.37, 0, 0.63, 1) 200ms both;
-  }
-
-  @keyframes rx-sme-glide {
-    from {
-      offset-distance: 0%;
-    }
-    to {
-      offset-distance: 100%;
-    }
   }
 }

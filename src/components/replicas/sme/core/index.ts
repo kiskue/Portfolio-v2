@@ -13,7 +13,7 @@ export type SmeCoreFigureId = Extract<SmeFigureId, '1.1' | '1.2' | '1.3' | '1.4'
 /**
  * SME Panindio core replicas, figures 1.1–1.5 (exhaustive by type; an AI figure here fails the
  * check). Each screen lives in ./screens, built from the replica kit and the composites in
- * ./parts; ./core.css (imported here, once) holds their app-specific styles and the 1.5 glide.
+ * ./parts; ./core.css (imported here, once) holds their app-specific styles.
  * Copy and figures come from ../sample-data.ts.
  */
 export const smeCoreReplicas = {

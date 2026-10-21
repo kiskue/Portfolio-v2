@@ -1,13 +1,31 @@
-import { LocateFixed, Maximize2, Minimize2, Motorbike, Phone, TrafficCone, type LucideIcon } from 'lucide-react';
-import type { CSSProperties, ReactNode } from 'react';
-import { RGlyph, RMapCanvas, RStack, RText, type MapPin } from '@/components/replicas/kit';
+import { LocateFixed, Maximize2, Minimize2, Phone, TrafficCone, type LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { MAP_SCENES, RGlyph, RMapCanvas, RStack, RText, type MapPin, type RMapPuck } from '@/components/replicas/kit';
 import { smeDelivery } from '@/components/replicas/sme/sample-data';
-import { BAND, DESTINATION_IN_BAND, EXPANDED, finalHeading, fromTown, glidePath, RIDER_GLIDE, toTown } from './delivery-geometry';
 import { SME } from './palette';
 import { TYPE } from './type';
 
-/** The customer's address pin, in town coordinates (the same in both states). */
-const PINS: readonly MapPin[] = [{ ...toTown(BAND, DESTINATION_IN_BAND), kind: 'home', label: 'Your address' }];
+/** W6's 'delivery' scene: the bakery-to-door route on the town map, framed for the 358 × 220 band. */
+const SCENE = MAP_SCENES.delivery;
+
+/**
+ * Out for delivery means the rider has collected the order, so only "Your address" is pinned:
+ * the app passes the store pin only before the pickup (LiveDeliveryMap `store`).
+ */
+const PINS: readonly MapPin[] = (SCENE.pins ?? []).filter((pin) => pin.kind !== 'store');
+
+/** The app's rider marker is a 50 dp image around a 46 dp sky disc: the badge at size 48 draws that disc. */
+const RIDER_SIZE = 48;
+
+/**
+ * The rider badge where the scene puts it (on the route, turned to its heading). In the band it
+ * glides along the road while active (the scene's 200 → 2800 ms glide, design §5.3's 2.6 s);
+ * expanded is a still, so it drops the glide.
+ */
+function rider(glide: boolean): RMapPuck | undefined {
+  const puck = SCENE.puck;
+  return puck ? { ...puck, glide: glide ? puck.glide : undefined, size: RIDER_SIZE } : undefined;
+}
 
 /** A 44 px scrim control with a white 20 px glyph. */
 function Control({ icon }: { readonly icon: LucideIcon }): ReactNode {
@@ -18,36 +36,20 @@ function Control({ icon }: { readonly icon: LucideIcon }): ReactNode {
   );
 }
 
-/** Where the rider marker sits: gliding along the band's road, or parked at the same spot when expanded. */
-function riderStyle(expanded: boolean): CSSProperties {
-  if (!expanded) return { offsetPath: `path('${glidePath(RIDER_GLIDE)}')` };
-  const end = RIDER_GLIDE.at(-1) ?? DESTINATION_IN_BAND;
-  const at = fromTown(EXPANDED, toTown(BAND, end));
-  return { left: at.x, top: at.y, transform: `translate(-50%, -50%) rotate(${finalHeading(RIDER_GLIDE)}deg)` };
-}
-
 /**
- * The live delivery map (LiveDeliveryMap): the town map with the 7 px sky route on its #0369A1
- * casing and the traffic layer, the address pin, the sky motorcycle badge turned to its heading,
- * the "2.4 km · ~7 min" chip, the three scrim controls and the sky Call pill. Collapsed it is the
- * 220 px band, where the rider glides along the road while active (core.css); expanded it fills
- * the screen, adds the rider banner and swaps Maximize for Minimize.
+ * The live delivery map (LiveDeliveryMap): W6's town map in its 'delivery' scene (the 7 px sky
+ * route on its #0369A1 casing, trimmed behind the rider, the traffic layer and the address pin),
+ * the sky motorcycle badge on the road, the "2.4 km · ~7 min" chip, the three scrim controls and
+ * the sky Call pill. Collapsed it is the 220 px band, where the rider glides along the road while
+ * active; expanded it fills the screen with the same view, adds the rider banner and swaps
+ * Maximize for Minimize.
  */
 export function DeliveryMap({ expanded }: { readonly expanded: boolean }): ReactNode {
   return (
     <div className="rx-sme-track__map" data-expanded={expanded ? '' : undefined}>
       <div className="rx-sme-track__town">
-        <RMapCanvas
-          theme="light"
-          height={expanded ? 'full' : BAND.h}
-          pins={PINS}
-          route={{ path: 'delivery', color: SME.sky, casing: SME.skyDeep, width: 7 }}
-          traffic
-        />
+        <RMapCanvas theme="light" height={expanded ? 'full' : SCENE.height} scene="delivery" pins={PINS} puck={rider(!expanded)} />
       </div>
-      <span className="rx-sme-rider" style={riderStyle(expanded)}>
-        <RGlyph icon={Motorbike} size={24} color={SME.white} />
-      </span>
       <RStack gap={8} align="start" className="rx-sme-track__topleft">
         {expanded ? (
           <RStack className="rx-sme-track__banner">
