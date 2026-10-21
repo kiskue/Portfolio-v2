@@ -315,7 +315,7 @@
   /* ─── Place labels and points of interest ──────────────────────────────────────────── */
 
   .rx-map-label,
-  .rx-map-poi__label {
+  .rx-map-poi {
     text-shadow:
       1px 0 1px var(--rx-map-halo),
       -1px 0 1px var(--rx-map-halo),
@@ -349,14 +349,20 @@
     color: var(--rx-map-label-district);
   }
 
+  /*
+   * A point of interest is its name: a span 11px right of the point (map-layers.tsx moves it
+   * there with a translate) whose disc hangs back over the point. It scales about the point.
+   */
   .rx-map-poi {
     --rx-map-poi-c: #7f8b99;
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    transform-origin: 0 0;
+    top: -7px;
+    left: 11px;
+    transform-origin: -11px 7px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 14px;
+    color: var(--rx-map-poi-c);
   }
 
   .rx-map-poi[data-kind="hospital"] {
@@ -403,31 +409,17 @@
     --rx-map-poi-c: #6f9fe0;
   }
 
+  /* The 16px disc centred on the point (8px up and left of it): 19px left of the name, 1px up. */
   .rx-map-poi__icon {
     position: absolute;
-    top: -8px;
-    left: -8px;
-    display: grid;
+    top: -1px;
+    left: -19px;
+    display: block;
     width: 16px;
     height: 16px;
-    place-items: center;
     border-radius: 50%;
     background: var(--rx-map-poi-c);
     box-shadow: 0 0 0 1.5px var(--rx-map-halo);
-  }
-
-  .rx-map-poi__icon svg {
-    display: block;
-  }
-
-  .rx-map-poi__label {
-    position: absolute;
-    top: -7px;
-    left: 11px;
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 14px;
-    color: var(--rx-map-poi-c);
   }
 
   /* ─── Pins ─────────────────────────────────────────────────────────────────────────── */

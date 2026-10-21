@@ -1,6 +1,7 @@
 import { Fuel, GraduationCap, Landmark, type LucideIcon, Plus, ShoppingBasket, Trees } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
-import { RGlyph } from './glyph';
+import { renderLucideSvg } from '@/lib/lucide-node';
+import { mergedGlyphPath } from './kit-glyph';
 import {
   boundsOf,
   clipRuns,
@@ -15,7 +16,7 @@ import {
   unionRect,
 } from './map-geometry';
 import type { RMapRoute } from './map-scenes';
-import { RIVER_WIDTH, TOWN, type TownAreaKind, type TownPoiKind, type TownRoadKind, type TrafficLevel } from './map-town';
+import { RIVER_WIDTH, TOWN, type TownAreaKind, type TownLabel, type TownLabelKind, type TownPoi, type TownPoiKind, type TownRoadKind, type TrafficLevel } from './map-town';
 
 /*
  * The layers RMapCanvas stacks inside its world: the town (one SVG, culled to what the view can
@@ -156,20 +157,113 @@ export function MapTownLayer({ cull, detail, traffic }: MapTownLayerProps): Reac
   );
 }
 
+/** Which of a map's layers a box of the town belongs to: the coarse view or the detail view. */
+export type MapLayerKind = 'coarse' | 'detail';
+
+/**
+ * Whether a box of the town (town px) shows in the map: inside its view after zoom, the follow
+ * camera's drive, or the tilted camera's projection and fog (map-canvas.tsx). Labels and points
+ * of interest are drawn only where this holds.
+ */
+export type MapShows = (rect: MapRect, layer: MapLayerKind) => boolean;
+
+/**
+ * Generous text metrics in px for the label kinds (map.css: 10px street names, 11px italic
+ * water, 9.5px spaced district names, 10px semibold POI names). Widths are per character and
+ * above what any system font measures (street ≤ 5.2, water ≤ 6.1, district ≤ 7.0, POI ≤ 5.0
+ * px a character in Chrome), so an estimate never culls a name that shows.
+ */
+const LABEL_METRICS: Readonly<Record<TownLabelKind | 'poi', { readonly char: number; readonly height: number }>> = {
+  street: { char: 6.2, height: 12 },
+  water: { char: 7, height: 13 },
+  district: { char: 8.6, height: 11 },
+  poi: { char: 6.2, height: 14 },
+};
+
+/** The text halo (map.css text-shadow) plus a pixel of rounding, around every name box. */
+const LABEL_HALO = 4;
+
+/** A place name's box in town px: centred on its point, turned by its angle, kept at size when zoomed. */
+function labelRect(label: TownLabel, unzoom: number): MapRect {
+  const metrics = LABEL_METRICS[label.kind];
+  const width = (label.text.length * metrics.char + LABEL_HALO * 2) * unzoom;
+  const height = (metrics.height + LABEL_HALO * 2) * unzoom;
+  const angle = (label.angle * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(angle));
+  const sin = Math.abs(Math.sin(angle));
+  const halfWidth = (width * cos + height * sin) / 2;
+  const halfHeight = (width * sin + height * cos) / 2;
+  return { x0: label.x - halfWidth, y0: label.y - halfHeight, x1: label.x + halfWidth, y1: label.y + halfHeight };
+}
+
+/** A point of interest's box in town px: the 16px icon disc (and its halo ring) and the name to its right. */
+function poiRect(poi: TownPoi, unzoom: number): MapRect {
+  const right = POI_LABEL_X + poi.label.length * LABEL_METRICS.poi.char + LABEL_HALO;
+  const reach = POI_ICON / 2 + LABEL_HALO;
+  return { x0: poi.x - reach * unzoom, y0: poi.y - reach * unzoom, x1: poi.x + right * unzoom, y1: poi.y + reach * unzoom };
+}
+
+/** The POI icon disc (px) and where its name starts, right of the point (map.css). */
+const POI_ICON = 16;
+const POI_LABEL_X = 11;
+
+/** The 10px POI glyph centred in the 16px disc: lucide's 24-unit box drawn at 10px. */
+const POI_GLYPH_VIEWBOX = `${fmt((24 * (POI_ICON / 10) - 24) / -2)} ${fmt((24 * (POI_ICON / 10) - 24) / -2)} ${fmt(24 * (POI_ICON / 10))} ${fmt(24 * (POI_ICON / 10))}`;
+
+/**
+ * A POI glyph as one white path (kit-glyph.tsx merges lucide's shapes), or lucide's shapes as
+ * they are when an icon cannot be merged.
+ */
+function PoiGlyph({ icon }: { readonly icon: LucideIcon }): ReactNode {
+  const d = mergedGlyphPath(icon);
+  return (
+    <svg
+      className="rx-map-poi__icon"
+      width={POI_ICON}
+      height={POI_ICON}
+      viewBox={POI_GLYPH_VIEWBOX}
+      fill="none"
+      stroke="#ffffff"
+      strokeWidth={2.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {d === null ? lucideShapes(icon) : <path d={d} />}
+    </svg>
+  );
+}
+
+/** lucide's own shapes for an icon, as plain SVG elements (the unmerged fallback). */
+function lucideShapes(icon: LucideIcon): ReactNode {
+  return renderLucideSvg(icon).props.children;
+}
+
 export interface MapPlaceLabelsProps {
   readonly cull: MapCull;
   readonly detail: MapDetail;
   /** 1 / zoom, so names and points of interest keep their size when the map is zoomed out. */
   readonly unzoom: number;
+  /** Whether a name's box shows in the map; names and POIs elsewhere are not drawn. Default: all near the cull. */
+  readonly shows?: MapShows;
 }
 
-/** Street, water, park and district names, and the points of interest, as positioned spans. */
-export function MapPlaceLabels({ cull, detail, unzoom }: MapPlaceLabelsProps): ReactNode {
+/**
+ * Street, water, park and district names, and the points of interest, as positioned spans. A
+ * name is drawn only where it shows: near the culled town AND, by its estimated box, inside the
+ * map's view (`shows`). A point of interest is three elements: the name span, its icon disc (an
+ * svg) and one glyph path.
+ */
+export function MapPlaceLabels({ cull, detail, unzoom, shows }: MapPlaceLabelsProps): ReactNode {
   const near = (point: MapPoint, rects: readonly MapRect[]): boolean => rects.some((rect) => inRect(point, growRect(rect, 60)));
+  const visible = (rect: MapRect, layer: MapLayerKind): boolean => shows?.(rect, layer) ?? true;
   const labels = TOWN.labels.filter(
-    (label) => near(label, cull.coarse) && (detail === 'full' || label.kind === 'water' || label.kind === 'district'),
+    (label) =>
+      near(label, cull.coarse) &&
+      (detail === 'full' || label.kind === 'water' || label.kind === 'district') &&
+      visible(labelRect(label, unzoom), 'coarse'),
   );
-  const pois = detail === 'full' ? TOWN.pois.filter((poi) => near(poi, cull.detail)) : [];
+  const pois = detail === 'full' ? TOWN.pois.filter((poi) => near(poi, cull.detail) && visible(poiRect(poi, unzoom), 'detail')) : [];
   return (
     <>
       {labels.map((label) => (
@@ -186,16 +280,15 @@ export function MapPlaceLabels({ cull, detail, unzoom }: MapPlaceLabelsProps): R
         </span>
       ))}
       {pois.map((poi) => (
+        // The span is the name itself, 11px right of the point; the disc hangs back over the point.
         <span
           key={`${poi.kind}-${poi.x}-${poi.y}`}
           className="rx-map-poi"
           data-kind={poi.kind}
           style={{ transform: `translate(${poi.x}px, ${poi.y}px)${unzoom === 1 ? '' : ` scale(${fmt(unzoom)})`}` }}
         >
-          <span className="rx-map-poi__icon">
-            <RGlyph icon={POI_ICONS[poi.kind]} size={10} strokeWidth={2.6} color="#ffffff" />
-          </span>
-          <span className="rx-map-poi__label">{poi.label}</span>
+          <PoiGlyph icon={POI_ICONS[poi.kind]} />
+          {poi.label}
         </span>
       ))}
     </>
