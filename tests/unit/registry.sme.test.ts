@@ -451,7 +451,7 @@ describe('SME sample data: customers (1.3, 1.2, 1.8)', () => {
 describe('SME sample data: restock (1.7) and the chat (1.8)', () => {
   it('lists every flagged item at or below its reorder level, with the app’s labels', () => {
     expect(smeRestock.rows.map((row) => [row.name, `${row.quantity} ${row.unit}`, row.badge, row.reorderLabel, row.suggestionLabel, row.level])).toEqual([
-      ['Bread flour', '4 kg', 'Low Stock', 'Reorder at 10 kg', 'Suggested reorder: 26 kg', 40],
+      ['Bread flour', '4 kg', 'Low Stock', 'Reorder at 10 kg', 'Suggested reorder: 26 kg', 13],
       ['Ube halaya', '0 jar', 'Out of Stock', 'Reorder at 6 jar', 'Suggested reorder: 12 jar', 0],
       ['Calamansi Juice 500ml', '0 pcs', 'Out of Stock', 'Reorder at 12 pcs', 'Suggested reorder: 24 pcs', 0],
     ]);

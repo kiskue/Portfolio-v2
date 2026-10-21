@@ -22,6 +22,9 @@ const STATES = ['grid', 'checkout', 'confirmed'] as const satisfies readonly Pos
 const SHEET_AT_MS = 1380;
 const CONFIRMED_AT_MS = 3080;
 
+/** Tiles from this index on (the fourth row, y 713.6) only peek above the docked bar (y 763). */
+const PEEK_FROM = 6;
+
 /** The search field, the stat pills and the two-column tile grid (FlatList with 5 px tile margins). */
 function ProductGrid(): ReactNode {
   const inCart = new Map(smePos.cart.map((line) => [line.product, line.qty]));
@@ -43,8 +46,8 @@ function ProductGrid(): ReactNode {
         </RStack>
       </RStack>
       <div className="rx-sme-pos__grid">
-        {smePos.grid.map((id) => (
-          <ProductTile key={id} product={smeProduct(id)} qty={inCart.get(id) ?? 0} />
+        {smePos.grid.map((id, index) => (
+          <ProductTile key={id} product={smeProduct(id)} qty={inCart.get(id) ?? 0} peek={index >= PEEK_FROM} />
         ))}
       </div>
     </div>
@@ -81,15 +84,20 @@ function Overlay({ state }: { readonly state: PosState }): ReactNode {
 /**
  * FIG 1.2, the point of sale (sme-app.json pos-checkout): the navy TopNavBar, the product grid
  * with two lines in the cart, the docked Scan | Checkout bar, and the checkout sheet. The cart,
- * cash, change and order number come from smePos.
+ * cash, change and order number come from smePos. In checkout and confirmed the 90% sheet
+ * (y 84–844) covers everything under the top bar, so the grid and the bar are not drawn there.
  */
 export function PosCheckout({ state }: ReplicaProps): ReactNode {
   const current = pickState(STATES, state);
   return (
     <RStack className="rx-sme-screen" bg={SME.canvas}>
       <OwnerTopBar title="Point of Sale" />
-      <ProductGrid />
-      <PosActionBar />
+      {current === 'grid' ? (
+        <>
+          <ProductGrid />
+          <PosActionBar />
+        </>
+      ) : null}
       <Overlay state={current} />
     </RStack>
   );

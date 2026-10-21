@@ -9,6 +9,12 @@ import { smeCartUnits, smeProduct, smeStorefront } from '@/components/replicas/s
 
 const CHIPS = ['All', 'Popular', 'Favorites', 'Available'] as const;
 
+/**
+ * Catalog cards that reach the screen: the first row whole, the second behind the floating cart
+ * button and the glass tab bar. The third row starts at y 914, below the canvas, so it is not drawn.
+ */
+const VISIBLE_CARDS = 4;
+
 /** "Hello, Maria!", the prompt under it and the verification pill. */
 function Greeting(): ReactNode {
   return (
@@ -80,7 +86,7 @@ export function CustomerStorefront(): ReactNode {
           All Items
         </RText>
         <div className="rx-sme-store__grid">
-          {smeStorefront.grid.map((id) => (
+          {smeStorefront.grid.slice(0, VISIBLE_CARDS).map((id) => (
             <StorefrontCard key={id} product={smeProduct(id)} qty={inCart.get(id) ?? 0} favorite={smeStorefront.favorites.includes(id)} />
           ))}
         </div>

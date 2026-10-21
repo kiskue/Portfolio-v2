@@ -427,7 +427,10 @@ export interface SmeRestockRow extends SmeRestockItem {
   readonly badge: 'Low Stock' | 'Out of Stock';
   readonly reorderLabel: string;
   readonly suggestionLabel: string;
-  /** quantity ÷ reorder level, 0–100, for the bar. */
+  /**
+   * The 6 px bar's fill, 0–100, as the app's StockHealthIndicator draws it (stockFillRatio):
+   * quantity against three times the reorder level, so a low item still shows most of its bar empty.
+   */
   readonly level: number;
 }
 
@@ -452,7 +455,7 @@ const RESTOCK_ROWS = RESTOCK_ITEMS.map((item): SmeRestockRow => {
     badge: out ? 'Out of Stock' : 'Low Stock',
     reorderLabel: `Reorder at ${item.reorderAt} ${item.unit}`,
     suggestionLabel: `Suggested reorder: ${item.suggested} ${item.unit}`,
-    level: Math.round((item.quantity / item.reorderAt) * 100),
+    level: Math.round(Math.min(1, item.quantity / (item.reorderAt * 3)) * 100),
   };
 });
 const REORDER_COST = RESTOCK_ITEMS.reduce((total, item) => total + item.suggested * item.unitCost, 0);

@@ -76,8 +76,13 @@ function InfoRow({ row }: { readonly row: SmeInfoRow }): ReactNode {
   );
 }
 
-/** Order Summary: the receipt as it stood at order time, in three groups between dividers. */
-export function SummaryCard(): ReactNode {
+/**
+ * Order Summary: the receipt as it stood at order time, in three groups between dividers. On the
+ * tracking screen it starts at y 806, 4 px above the safe-area inset, so `peek` draws the card's
+ * top edge alone (its title would start at y 822).
+ */
+export function SummaryCard({ peek }: { readonly peek?: boolean }): ReactNode {
+  if (peek) return <RStack className="rx-sme-track__card" style={{ height: 40 }} />;
   return (
     <Card title="Order Summary">
       {smeDelivery.summary.map((group, index) => (

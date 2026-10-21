@@ -29,16 +29,35 @@ function TileStepper({ qty, accent }: { readonly qty: number; readonly accent: s
   );
 }
 
+export interface ProductTileProps {
+  readonly product: SmeProduct;
+  readonly qty: number;
+  /**
+   * The tile only peeks above the docked bar (the grid's fourth row): its frame, tier bar and
+   * icon chip show, the name, price and stock pill sit under the bar, so they are not drawn.
+   */
+  readonly peek?: boolean;
+}
+
 /**
  * A POS product tile (ProductTile in pos.tsx): white radius 16 with a full-height 3 px tier bar,
  * a 40 px Package chip, the name (two lines), the price in the tier colour and the stock pill.
  * In the cart its border turns the tier colour at 31% and the stepper appears; out of stock it
  * dims to 60% under an UNAVAILABLE wash.
  */
-export function ProductTile({ product, qty }: { readonly product: SmeProduct; readonly qty: number }): ReactNode {
+export function ProductTile({ product, qty, peek }: ProductTileProps): ReactNode {
   const accent = TIER[smePriceTier(product.price)];
   const inCart = qty > 0;
   const out = product.stock <= 0 || qty >= product.stock;
+  const chip = <RIconChip icon={Package} color={accent} bg={withAlpha(accent, '18')} size={40} radius={10} shape="square" iconSize={22} />;
+  if (peek) {
+    return (
+      <div className="rx-sme-tile" data-out={out ? '' : undefined} style={{ borderColor: inCart ? withAlpha(accent, '50') : SME.gray200 }}>
+        <span className="rx-sme-tile__bar" style={{ background: accent }} />
+        <RStack pad={[12, 12, 12, 16]}>{chip}</RStack>
+      </div>
+    );
+  }
   return (
     <div
       className="rx-sme-tile"
@@ -47,7 +66,7 @@ export function ProductTile({ product, qty }: { readonly product: SmeProduct; re
     >
       <span className="rx-sme-tile__bar" style={{ background: accent }} />
       <RStack pad={[12, 12, 12, 16]}>
-        <RIconChip icon={Package} color={accent} bg={withAlpha(accent, '18')} size={40} radius={10} shape="square" iconSize={22} />
+        {chip}
         <RText {...TYPE.bodySm} weight={600} color={SME.gray900} lines={2} style={{ marginTop: 6 }}>
           {product.name}
         </RText>

@@ -24,11 +24,6 @@
     --rx-sme-ai-x-glow-low: rgb(39 174 96 / 0.08);
     --rx-sme-ai-x-glow-medium: rgb(245 166 35 / 0.08);
     --rx-sme-ai-x-glow-high: rgb(255 59 48 / 0.08);
-    /* StockHealthIndicator: inventoryAccents LIGHT_HEALTH border and barBg */
-    --rx-sme-ai-x-stock-low-border: #fde68a;
-    --rx-sme-ai-x-stock-out-border: #ffd6d6;
-    --rx-sme-ai-x-stock-low-track: #fef3c7;
-    --rx-sme-ai-x-stock-out-track: #ffebeb;
     /* StatTile: the dark-only hairline (light lifts the tile with a shadow instead) */
     --rx-sme-ai-x-stat-border: transparent;
     /* AIChatSheet: input border and placeholder, error bubble */
@@ -47,10 +42,6 @@
     --rx-sme-ai-x-glow-low: rgb(61 214 140 / 0.12);
     --rx-sme-ai-x-glow-medium: rgb(255 176 32 / 0.12);
     --rx-sme-ai-x-glow-high: rgb(255 107 107 / 0.12);
-    --rx-sme-ai-x-stock-low-border: rgb(255 176 32 / 0.35);
-    --rx-sme-ai-x-stock-out-border: rgb(255 107 107 / 0.35);
-    --rx-sme-ai-x-stock-low-track: rgb(255 176 32 / 0.12);
-    --rx-sme-ai-x-stock-out-track: rgb(255 107 107 / 0.12);
     --rx-sme-ai-x-stat-border: var(--rx-sme-theme-hairline);
     --rx-sme-ai-x-input-border: rgb(255 255 255 / 0.12);
     --rx-sme-ai-x-placeholder: rgb(255 255 255 / 0.35);
@@ -357,9 +348,9 @@
   .rx-sme-ai-stock {
     --rx-sme-ai-x-stock-ink: var(--rx-sme-stock-low);
     --rx-sme-ai-x-stock-bg: var(--rx-sme-stock-low-bg);
-    --rx-sme-ai-x-stock-border: var(--rx-sme-ai-x-stock-low-border);
+    --rx-sme-ai-x-stock-border: var(--rx-sme-stock-low-border);
     --rx-sme-ai-x-stock-bar: var(--rx-sme-stock-low-bar);
-    --rx-sme-ai-x-stock-track: var(--rx-sme-ai-x-stock-low-track);
+    --rx-sme-ai-x-stock-track: var(--rx-sme-stock-low-track);
     --rx-sme-ai-x-stock-badge: var(--rx-sme-warning);
     display: flex;
     flex-direction: column;
@@ -368,9 +359,9 @@
   .rx-sme-ai-stock[data-health="out"] {
     --rx-sme-ai-x-stock-ink: var(--rx-sme-stock-out);
     --rx-sme-ai-x-stock-bg: var(--rx-sme-stock-out-bg);
-    --rx-sme-ai-x-stock-border: var(--rx-sme-ai-x-stock-out-border);
+    --rx-sme-ai-x-stock-border: var(--rx-sme-stock-out-border);
     --rx-sme-ai-x-stock-bar: var(--rx-sme-stock-out-bar);
-    --rx-sme-ai-x-stock-track: var(--rx-sme-ai-x-stock-out-track);
+    --rx-sme-ai-x-stock-track: var(--rx-sme-stock-out-track);
     --rx-sme-ai-x-stock-badge: var(--rx-sme-error);
   }
 
@@ -537,14 +528,6 @@
     color: var(--rx-sme-theme-text-2);
     font-size: 12px;
     font-weight: 500;
-    line-height: 16.8px;
-  }
-
-  /* The grounding line under "Ask AI about this". */
-  .rx-sme-ai-disclaimer {
-    margin-top: 8px;
-    color: var(--rx-sme-ai-muted);
-    font-size: 12px;
     line-height: 16.8px;
   }
 

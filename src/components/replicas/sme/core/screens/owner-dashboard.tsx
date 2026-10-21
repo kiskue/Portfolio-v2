@@ -82,7 +82,8 @@ export function OwnerDashboard({ state }: ReplicaProps): ReactNode {
             </RStack>
             <SplitCard />
             <PnlCard />
-            <SalesTargetCard />
+            {/* kpis never reaches the Sales Target card; pnl rests with its header row at the fold. */}
+            {scroll.poster === 'end' ? <SalesTargetCard peek /> : null}
           </RStack>
         </RStack>
       </RAutoScroll>

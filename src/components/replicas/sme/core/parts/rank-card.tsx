@@ -46,9 +46,10 @@ function Stat({ label, value, color }: { readonly label: string; readonly value:
 /**
  * A customer's rank card (RankCard in credit/index.tsx): a 3 px bar (medal, violet or the
  * standing's hue), the rank badge or initial, name and masked phone, the amount due (amber under
- * ₱1,000) or a standing tag, the share-paid bar and Total Credit · Paid · Due.
+ * ₱1,000) or a standing tag, the share-paid bar and Total Credit · Paid · Due. `peek` draws the
+ * first row alone, for a card whose lower part is below the fold.
  */
-export function RankCard({ row }: { readonly row: SmeLedgerRow }): ReactNode {
+export function RankCard({ row, peek }: { readonly row: SmeLedgerRow; readonly peek?: boolean }): ReactNode {
   const due = row.standing === 'due';
   const amountColor = due ? (row.small ? SME.targetInk : STANDING.due.text) : STANDING[row.standing].text;
   const bar = row.medal ? MEDAL[row.medal] : due ? SME.violet : STANDING[row.standing].accent;
@@ -87,14 +88,18 @@ export function RankCard({ row }: { readonly row: SmeLedgerRow }): ReactNode {
             <RGlyph icon={ChevronRight} size={16} color={SME.ink2} />
           </RStack>
         </RStack>
-        <RProgress value={row.paidShare} color={due ? SME.violet : STANDING[row.standing].accent} track={SME.gray100} h={8} />
-        <RStack dir="row" align="center">
-          <Stat label="Total Credit" value={row.stats.credit} color={SME.gray800} />
-          <span className="rx-sme-rank__divider" />
-          <Stat label="Paid" value={row.stats.paid} color={SME.pay} />
-          <span className="rx-sme-rank__divider" />
-          <Stat label={third.label} value={third.value} color={amountColor} />
-        </RStack>
+        {peek ? null : (
+          <>
+            <RProgress value={row.paidShare} color={due ? SME.violet : STANDING[row.standing].accent} track={SME.gray100} h={8} />
+            <RStack dir="row" align="center">
+              <Stat label="Total Credit" value={row.stats.credit} color={SME.gray800} />
+              <span className="rx-sme-rank__divider" />
+              <Stat label="Paid" value={row.stats.paid} color={SME.pay} />
+              <span className="rx-sme-rank__divider" />
+              <Stat label={third.label} value={third.value} color={amountColor} />
+            </RStack>
+          </>
+        )}
       </RStack>
     </div>
   );

@@ -10,8 +10,9 @@ import { TYPE } from './type';
  * Target chip, the "72% today" status chip and the edit button, then today's net income against
  * the daily target with the 8 px progress bar (amber from 60%). On the dashboard it sits below
  * the P&L, so the replica draws its upper part only; the weekly and monthly rows are off-screen.
+ * `peek` draws the header row alone, for a slice that shows only the card's top edge (1.1 pnl).
  */
-export function SalesTargetCard(): ReactNode {
+export function SalesTargetCard({ peek }: { readonly peek?: boolean }): ReactNode {
   const { target } = smeDashboard;
   return (
     <RCard radius={12} border="default" shadow="sm" edge={{ side: 'left', color: SME.target, width: 3 }} pad={[14, 14, 14, 17]}>
@@ -32,6 +33,16 @@ export function SalesTargetCard(): ReactNode {
           <RGlyph icon={Settings2} size={14} color={SME.ink2} />
         </span>
       </RStack>
+      {peek ? null : <SalesTargetBody />}
+    </RCard>
+  );
+}
+
+/** Today's net income against the target, the 8 px bar and the amount still to go. */
+function SalesTargetBody(): ReactNode {
+  const { target } = smeDashboard;
+  return (
+    <>
       <RStack dir="row" justify="between" align="start" style={{ marginTop: 8 }}>
         <RStack>
           <RText {...TYPE.bodyXs} color={SME.ink2}>
@@ -54,6 +65,6 @@ export function SalesTargetCard(): ReactNode {
       <RText {...TYPE.bodyXs} color={SME.ink2} style={{ marginTop: 2 }}>
         {`${peso(smeMonth.dailyTarget - smeMonth.todaySales)} remaining to hit today's target`}
       </RText>
-    </RCard>
+    </>
   );
 }

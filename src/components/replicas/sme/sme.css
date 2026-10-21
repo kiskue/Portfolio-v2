@@ -24,7 +24,7 @@
  *                     pills, action buttons, glow, shimmer, user bubble, projection line, send
  *                     button, Activity icon, error bubble. Prefer these over rToken in AI screens.
  *   --rx-sme-risk-*   low / medium / high: accent bar and glow, badge ink, badge fill.
- *   --rx-sme-stock-*  restock health: low and out (ink, fill, border, bar).
+ *   --rx-sme-stock-*  restock health: low and out (ink, fill, border, bar, track).
  *   The module accents with a published dark variant (violet, ROI purple, sky text) flip too.
  *
  * No animations here. App keyframes go under `[data-active] …` selectors only (the MOTION
@@ -172,15 +172,17 @@
     --rx-sme-risk-high-ink: #cc2f26;
     --rx-sme-risk-high-bg: #fff5f5;
 
-    /* ── Restock stock health (1.7), light ────────────────────────────────────────── */
-    --rx-sme-stock-low: #e07f00;
-    --rx-sme-stock-low-bg: #fffbeb;
-    --rx-sme-stock-low-border: #fde68a;
-    --rx-sme-stock-low-bar: #ff9500;
-    --rx-sme-stock-out: #ff3b30;
-    --rx-sme-stock-out-bg: #fff5f5;
-    --rx-sme-stock-out-border: transparent; /* the research gives a border for low stock only */
+    /* ── Restock stock health (1.7), light: the app's inventoryAccents LIGHT_HEALTH ──── */
+    --rx-sme-stock-low: #e07f00; /* warning-600 */
+    --rx-sme-stock-low-bg: #fffbeb; /* warning-50 */
+    --rx-sme-stock-low-border: #fde68a; /* warning-200 */
+    --rx-sme-stock-low-bar: #ff9500; /* warning-500 */
+    --rx-sme-stock-low-track: #fef3c7; /* warning-100, the bar's track */
+    --rx-sme-stock-out: #ff3b30; /* error-500 */
+    --rx-sme-stock-out-bg: #fff5f5; /* error-50 */
+    --rx-sme-stock-out-border: #ffd6d6; /* error-200 */
     --rx-sme-stock-out-bar: #ff3b30;
+    --rx-sme-stock-out-track: #ffebeb; /* error-100 */
     --rx-sme-stock-ok: #27ae60;
   }
 
@@ -235,14 +237,17 @@
     --rx-sme-risk-high-ink: #ff6b6b;
     --rx-sme-risk-high-bg: rgb(255 107 107 / 0.15);
 
+    /* inventoryAccents DARK_HEALTH */
     --rx-sme-stock-low: #ffb020;
     --rx-sme-stock-low-bg: rgb(255 176 32 / 0.15);
-    --rx-sme-stock-low-border: transparent;
+    --rx-sme-stock-low-border: rgb(255 176 32 / 0.35);
     --rx-sme-stock-low-bar: #ffb020;
+    --rx-sme-stock-low-track: rgb(255 176 32 / 0.12);
     --rx-sme-stock-out: #ff6b6b;
     --rx-sme-stock-out-bg: rgb(255 107 107 / 0.15);
-    --rx-sme-stock-out-border: transparent;
+    --rx-sme-stock-out-border: rgb(255 107 107 / 0.35);
     --rx-sme-stock-out-bar: #ff6b6b;
+    --rx-sme-stock-out-track: rgb(255 107 107 / 0.12);
     --rx-sme-stock-ok: #3dd68c;
   }
 }

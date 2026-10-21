@@ -24,7 +24,11 @@ export function InsightReportScreen({ state }: ReplicaProps): ReactNode {
     <AiScreen title={AI_COPY.hubTitle}>
       <InsightSection look={look} />
       <ReportSection generated={look === 'enhanced'} />
-      <RestockSection />
+      {/*
+       * Restock starts near the fold: its first row from y 811 under the generated report, its
+       * first two from y 615 under the idle hint (the glimpse only pushes them further down).
+       */}
+      <RestockSection peek={look === 'enhanced' ? 1 : 2} />
     </AiScreen>
   );
 }

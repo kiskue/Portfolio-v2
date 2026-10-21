@@ -27,7 +27,7 @@ export function LiveOrderTracking({ state }: ReplicaProps): ReactNode {
         <RStack gap={12} className="rx-sme-track__scroll">
           <RiderCard />
           <StatusCard />
-          <SummaryCard />
+          <SummaryCard peek />
         </RStack>
       )}
     </RStack>

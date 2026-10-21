@@ -21,7 +21,8 @@ export function RestockForecastScreen({ state }: ReplicaProps): ReactNode {
   return (
     <AiScreen title={AI_COPY.hubTitle}>
       {look === 'restock' ? <RestockSection first /> : null}
-      <ForecastSection first={look === 'forecast'} />
+      {/* Scrolled to Restock, only the "Sales forecast" title reaches the fold (y 815). */}
+      <ForecastSection first={look === 'forecast'} titleOnly={look === 'restock'} />
       {look === 'forecast' ? <AskSection /> : null}
     </AiScreen>
   );

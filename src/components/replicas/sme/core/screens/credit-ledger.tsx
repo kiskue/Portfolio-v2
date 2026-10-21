@@ -8,8 +8,12 @@ import { RankCard } from '@/components/replicas/sme/core/parts/rank-card';
 import { TYPE } from '@/components/replicas/sme/core/parts/type';
 import { smeLedger } from '@/components/replicas/sme/sample-data';
 
-/** Rank cards that can reach the screen (the fifth starts below the fold); the rest are not drawn. */
-const VISIBLE_ROWS = 5;
+/**
+ * Rank cards that reach the screen: three whole cards, then the fourth's top edge (it starts at
+ * y 827.8, so only its first row can show and it is drawn without its bar and stats). The fifth
+ * starts below the fold and the rest are not drawn.
+ */
+const VISIBLE_ROWS = 4;
 
 /**
  * FIG 1.3, the credit ledger (sme-app.json credit-ledger), one state: the navy TopNavBar, the
@@ -32,8 +36,8 @@ export function CreditLedger(): ReactNode {
             by amount due
           </RText>
         </RStack>
-        {smeLedger.rows.slice(0, VISIBLE_ROWS).map((row) => (
-          <RankCard key={row.customer} row={row} />
+        {smeLedger.rows.slice(0, VISIBLE_ROWS).map((row, index) => (
+          <RankCard key={row.customer} row={row} peek={index === VISIBLE_ROWS - 1} />
         ))}
       </RStack>
       <span className="rx-sme-ledger__fab">
