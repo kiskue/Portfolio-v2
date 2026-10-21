@@ -1,17 +1,18 @@
 import { MapPin, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { RGlyph, RMapCanvas, type MapPin as MapPinData } from '@/components/replicas/kit';
+import { MAP_SCENES, RGlyph, RMapCanvas, type MapPin as MapPinData } from '@/components/replicas/kit';
 import { czReport } from '@/components/replicas/citizen/sample-data';
 
-/** The map box is 182 px tall (NativeWind h-52) and the card's full width (362 px). */
-const LOCATION_MAP_HEIGHT = 182;
-
 /**
- * "Current Location": the default red marker where the camera is centred. Pins are in town
- * coordinates (390 × 844); a fixed-height map is assumed to show the middle of the town, so the
- * marker sits at the town's centre.
+ * W6's 'report' scene: the 182 px live map centred on one red "Current Location" pin (town
+ * coordinates, by the market and the old road, clear of the Live Location pill), its title from
+ * the sample data under the pin as on the 2.5 map.
  */
-const CURRENT_LOCATION: readonly MapPinData[] = [{ x: 195, y: 422, kind: 'you', color: '#ea4335' }];
+const REPORT_PINS: readonly MapPinData[] = (MAP_SCENES.report.pins ?? []).map((pin) => ({
+  ...pin,
+  label: czReport.pin,
+  labelSide: 'bottom',
+}));
 
 /**
  * The report form's location card (create.tsx): a 182 px live map with the current-location
@@ -23,7 +24,7 @@ export function LocationCard(): ReactNode {
   return (
     <span className="rx-citizen-loc">
       <span className="rx-citizen-loc__map">
-        <RMapCanvas theme="light" height={LOCATION_MAP_HEIGHT} pins={CURRENT_LOCATION} traffic />
+        <RMapCanvas theme="light" height={MAP_SCENES.report.height} scene="report" pins={REPORT_PINS} />
         <span className="rx-citizen-loc__live">
           <span className="rx-citizen-loc__dot" />
           {czReport.live}

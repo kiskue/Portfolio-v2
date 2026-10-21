@@ -12,25 +12,22 @@ export function NewsCard(): ReactNode {
   return (
     <span className="rx-citizen-news">
       <span className="rx-citizen-news__cover">
-        <span className="rx-citizen-news__new">
-          <span className="rx-citizen-news__dot" />
-          NEW
-        </span>
+        <span className="rx-citizen-news__new">NEW</span>
         <span className="rx-citizen-news__stamp">
           <RGlyph icon={Clock} size={14} />
-          <span>{czNews.stamp}</span>
+          {czNews.stamp}
         </span>
       </span>
       <span className="rx-citizen-news__content">
         <span className="rx-citizen-news__headline">{czNews.headline}</span>
         <span className="rx-citizen-news__foot">
           <span className="rx-citizen-news__link">
-            <span>{czNews.link}</span>
+            {czNews.link}
             <RGlyph icon={ArrowRight} size={16} />
           </span>
           <span className="rx-citizen-news__ago">
             <RGlyph icon={Clock} size={14} />
-            <span>{czNews.ago}</span>
+            {czNews.ago}
           </span>
         </span>
       </span>

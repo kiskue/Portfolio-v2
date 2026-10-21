@@ -274,6 +274,8 @@ export const czReport = {
   subtitle: 'Help us respond quickly and effectively',
   submit: 'Submit Report',
   live: 'Live Location',
+  /** The map marker's title. */
+  pin: 'Current Location',
   locationLabel: 'INCIDENT LOCATION',
   address: 'Lot 1, Sample Road, Brgy. Example, Sample City',
   refresh: 'Refresh',

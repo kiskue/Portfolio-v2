@@ -20,7 +20,7 @@ export function HomeDashboardScreen({ state }: ReplicaProps): ReactNode {
   return (
     <TabScreen title={czTitles.home} titleSize={10} tab="Home">
       <RAutoScroll {...SCROLL} poster={current === 'brief' ? 'end' : 'start'} className="rx-citizen-fill">
-        <HomeBody />
+        <HomeBody feed="dashboard" />
       </RAutoScroll>
     </TabScreen>
   );

@@ -2,11 +2,12 @@ import { CircleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { RButton, RIconChip, RModalCard, RProgress, RStateSequence } from '@/components/replicas/kit';
 import { czSos } from '@/components/replicas/citizen/sample-data';
+import { CZ_SOS_TIMELINE } from './timeline';
 
 /** The countdown frames shown: 5s, 4s, 3s (the poster rests on 3s with the bar at 60%). */
 const SHOWN = [5, 4, 3] as const;
 const POSTER_FRAME = 2;
-const TICK_MS = 1000;
+const TICK_MS = CZ_SOS_TIMELINE.tickMs;
 
 export interface SosConfirmProps {
   /** When the popup appears, in ms after the step becomes active (the countdown ticks from here). */

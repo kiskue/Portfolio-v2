@@ -1,6 +1,6 @@
 import { CircleAlert, Folder, House, Puzzle, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { RTabBar, type RTabItem } from '@/components/replicas/kit';
+import { R_CANVAS, RTabBar, type RTabItem } from '@/components/replicas/kit';
 import { czTabs, type CzTab } from '@/components/replicas/citizen/sample-data';
 import { SosButton, type SosButtonProps } from './sos-button';
 
@@ -11,6 +11,16 @@ const TAB_GLYPHS: Readonly<Record<CzTab, LucideIcon>> = {
   Hazards: CircleAlert,
   Reports: Puzzle,
 };
+
+/** The app's BAR_MARGIN_BOTTOM (tabBarTokens.ts): the capsule's gap above the bottom safe area. */
+const BAR_MARGIN_BOTTOM = 12;
+
+/**
+ * The bar's distance from the canvas bottom: 46 px. The app keeps BAR_MARGIN_BOTTOM a flat 12
+ * because AppProviders' SafeAreaView already consumes the bottom inset (the 34 px home-indicator
+ * zone here), so the capsule spans 734–798 and the SOS centre sits on its top edge at y 734.
+ */
+export const CZ_TAB_BAR_BOTTOM = R_CANVAS.homeIndicator + BAR_MARGIN_BOTTOM;
 
 export interface CitizenTabBarProps {
   readonly active: CzTab;
@@ -27,5 +37,13 @@ export function CitizenTabBar({ active, sos = 'idle' }: CitizenTabBarProps): Rea
   const items: readonly RTabItem[] = czTabs.map((label) =>
     label === active ? { icon: TAB_GLYPHS[label], label, active: true } : { icon: TAB_GLYPHS[label], label },
   );
-  return <RTabBar look="citizen-floating" items={items} center={<SosButton state={sos} />} className="rx-citizen-tabbar" />;
+  return (
+    <RTabBar
+      look="citizen-floating"
+      items={items}
+      center={<SosButton state={sos} />}
+      bottom={CZ_TAB_BAR_BOTTOM}
+      className="rx-citizen-tabbar"
+    />
+  );
 }
