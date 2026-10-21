@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import { RRipple, type RRippleProps } from './motion';
 import { px, rStyle } from './tokens';
 import type { RBoxProps, RColor } from './types';
@@ -63,7 +63,7 @@ export function RAvatar({
       )}
     >
       {ripple ? <RRipple size={size} {...ripple} /> : null}
-      {icon ? <RGlyph icon={icon} size={Math.round(size * 0.45)} /> : initials}
+      {icon ? <KitGlyph icon={icon} size={Math.round(size * 0.45)} /> : initials}
     </span>
   );
 }
