@@ -1,0 +1,277 @@
+/*
+ * The Home tools strip (design §4.2): a 72px raised pill with the label block on the left and the
+ * marquee track on the right; on narrow screens the label row sits on top (Pause on the right)
+ * and the track runs full width below. Imported once, from tools-strip.tsx. Colours are tokens.
+ *
+ * States (set by MarqueeRoot, marquee-root.tsx):
+ *   data-ready     hydrated: the marquee may move and the controls show;
+ *   data-running   the autoplay policy says play (≥50% on screen, tab shown, no user pause);
+ *   data-expanded  "Show all" in the narrow static layout.
+ * Hover and focus-within pause it here. Without JavaScript it never moves (no data-ready).
+ *
+ * Static mode (reduced motion: html[data-motion="reduce"], or the media query when inline
+ * scripts are blocked): the track becomes wrapped 28px chips; below the wide layout only 12 show
+ * until "Show all". The two reduced-motion forms carry the same rules.
+ */
+
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  .ts {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "head" "track" "more";
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-strip);
+    /* Raised, with the bento's periwinkle glow at the right end only (design §3.3). */
+    background: linear-gradient(
+      90deg,
+      var(--c-raised) 55%,
+      color-mix(in srgb, var(--c-raised), rgb(var(--glow)) 24%) 100%
+    );
+    box-shadow:
+      var(--sh-xs),
+      22px 12px 44px -22px rgb(var(--glow) / var(--glow-alpha));
+  }
+
+  .ts-head {
+    position: relative;
+    grid-area: head;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 12px 12px 4px 18px;
+  }
+
+  .ts-label {
+    min-width: 0;
+  }
+
+  /* The Pause button works only with JavaScript; without it the space stays, empty. */
+  .ts:not([data-ready]) .ts-pause {
+    visibility: hidden;
+  }
+
+  .ts-viewport {
+    grid-area: track;
+    min-width: 0;
+    padding: 4px 0 8px;
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent, black 48px, black calc(100% - 48px), transparent);
+  }
+
+  .ts-track {
+    display: flex;
+    width: max-content;
+  }
+
+  .ts-list {
+    display: flex;
+    flex: none;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ts-item {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border-inline-end: 1px solid var(--c-line);
+    color: var(--c-ink-2);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .ts-more {
+    grid-area: more;
+    display: none;
+    margin: 0 16px 16px;
+  }
+
+  /* The wide layout: label block, a 1px divider, the track (design §4.2). */
+  @container (min-width: 40rem) {
+    .ts {
+      grid-template-columns: 13rem minmax(0, 1fr);
+      grid-template-areas: "head track" "more more";
+      align-items: center;
+      min-height: 72px;
+    }
+
+    .ts-head {
+      height: 100%;
+      padding: 0 14px 0 20px;
+    }
+
+    .ts-head::after {
+      content: "";
+      position: absolute;
+      top: 16px;
+      right: 0;
+      bottom: 16px;
+      width: 1px;
+      background: var(--c-line);
+    }
+
+    .ts-viewport {
+      padding: 0 8px 0 4px;
+    }
+  }
+
+  /* ─── Motion: only once hydrated and running; hover and focus pause it ──────────────── */
+
+  .ts[data-ready] .ts-track {
+    animation: ts-marquee var(--dur-marquee) linear infinite;
+    animation-play-state: paused;
+  }
+
+  .ts[data-ready][data-running] .ts-track {
+    animation-play-state: running;
+  }
+
+  .ts[data-ready][data-running]:focus-within .ts-track {
+    animation-play-state: paused;
+  }
+
+  @media (hover: hover) {
+    .ts[data-ready][data-running]:hover .ts-track {
+      animation-play-state: paused;
+    }
+  }
+
+  @keyframes ts-marquee {
+    to {
+      /* One copy's width: the second copy then sits exactly where the first began. */
+      translate: -50% 0;
+    }
+  }
+
+  /* ─── Static mode: reduced motion (setting, or the OS when scripts are blocked) ─────── */
+
+  :root[data-motion="reduce"] {
+    & .ts-track {
+      width: auto;
+      animation: none;
+    }
+
+    & .ts-viewport {
+      overflow: visible;
+      mask-image: none;
+    }
+
+    & .ts-copy {
+      display: none;
+    }
+
+    /* Nothing moves, so there is nothing to pause (visibility: the button's utilities set display). */
+    & .ts-pause {
+      visibility: hidden;
+    }
+
+    & .ts-list {
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 4px 16px 16px;
+    }
+
+    & .ts-item {
+      height: 28px;
+      gap: 6px;
+      padding: 0 12px;
+      border: 1px solid var(--c-line);
+      border-radius: 9999px;
+      background: var(--c-surface);
+      font-size: 0.8125rem;
+    }
+
+    & .ts[data-ready]:not([data-expanded]) .ts-list > li:nth-child(n + 13) {
+      display: none;
+    }
+
+    & .ts[data-ready] .ts-more {
+      display: block;
+    }
+
+    @container (min-width: 40rem) {
+      & .ts-list {
+        padding: 14px 16px;
+      }
+
+      & .ts[data-ready]:not([data-expanded]) .ts-list > li:nth-child(n + 13) {
+        display: inline-flex;
+      }
+
+      & .ts[data-ready] .ts-more {
+        display: none;
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion]) {
+      & .ts-track {
+        width: auto;
+        animation: none;
+      }
+
+      & .ts-viewport {
+        overflow: visible;
+        mask-image: none;
+      }
+
+      & .ts-copy {
+        display: none;
+      }
+
+      & .ts-pause {
+        visibility: hidden;
+      }
+
+      & .ts-list {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 4px 16px 16px;
+      }
+
+      & .ts-item {
+        height: 28px;
+        gap: 6px;
+        padding: 0 12px;
+        border: 1px solid var(--c-line);
+        border-radius: 9999px;
+        background: var(--c-surface);
+        font-size: 0.8125rem;
+      }
+
+      & .ts[data-ready]:not([data-expanded]) .ts-list > li:nth-child(n + 13) {
+        display: none;
+      }
+
+      & .ts[data-ready] .ts-more {
+        display: block;
+      }
+
+      @container (min-width: 40rem) {
+        & .ts-list {
+          padding: 14px 16px;
+        }
+
+        & .ts[data-ready]:not([data-expanded]) .ts-list > li:nth-child(n + 13) {
+          display: inline-flex;
+        }
+
+        & .ts[data-ready] .ts-more {
+          display: none;
+        }
+      }
+    }
+  }
+}
