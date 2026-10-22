@@ -1,8 +1,9 @@
-import { expect, test, type ConsoleMessage, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { callsToAction } from '@/content/home';
 import { services } from '@/content/services';
 import { testimonials } from '@/content/testimonials';
 import { aboutHref, contactHref, servicesHref, type AboutSection } from '@/lib/routes';
+import { collectConsoleProblems, describeConsoleProblems } from '../support/console';
 
 /*
  * W10b-P pages against the production build: /services, /testimonials, /about and the 404.
@@ -21,18 +22,6 @@ import { aboutHref, contactHref, servicesHref, type AboutSection } from '@/lib/r
 test.describe.configure({ mode: 'default' });
 
 const ABOUT_SECTIONS: readonly AboutSection[] = ['experience', 'skills', 'credentials', 'education'];
-
-/** Console errors and warnings plus uncaught errors, minus the 404 document's own load error. */
-function collectProblems(page: Page, notFoundPath?: string): string[] {
-  const problems: string[] = [];
-  page.on('console', (message: ConsoleMessage) => {
-    if (message.type() !== 'error' && message.type() !== 'warning') return;
-    const ownStatus = notFoundPath !== undefined && /status of 404/.test(message.text()) && message.location().url.endsWith(notFoundPath);
-    if (!ownStatus) problems.push(`console.${message.type()}: ${message.text()}`);
-  });
-  page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
-  return problems;
-}
 
 /** Placeholders are marked for everyone, and no raw token text ever shows. */
 async function expectMarkedPlaceholders(page: Page): Promise<void> {
@@ -136,8 +125,9 @@ test.describe('/about', () => {
 
 test.describe('404', () => {
   for (const path of ['/no-such-page', '/projects/nope']) {
-    test(`${path} renders the map 404 inside the shell with one h1 and a clean console`, async ({ page }) => {
-      const problems = collectProblems(page, path);
+    test(`${path} renders the map 404 inside the shell with one h1 and a clean console`, async ({ page, baseURL }) => {
+      // The shared collector tolerates exactly one message: this document's own 404 load error.
+      const problems = collectConsoleProblems(page, { notFoundUrl: new URL(path, baseURL).href });
       const response = await page.goto(path, { waitUntil: 'load' });
       expect(response?.status()).toBe(404);
       const main = page.locator('main#content');
@@ -152,7 +142,7 @@ test.describe('404', () => {
       await expect(main.locator('figcaption')).toContainText('FIG 404');
       await expectNoHorizontalScroll(page);
       await page.waitForLoadState('networkidle');
-      expect(problems).toEqual([]);
+      expect(describeConsoleProblems(problems)).toEqual([]);
     });
   }
 });
