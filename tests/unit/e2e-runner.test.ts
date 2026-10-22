@@ -282,6 +282,12 @@ function declarations(file: string, source = parse(file)): Declaration[] {
   return found;
 }
 
+/** Whether `node` calls a function named `name` anywhere inside it. */
+function invokes(node: ts.Node, name: string): boolean {
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name) return true;
+  return ts.forEachChild(node, (child) => invokes(child, name) || undefined) ?? false;
+}
+
 /** Every string in a source that contains `text`: literals and template parts, never comments. */
 function stringsWith(source: ts.SourceFile, text: string): ts.Node[] {
   const found: ts.Node[] = [];
@@ -361,6 +367,12 @@ describe('the @vitals tag in the specs (read as text)', () => {
     const vitals = TESTS.filter(inGroup);
     expect(vitals.length).toBeGreaterThan(0);
     for (const test of vitals) expect(tagsOn(test), where(test)).toContain(TAG);
+  });
+
+  it('holds every test that measures wall-clock vitals (starts the observers), so none runs in the parallel pass', () => {
+    const measuring = TESTS.filter((test) => invokes(test.node, 'observeVitals'));
+    expect(measuring.length, 'tests that call observeVitals()').toBeGreaterThan(0);
+    expect(measuring.filter((test) => !inGroup(test)).map(where)).toEqual([]);
   });
 
   it('is on no other test or describe, in budgets.spec.ts or any other spec, as a tag or in a title', () => {
