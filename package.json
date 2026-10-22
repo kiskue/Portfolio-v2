@@ -10,6 +10,8 @@
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
     "e2e": "playwright test",
+    "visual": "playwright test --project=visual",
+    "lhci": "node scripts/measure-lighthouse.mjs",
     "check:static": "node scripts/check-static.mjs",
     "assets:prepare": "node scripts/prepare-assets.mjs",
     "content:todo": "node scripts/content-todo.mjs",

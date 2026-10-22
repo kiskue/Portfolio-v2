@@ -63,7 +63,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run build && npm run start -- -p ${PORT}`,
+    // E2E_SKIP_BUILD=1 serves the existing build (CI runs `npm run check`, which builds, first).
+    command: process.env.E2E_SKIP_BUILD === '1' ? `npm run start -- -p ${PORT}` : `npm run build && npm run start -- -p ${PORT}`,
     url: baseURL,
     env: { CONTACT_TRANSPORT: 'log', NEXT_TELEMETRY_DISABLED: '1' },
     timeout: 240_000,

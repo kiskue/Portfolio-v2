@@ -1,0 +1,107 @@
+# Portfolio V2 CI (PLAN "Verification"). The repository is local-only for now: this file is
+# ready for when it gets a remote.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Telemetry has no next.config key (measurements.md): switch it off for every Next command.
+  NEXT_TELEMETRY_DISABLED: '1'
+  # One origin for the build and the servers: site.url (metadataBase, canonical URLs) falls back
+  # to localhost:$PORT, and Playwright and Lighthouse CI serve on 3100.
+  PORT: '3100'
+  CONTACT_TRANSPORT: log
+
+jobs:
+  check:
+    name: Check, e2e and Lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Content still to supply (warnings only)
+        # Prints ::warning annotations with file and line; `-- --strict` would fail the run.
+        run: npm run content:todo
+
+      - name: Typecheck, lint, unit tests, build and static-route check
+        run: npm run check
+
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end, axe, budgets and visual captures
+        # Every project: mobile, tablet and desktop, plus the visual captures (no baselines yet).
+        run: npm run e2e
+        env:
+          E2E_SKIP_BUILD: '1'
+
+      - name: Lighthouse CI (mobile and desktop)
+        run: npm run lhci
+
+      - name: Keep the reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            playwright-report/
+            test-results/
+            .lighthouseci/reports/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  seo-hide-mode:
+    # PLAN: "SEO 1.0 in hide mode (label mode is noindex)". A hide-mode build needs
+    # src/content/site.ts to honour NEXT_PUBLIC_PLACEHOLDERS=hide (requested from the integrator);
+    # until then this job reports without failing the workflow.
+    name: SEO in hide mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    env:
+      NEXT_PUBLIC_PLACEHOLDERS: hide
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build in hide mode
+        run: npm run build
+
+      - name: Lighthouse CI with SEO 1.0 as an error
+        run: npm run lhci -- --form-factor=desktop --seo-strict --runs=1
+
+      - name: Keep the reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-hide-mode
+          path: .lighthouseci/reports/
+          retention-days: 14
+          if-no-files-found: ignore
