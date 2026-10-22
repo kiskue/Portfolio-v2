@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { autoplayStatus, type AutoplayIntent } from '@/hooks/autoplay-state';
 import {
   brandIndexForRotation,
+  frameStatus,
   glimpseStatus,
+  hasPosterFrame,
   holdOf,
   initGlimpse,
   initPlayer,
@@ -246,7 +248,7 @@ describe('reduced motion', () => {
     expect(state.status).toBe('playing');
   });
 
-  it('shows the poster frame on the poster step, and the played state elsewhere', () => {
+  it('shows the poster frame on the poster step, and the played frame on a step without one', () => {
     const reducedHero = { ...HERO, reducedMotion: true };
     const state = run(reducedHero, [SHOW, { type: 'PLAY' }]);
     expect(shownFrame(reducedHero, state, 0)).toEqual({ step: 2, kind: 'poster' });
@@ -483,6 +485,143 @@ describe('player crossfade (leaving frames)', () => {
     const moved = step(state, TICK);
     const paused = step(moved, { type: 'PAUSE' });
     expect(paused.leaving).toBe(moved.leaving);
+  });
+});
+
+describe('reduced motion: every step shows its posterState (S2.30)', () => {
+  /**
+   * Home's poster frames as glimpsePlaylist marks them: SME 1.2 and 1.6, Citizen 2.3 and 2.4,
+   * Responder 3.1 (its poster step, in the server HTML), 3.2 and 3.3. 1.1 and 2.1 play their poster.
+   */
+  const POSTERS: Playlist = {
+    tracks: [
+      { steps: [{ holdMs: 3200 }, { holdMs: 4400, posterFrame: true }, { holdMs: 3800, posterFrame: true }], posterStep: 0 },
+      {
+        steps: [{ holdMs: 3200 }, { holdMs: 3700, posterFrame: true }, { holdMs: 3000, posterFrame: true }],
+        posterStep: 0,
+        rotations: 2,
+      },
+      {
+        steps: [
+          { holdMs: 2800, posterFrame: true },
+          { holdMs: 3000, posterFrame: true },
+          { holdMs: 3600, posterFrame: true },
+        ],
+        posterStep: 0,
+        posterFrame: true,
+      },
+    ],
+    maxRotations: 2,
+    reducedMotion: true,
+  };
+  const FULL: Playlist = { ...POSTERS, reducedMotion: false };
+  const label = (playlist: Playlist, state: GlimpseState): string => {
+    const frame = shownFrame(playlist, state, state.track);
+    return `${state.track}.${frame.step}:${frame.kind}`;
+  };
+  /** What the current track shows at each step until the player stops. */
+  function walk(playlist: Playlist, from: GlimpseState): string[] {
+    const seen: string[] = [];
+    let state = from;
+    while (state.status === 'playing' && seen.length < 50) {
+      seen.push(label(playlist, state));
+      state = reduceGlimpse(playlist, state, TICK);
+    }
+    return seen;
+  }
+  const ROTATION = ['0.0:play', '0.1:poster', '0.2:poster', '1.0:play', '1.1:poster', '1.2:poster', '2.0:poster', '2.1:poster', '2.2:poster'];
+
+  it('after Play, each step shows its poster frame where it has one, for both rotations', () => {
+    expect(walk(POSTERS, run(POSTERS, [SHOW, { type: 'PLAY' }]))).toEqual([...ROTATION, ...ROTATION]);
+  });
+
+  it('full motion still plays every step’s played frame', () => {
+    const played = walk(FULL, run(FULL, [SHOW]));
+    expect(played).toHaveLength(18);
+    expect(played.every((frame) => frame.endsWith(':play'))).toBe(true);
+  });
+
+  it('a poster frame is never live, so nothing animates and no tap ring shows', () => {
+    const state = run(POSTERS, [SHOW, { type: 'PLAY' }, TICK]);
+    expect(shownFrame(POSTERS, state, 0)).toEqual({ step: 1, kind: 'poster' });
+    expect(isLive(POSTERS, state, 0)).toBe(false);
+  });
+
+  it('the step dots and the app picker land on poster frames too', () => {
+    const dot = run(POSTERS, [SHOW, { type: 'GOTO', step: 2 }]);
+    expect(shownFrame(POSTERS, dot, 0)).toEqual({ step: 2, kind: 'poster' });
+    const picked = run(POSTERS, [SHOW, { type: 'GOTO', track: 2, step: 1 }]);
+    expect(shownFrame(POSTERS, picked, 2)).toEqual({ step: 1, kind: 'poster' });
+  });
+
+  it('turning reduced motion on mid-step swaps to that step’s poster frame; off swaps back', () => {
+    const mid = run(FULL, [SHOW, TICK]);
+    expect(shownFrame(FULL, mid, 0)).toEqual({ step: 1, kind: 'play' });
+    const reduced = reduceGlimpse(FULL, mid, { type: 'MOTION', reduced: true });
+    expect(shownFrame(FULL, reduced, 0)).toEqual({ step: 1, kind: 'poster' });
+    const restored = reduceGlimpse(FULL, reduced, { type: 'MOTION', reduced: false });
+    expect(shownFrame(FULL, restored, 0)).toEqual({ step: 1, kind: 'play' });
+  });
+
+  it('the other tracks, the end and the server state still show each poster step', () => {
+    const state = run(POSTERS, [SHOW, { type: 'PLAY' }, TICK]);
+    expect(shownFrame(POSTERS, state, 1)).toEqual({ step: 0, kind: 'play' });
+    expect(shownFrame(POSTERS, state, 2)).toEqual({ step: 0, kind: 'poster' });
+    expect([0, 1, 2].map((track) => shownFrame(POSTERS, initGlimpse(POSTERS), track))).toEqual([
+      { step: 0, kind: 'play' },
+      { step: 0, kind: 'play' },
+      { step: 0, kind: 'poster' },
+    ]);
+  });
+
+  it('hasPosterFrame reads the per-step flags and the track’s poster-step flag', () => {
+    expect([0, 1, 2].map((step) => hasPosterFrame(POSTERS, 0, step))).toEqual([false, true, true]);
+    expect([0, 1, 2].map((step) => hasPosterFrame(HERO, 0, step))).toEqual([false, false, true]);
+    expect(hasPosterFrame(POSTERS, 7, 0)).toBe(false);
+    expect(hasPosterFrame(POSTERS, 0, 9)).toBe(false);
+  });
+});
+
+describe('frameStatus: attributes and lazy mounting', () => {
+  const POSTERS: Playlist = {
+    tracks: [{ steps: [{ holdMs: 1000 }, { holdMs: 2000, posterFrame: true }, { holdMs: 3000, posterFrame: true }], posterStep: 0 }],
+    maxRotations: 2,
+    reducedMotion: true,
+  };
+  const step = (state: PlayerState, event: PlayerEvent) => reducePlayer(POSTERS, state, event);
+  const poster = (index: number) => ({ step: index, kind: 'poster' as const });
+  const mounted = (state: PlayerState) => [1, 2].filter((index) => frameStatus(POSTERS, state, 0, poster(index), true).mounted);
+
+  it('keeps lazy poster frames unmounted until the player needs them', () => {
+    const start = step(initPlayer(POSTERS), SHOW);
+    expect(mounted(start)).toEqual([]);
+    // Play: step 0 shows; step 1's poster frame mounts as next, ready to fade in.
+    const played = step(start, { type: 'PLAY' });
+    expect(mounted(played)).toEqual([1]);
+    expect(frameStatus(POSTERS, played, 0, poster(1), true)).toMatchObject({ next: true, shown: false, active: false });
+    // Step 1: its poster frame shows (still, not active); step 2's comes next.
+    const second = step(played, TICK);
+    expect(frameStatus(POSTERS, second, 0, poster(1), true)).toMatchObject({ shown: true, active: false, mounted: true });
+    expect(mounted(second)).toEqual([1, 2]);
+    // Step 2: step 1's frame fades out underneath until SETTLE, then unmounts.
+    const third = step(second, TICK);
+    expect(frameStatus(POSTERS, third, 0, poster(1), true)).toMatchObject({ leaving: true, frozen: false, mounted: true });
+    expect(mounted(step(third, { type: 'SETTLE', track: 0 }))).toEqual([2]);
+  });
+
+  it('never unmounts a frame that is not lazy', () => {
+    const start = initPlayer(POSTERS);
+    expect(frameStatus(POSTERS, start, 0, poster(2)).mounted).toBe(true);
+    expect(frameStatus(POSTERS, start, 0, poster(2), true).mounted).toBe(false);
+  });
+
+  it('marks the shown played frame active and a live leaving frame frozen', () => {
+    const full: Playlist = { ...POSTERS, reducedMotion: false };
+    const playing = reducePlayer(full, initPlayer(full), SHOW);
+    expect(frameStatus(full, playing, 0, { step: 0, kind: 'play' })).toMatchObject({ shown: true, active: true, frozen: false });
+    const moved = reducePlayer(full, playing, TICK);
+    expect(frameStatus(full, moved, 0, { step: 0, kind: 'play' })).toMatchObject({ leaving: true, active: true, frozen: true });
+    expect(frameStatus(full, moved, 0, { step: 2, kind: 'play' })).toMatchObject({ next: true, active: false });
   });
 });
 

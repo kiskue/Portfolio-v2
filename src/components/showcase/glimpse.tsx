@@ -23,10 +23,10 @@ import { Icon } from '@/components/ui/icon';
 import { SiteLink } from '@/components/ui/site-link';
 import { site } from '@/content/site';
 import { appById, brandById, getFigure, glimpseById } from '@/content/derived';
-import type { AppInfo, Glimpse as GlimpseData, GlimpseId, GlimpseStep, Segments } from '@/content/types';
+import type { AppInfo, FigureId, Glimpse as GlimpseData, GlimpseId, GlimpseStep, Segments } from '@/content/types';
 import { brandVars } from '@/lib/brand-vars';
 import { cn } from '@/lib/cn';
-import { glimpsePlaylist, GLIMPSE_ROTATIONS, stepStates } from '@/lib/glimpse';
+import { glimpsePlaylist, GLIMPSE_ROTATIONS, trackFrames } from '@/lib/glimpse';
 import { hasToken, isPlaceholder, placeholderText, segments } from '@/lib/placeholder';
 import { caseStudyHref } from '@/lib/routes';
 
@@ -130,24 +130,25 @@ function StepCaption({ step }: { readonly step: GlimpseStep }): ReactNode {
   );
 }
 
-/** Every step of one glimpse as server-rendered phones; the poster step adds its poster frame. */
+/** A figure's default state (figures.ts states[0]) for steps that name none. */
+const defaultState = (figure: FigureId): string => getFigure(figure).states[0];
+
+/**
+ * Every step of one glimpse as server-rendered phones (trackFrames): each step's played frame,
+ * with its taps, plus a still poster frame for each step whose posterState differs. The poster
+ * step's poster frame is the server HTML's; the other poster frames are lazy, mounted only when
+ * reduced motion shows them, so the page carries no DOM for them until then.
+ */
 function TrackFrames({ glimpse, track }: { readonly glimpse: GlimpseData; readonly track: number }): ReactNode {
-  return glimpse.steps.flatMap((step, index) => {
-    const states = stepStates(step, getFigure(step.figure).states[0]);
-    const frames = [
-      <GlimpseFrame key={`${index}-play`} track={track} step={index}>
-        <ScreenView source={{ kind: 'replica', figure: step.figure, state: states.play }} size="inherit" brandMode="inherit" />
-        <TapLayer taps={step.taps ?? []} />
-      </GlimpseFrame>,
-    ];
-    if (index === glimpse.posterStep && states.poster !== states.play) {
-      frames.unshift(
-        <GlimpseFrame key={`${index}-poster`} track={track} step={index} kind="poster">
-          <ScreenView source={{ kind: 'replica', figure: step.figure, state: states.poster }} size="inherit" brandMode="inherit" />
-        </GlimpseFrame>,
-      );
-    }
-    return frames;
+  return trackFrames(glimpse, defaultState).map((frame) => {
+    const step = glimpse.steps[frame.step];
+    if (!step) return null;
+    return (
+      <GlimpseFrame key={`${frame.step}-${frame.kind}`} track={track} step={frame.step} kind={frame.kind} lazy={frame.lazy}>
+        <ScreenView source={{ kind: 'replica', figure: step.figure, state: frame.state }} size="inherit" brandMode="inherit" />
+        {frame.kind === 'play' ? <TapLayer taps={step.taps ?? []} /> : null}
+      </GlimpseFrame>
+    );
   });
 }
 
@@ -155,12 +156,13 @@ function TrackFrames({ glimpse, track }: { readonly glimpse: GlimpseData; readon
  * Plays glimpses in phone frames (design §5.3, architecture D4). Every step of every track is
  * rendered here, on the server, through ScreenView (brandMode inherit: the track carries the
  * rotation's brand variables, or an enclosing BrandScope does); the client parts only flip
- * attributes. Without JavaScript, and under reduced motion, each track shows its poster step.
+ * attributes. Without JavaScript each track shows its poster step; under reduced motion every
+ * step shows its posterState (its final coherent state, design §5.3).
  */
 export function GlimpsePlayer({ glimpses: ids, layout, size, morph = true, rotations = GLIMPSE_ROTATIONS, id, className }: GlimpsePlayerProps): ReactNode {
   const glimpses = ids.map(glimpseById);
   const apps = glimpses.map((glimpse) => appById(glimpse.app));
-  const playlist = glimpsePlaylist(glimpses, (figure) => getFigure(figure).states[0], rotations);
+  const playlist = glimpsePlaylist(glimpses, defaultState, rotations);
   const prefix = id ?? `glimpse-${layout}-${ids.join('-').replaceAll('.', '-')}`;
   const centre = Math.floor((glimpses.length - 1) / 2);
   const linked = layout !== 'hero';

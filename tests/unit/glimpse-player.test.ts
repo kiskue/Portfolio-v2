@@ -3,8 +3,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { GlimpsePlayer, type GlimpsePlayerProps, spokenLabel } from '@/components/showcase/glimpse';
 import { TapIndicator, TapLayer } from '@/components/showcase/tap-indicator';
+import { figures } from '@/content/apps/figures';
 import { glimpses } from '@/content/apps/glimpses';
-import type { GlimpseId } from '@/content/types';
+import type { FigureId, Glimpse, GlimpseId } from '@/content/types';
+import { glimpsePlaylist, trackFrames } from '@/lib/glimpse';
 import { ph } from '@/lib/placeholder';
 
 /*
@@ -33,7 +35,8 @@ describe('GlimpsePlayer: the Home trio as server HTML', () => {
 
   it('renders every step as a frame, plus the Responder poster frame', () => {
     // A poster step whose posterState differs from its state needs a second tree: Responder 3.1
-    // animates from its state to its posterState, so it carries one still poster frame.
+    // animates from its state to its posterState, so it carries one still poster frame. The
+    // other steps' poster frames (reduced motion only) are lazy: not in the server HTML.
     expect(frames).toHaveLength(homeSteps.length + 1);
     expect(frames.filter((frame) => frame.includes('data-kind="poster"'))).toHaveLength(1);
   });
@@ -123,6 +126,66 @@ describe('GlimpsePlayer: the Home trio as server HTML', () => {
   it('adds no DOM for the phone morph (React names the phones only during a transition)', () => {
     expect(render({ glimpses: HOME, layout: 'trio', size: 'inherit', morph: false })).toBe(html);
     expect(html).not.toContain('view-transition-name');
+  });
+});
+
+describe('GlimpsePlayer: posters for reduced motion (S2.30)', () => {
+  const figureById = new Map(figures.map((figure) => [figure.id, figure] as const));
+  const defaultState = (figure: FigureId): string => figureById.get(figure)?.states[0] ?? '';
+  const byId = (id: GlimpseId): Glimpse => {
+    const glimpse = glimpses.find((candidate) => candidate.id === id);
+    if (!glimpse) throw new Error(`missing glimpse ${id}`);
+    return glimpse;
+  };
+  /** A track's poster frames as "<figure>:<state>", "(lazy)" when kept out of the server HTML. */
+  const posters = (id: GlimpseId): string[] => {
+    const glimpse = byId(id);
+    return trackFrames(glimpse, defaultState)
+      .filter((frame) => frame.kind === 'poster')
+      .map((frame) => `${glimpse.steps[frame.step]?.figure}:${frame.state}${frame.lazy ? ' (lazy)' : ''}`);
+  };
+
+  it('gives every Home step whose screen changes a poster frame drawn at its posterState', () => {
+    // The five steps the audit found showing their start state under reduced motion (1.2, 1.6,
+    // 2.3, 2.4, 3.3), plus 3.2; 1.1 and 2.1 play their poster, so their played frame is it.
+    expect(HOME.map(posters)).toEqual([
+      ['1.2:confirmed (lazy)', '1.6:enhanced (lazy)'],
+      ['2.3:countdown (lazy)', '2.4:connected (lazy)'],
+      ['3.1:online', '3.2:sheet (lazy)', '3.3:on-site (lazy)'],
+    ]);
+  });
+
+  it('draws every poster frame at its step’s posterState, and every played frame at its state', () => {
+    for (const glimpse of glimpses) {
+      for (const frame of trackFrames(glimpse, defaultState)) {
+        const step = glimpse.steps[frame.step];
+        const expected = frame.kind === 'poster' ? step?.posterState : (step?.state ?? defaultState(step?.figure ?? '1.1'));
+        expect(frame.state, `${glimpse.id} step ${frame.step} ${frame.kind}`).toBe(expected);
+      }
+    }
+  });
+
+  it('marks the same steps in the playlist the client plays from', () => {
+    const playlist = glimpsePlaylist(HOME.map(byId), defaultState);
+    expect(playlist.tracks.map((track) => track.steps.map((step) => step.posterFrame ?? false))).toEqual([
+      [false, true, true],
+      [false, true, true],
+      [true, true, true],
+    ]);
+  });
+
+  it('keeps the lazy poster frames out of the server HTML: the trio’s DOM is unchanged', () => {
+    const html = render({ glimpses: HOME, layout: 'trio', size: 'inherit' });
+    const frames = tags(html, 'gl-frame');
+    expect(frames).toHaveLength(9 + 1);
+    expect(frames.filter((frame) => frame.includes('data-kind="poster"'))).toHaveLength(1);
+    expect(tags(html, 'phone')).toHaveLength(10);
+  });
+
+  it('gives the case-study heroes the same posters (W9 renders them through the same player)', () => {
+    expect(posters('hero.defensys-responder')).toEqual(['3.1:online', '3.2:sheet (lazy)', '3.3:on-site (lazy)', '3.5:thread (lazy)']);
+    expect(posters('hero.defensys-citizen')).toEqual(['2.3:countdown (lazy)', '2.4:connected (lazy)', '2.5:map (lazy)']);
+    expect(posters('hero.sme-panindio')).toEqual(['1.2:confirmed (lazy)', '1.6:enhanced (lazy)']);
   });
 });
 

@@ -25,14 +25,12 @@ import type { BrandCssVars } from '@/lib/brand-vars';
 import { cn } from '@/lib/cn';
 import {
   brandIndexForRotation,
+  frameStatus,
   holdOf,
   initPlayer,
-  isLive,
   reducePlayer,
-  sameFrame,
   shownFrame,
   trackRotation,
-  upcomingFrame,
   type FrameKind,
   type GlimpseEvent,
   type GlimpseState,
@@ -50,6 +48,8 @@ export type { Playlist } from '@/lib/glimpse';
  *   src/styles/replica.css), the one coming next data-next; all others stay
  *   content-visibility:hidden (src/components/showcase/glimpse.css);
  * - a frame fading out under a new one keeps data-active with data-paused (its last frame);
+ * - a lazy frame (a reduced-motion poster of a step other than the poster step) is mounted only
+ *   while it is shown, fading out or next, so it adds no DOM until reduced motion needs it;
  * - pause and suspension set data-paused on the track, so the phones' animations freeze;
  * - the root carries data-status and, once hydrated, data-ready (controls show only with JS).
  * Steps change through plain state, never startTransition, so no View Transition fires.
@@ -270,21 +270,21 @@ export interface GlimpseFrameProps {
   readonly step: number;
   /** 'play' (default): the step's played state · 'poster': its static posterState. */
   readonly kind?: FrameKind;
+  /**
+   * Render the phone only while the player needs it (shown, fading out or coming next): the
+   * reduced-motion poster frames of steps other than the poster step (frameStatus).
+   */
+  readonly lazy?: boolean;
   readonly children: ReactNode;
   readonly className?: string;
 }
 
 /** One step of a track, as a server-rendered phone. Only its attributes change. */
-export function GlimpseFrame({ track, step, kind = 'play', children, className }: GlimpseFrameProps): ReactNode {
+export function GlimpseFrame({ track, step, kind = 'play', lazy = false, children, className }: GlimpseFrameProps): ReactNode {
   const { playlist, player, state } = useGlimpseContext();
   const ref = useRef<HTMLDivElement>(null);
-  const me = { step, kind };
-  const shown = sameFrame(shownFrame(playlist, state, track), me);
+  const { shown, leaving: isLeaving, next, active, frozen, mounted } = frameStatus(playlist, player, track, { step, kind }, lazy);
   const leaving = player.leaving[track] ?? null;
-  const isLeaving = !shown && leaving !== null && sameFrame(leaving.frame, me);
-  const next = !shown && !isLeaving && sameFrame(upcomingFrame(playlist, state, track), me);
-  const active = (shown && isLive(playlist, state, track)) || (isLeaving && leaving.live);
-  const frozen = isLeaving && leaving.live;
   const memo = useRef({ active: false, seq: -1 });
 
   useLayoutEffect(() => {
@@ -300,6 +300,7 @@ export function GlimpseFrame({ track, step, kind = 'play', children, className }
     memo.current = { active, seq: state.seq };
   }, [shown, active, state.seq]);
 
+  if (!mounted) return null;
   return (
     <div
       ref={ref}
