@@ -33,6 +33,9 @@ export const PASSES = Object.freeze([
 
 const INTERACTIVE = /^--(ui|ui-host|ui-port|debug)(=|$)/;
 
+/** Arguments whose Playwright output carries no test count: help and version. */
+const INFORMATIONAL = /^(-h|--help|-V|--version)$/;
+
 function playwright(args, env, capture = false) {
   return spawnSync(process.execPath, [PLAYWRIGHT, 'test', ...args], { env, stdio: capture ? 'pipe' : 'inherit', encoding: 'utf8' });
 }
@@ -51,7 +54,8 @@ function statusOf(result) {
 
 /**
  * Runs the passes. Returns the exit code: 0, Playwright's worst status (1 failed, 130
- * interrupted), or 1 when the arguments select no test.
+ * interrupted), or 1 when the arguments select no test or a listing has no test count (outside
+ * --help and --version).
  */
 export function main(args = process.argv.slice(2), env = process.env) {
   if (args.some((arg) => INTERACTIVE.test(arg))) return statusOf(playwright(args, env));
@@ -67,7 +71,11 @@ export function main(args = process.argv.slice(2), env = process.env) {
     const count = listedCount(listing.stdout ?? '');
     if (count === null) {
       process.stdout.write(listing.stdout ?? '');
-      return 0;
+      if (args.some((arg) => INFORMATIONAL.test(arg))) return 0;
+      // No count without --help or --version means the listing's format changed: running nothing
+      // must not pass.
+      console.error("e2e: Playwright's --list output has no 'Total:' line, so no test count; failing closed");
+      return 1;
     }
     planned.push({ ...pass, count });
   }

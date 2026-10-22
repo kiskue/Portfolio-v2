@@ -554,6 +554,13 @@ describe('main (npm run e2e), with Playwright stubbed', () => {
     expect(printed).toContain('Usage: npx playwright test [options] [test-filter...]\n');
   });
 
+  it('fails closed when a listing has no total and neither --help nor --version was asked', () => {
+    listings = { main: 'Listing tests:\n  [mobile] › e2e/smoke.spec.ts:9:5 › every route › / returns 200\nSummary: 75 tests\n' };
+    expect(runner.main(['tests/e2e/smoke.spec.ts'], ENV)).toBe(1);
+    expect(runs()).toEqual([]);
+    expect(printed).toContain("e2e: Playwright's --list output has no 'Total:' line, so no test count; failing closed");
+  });
+
   it('gives an interactive run (--ui, --debug) one plain Playwright invocation', () => {
     for (const flag of ['--ui', '--ui-port=9323', '--ui-host=127.0.0.1', '--debug']) {
       spawn.mockClear();
