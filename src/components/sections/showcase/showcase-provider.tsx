@@ -1,0 +1,349 @@
+'use client';
+
+import { usePathname } from 'next/navigation';
+import {
+  createContext,
+  lazy,
+  Suspense,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
+import type { BrandId, SiteRoute } from '@/content/types';
+import { parseParam, withParam } from '@/hooks/search-param';
+import { useSearchParam } from '@/hooks/use-search-param';
+import {
+  APP_FILTERS,
+  SHOWCASE_PARAM,
+  SOURCE_FILTERS,
+  effectiveSource,
+  isFiltered,
+  realCount,
+  sameFilters,
+  stepIndex,
+  visibleFacets,
+  withoutParams,
+  type AppFilter,
+  type BrandableApp,
+  type ShowcaseFacet,
+  type ShowcaseFilters,
+  type SourceFilter,
+} from '@/lib/showcase-filters';
+
+/*
+ * The Showcase wall's state (design §7). One provider around the server-rendered wall holds:
+ *
+ * - the filters, synced to ?app= and ?source= (and reading the BrandScope keys ?brand= and
+ *   ?rbrand=) the way BrandScope does: useSearchParam reads them in a tiny component inside
+ *   Suspense, so the page stays static and the server (and a no-JS visit) shows the whole wall;
+ *   choices are written at once with history.replaceState (no history entry, no server request);
+ * - the lightbox: every WallTile registers its server-rendered screen and details here, and the
+ *   Radix dialog (loaded on first intent, like the menu sheet) renders the active one again at
+ *   a fitted size. Nothing is rendered twice on the server and no screen is sent twice.
+ *
+ * Tiles read the filters to hide themselves; containers hide by CSS when none of their tiles
+ * show. Focus returns to the tile of the screen on display when the lightbox closes.
+ */
+
+/** One screen the lightbox can show, registered by its WallTile. */
+export interface LightboxEntry {
+  readonly id: string;
+  /** The dialog title, e.g. "FIG 2.3 SOS countdown". */
+  readonly title: string;
+  /** The screen at an inherited --ps (for replicas, the tile's own element). */
+  readonly screen: ReactNode;
+  /** The outer box's height / width: a phone 868 / 414, a screenshot card its image's aspect. */
+  readonly ratio: number;
+  /** Server-rendered facts: caption, purpose, source, alt text. */
+  readonly details: ReactNode;
+  readonly caseStudy: { readonly href: SiteRoute; readonly label: string };
+  /** The skin a brandable replica shows: its BrandScope's brand name and --app-* variables. */
+  readonly brand: { readonly name: string; readonly vars: CSSProperties } | null;
+  /** Focuses the tile's button (focus return on close). */
+  readonly focus: () => void;
+}
+
+export interface BrandParam {
+  readonly ids: readonly BrandId[];
+  readonly fallback: BrandId;
+}
+
+export interface ShowcaseView {
+  readonly filters: ShowcaseFilters;
+  /** The Source choice that applies ('all' for a replica-only selection). */
+  readonly source: SourceFilter;
+  readonly visibleIds: ReadonlySet<string>;
+  readonly shown: number;
+  readonly total: number;
+  /** Real screenshots within the App and Brand choices: the n of "Real screenshots (n)". */
+  readonly real: number;
+  readonly filtered: boolean;
+  /** True once the URL is followed (the reader has mounted): set as data-ready on the filters. */
+  readonly ready: boolean;
+  /** Id of the element around the App radios (Clear filters moves focus there). */
+  readonly appFieldId: string;
+  readonly setApp: (app: AppFilter) => void;
+  readonly setSource: (source: SourceFilter) => void;
+  readonly clear: () => void;
+}
+
+export interface ShowcaseActions {
+  /** Registers a tile's screen for the lightbox's stepping; returns the unregister function. */
+  readonly register: (entry: LightboxEntry) => () => void;
+  /** Opens the lightbox on this entry (and registers it). */
+  readonly open: (entry: LightboxEntry) => void;
+  /** Starts loading the lightbox code (first hover, focus or touch on a tile). */
+  readonly preload: () => void;
+}
+
+const ViewContext = createContext<ShowcaseView | null>(null);
+const ActionsContext = createContext<ShowcaseActions | null>(null);
+
+export function useShowcaseView(): ShowcaseView {
+  const view = use(ViewContext);
+  if (view === null) throw new Error('useShowcaseView must be used inside a ShowcaseProvider');
+  return view;
+}
+
+export function useShowcaseActions(): ShowcaseActions {
+  const actions = use(ActionsContext);
+  if (actions === null) throw new Error('useShowcaseActions must be used inside a ShowcaseProvider');
+  return actions;
+}
+
+/** The lightbox code (Radix) loads on first intent, keeping it out of the page's first load. */
+const loadLightbox = () => import('@/components/sections/showcase/lightbox-dialog');
+const LightboxDialog = lazy(loadLightbox);
+
+const PARAM_KEYS: readonly string[] = Object.values(SHOWCASE_PARAM);
+
+/**
+ * Writes the query from the current location, with useSearchParam's rules (replaceState; the
+ * fallback removes its key; other keys keep their order).
+ */
+function writeQuery(query: (search: string) => string): void {
+  const { pathname, search, hash } = window.location;
+  window.history.replaceState(null, '', `${pathname}${query(search)}${hash}`);
+}
+
+/** The filters a query string holds, parsed with useSearchParam's rules (unknown values read as defaults). */
+function filtersFrom(search: string, brands: Readonly<Record<BrandableApp, BrandParam>>): ShowcaseFilters {
+  const params = new URLSearchParams(search);
+  return {
+    app: parseParam(params.get(SHOWCASE_PARAM.app), APP_FILTERS, 'all'),
+    source: parseParam(params.get(SHOWCASE_PARAM.source), SOURCE_FILTERS, 'all'),
+    brands: {
+      citizen: parseParam(params.get(SHOWCASE_PARAM.citizenBrand), brands.citizen.ids, brands.citizen.fallback),
+      responder: parseParam(params.get(SHOWCASE_PARAM.responderBrand), brands.responder.ids, brands.responder.fallback),
+    },
+  };
+}
+
+interface FiltersParamSyncProps {
+  readonly brands: Readonly<Record<BrandableApp, BrandParam>>;
+  readonly onReady: () => void;
+  readonly onUrl: (filters: ShowcaseFilters) => void;
+}
+
+/**
+ * Follows the filter params (and the BrandScope keys) with useSearchParam, inside Suspense (it
+ * needs useSearchParams). Each change is read from the live location: a choice written before
+ * Next.js learnt of it (see ShowcaseProvider) is never undone by a stale value. Renders nothing.
+ */
+function FiltersParamSync({ brands, onReady, onUrl }: FiltersParamSyncProps): ReactNode {
+  const [app] = useSearchParam(SHOWCASE_PARAM.app, APP_FILTERS, 'all');
+  const [source] = useSearchParam(SHOWCASE_PARAM.source, SOURCE_FILTERS, 'all');
+  const [citizen] = useSearchParam(SHOWCASE_PARAM.citizenBrand, brands.citizen.ids, brands.citizen.fallback);
+  const [responder] = useSearchParam(SHOWCASE_PARAM.responderBrand, brands.responder.ids, brands.responder.fallback);
+
+  useEffect(() => onReady(), [onReady]);
+
+  useEffect(() => {
+    onUrl(filtersFrom(window.location.search, brands));
+  }, [app, source, citizen, responder, brands, onUrl]);
+
+  return null;
+}
+
+interface LightboxState {
+  readonly entry: LightboxEntry | null;
+  readonly open: boolean;
+  /** False when a route change closed it: focus then stays with the new page. */
+  readonly returnFocus: boolean;
+}
+
+const CLOSED: LightboxState = { entry: null, open: false, returnFocus: true };
+
+export interface ShowcaseProviderProps {
+  /** Every tile's facets, in wall order (from derived showcaseEntries). */
+  readonly facets: readonly ShowcaseFacet[];
+  /** The brand ids and default of each white-label app (its BrandScope's options). */
+  readonly brands: Readonly<Record<BrandableApp, BrandParam>>;
+  /** Id for the element around the App radios (rendered by FilterBar). */
+  readonly appFieldId: string;
+  readonly children: ReactNode;
+}
+
+export function ShowcaseProvider({ facets, brands, appFieldId, children }: ShowcaseProviderProps): ReactNode {
+  const defaults = useMemo<ShowcaseFilters>(
+    () => ({ app: 'all', source: 'all', brands: { citizen: brands.citizen.fallback, responder: brands.responder.fallback } }),
+    [brands],
+  );
+  const [filters, setFilters] = useState<ShowcaseFilters>(defaults);
+  const [ready, setReady] = useState(false);
+
+  // URL writes wait until the reader has mounted. It mounts after the hydration commit's effects,
+  // which is where Next.js starts following history.replaceState; a write made before that would
+  // be missed by Next.js (and by useSearchParams everywhere, the BrandScopes' writes included).
+  const live = useRef(false);
+  const pending = useRef<((search: string) => string)[]>([]);
+
+  const write = useCallback((query: (search: string) => string) => {
+    if (live.current) writeQuery(query);
+    else pending.current.push(query);
+  }, []);
+
+  const onReady = useCallback(() => {
+    live.current = true;
+    for (const query of pending.current.splice(0)) writeQuery(query);
+    setReady(true);
+  }, []);
+
+  const onUrl = useCallback((next: ShowcaseFilters) => setFilters((prev) => (sameFilters(prev, next) ? prev : next)), []);
+
+  const setApp = useCallback(
+    (app: AppFilter) => {
+      setFilters((prev) => (prev.app === app ? prev : { ...prev, app }));
+      write((search) => withParam(search, SHOWCASE_PARAM.app, app, 'all'));
+    },
+    [write],
+  );
+
+  const setSource = useCallback(
+    (source: SourceFilter) => {
+      setFilters((prev) => (prev.source === source ? prev : { ...prev, source }));
+      write((search) => withParam(search, SHOWCASE_PARAM.source, source, 'all'));
+    },
+    [write],
+  );
+
+  // One history write for every key. The BrandScopes follow the URL back to their defaults.
+  const clear = useCallback(() => {
+    setFilters(defaults);
+    write((search) => withoutParams(search, PARAM_KEYS));
+    requestAnimationFrame(() => {
+      document.getElementById(appFieldId)?.querySelector<HTMLInputElement>('input:checked')?.focus();
+    });
+  }, [defaults, appFieldId, write]);
+
+  const visible = useMemo(() => visibleFacets(facets, filters), [facets, filters]);
+  const order = useMemo(() => visible.map((facet) => facet.id), [visible]);
+
+  const view = useMemo<ShowcaseView>(
+    () => ({
+      filters,
+      source: effectiveSource(facets, filters),
+      visibleIds: new Set(order),
+      shown: order.length,
+      total: facets.length,
+      real: realCount(facets, filters),
+      filtered: isFiltered(filters, defaults),
+      ready,
+      appFieldId,
+      setApp,
+      setSource,
+      clear,
+    }),
+    [filters, facets, order, defaults, ready, appFieldId, setApp, setSource, clear],
+  );
+
+  // ─── Lightbox ──────────────────────────────────────────────────────────────────────────
+
+  const registry = useRef(new Map<string, LightboxEntry>());
+  const [lightbox, setLightbox] = useState<LightboxState>(CLOSED);
+  const [requested, setRequested] = useState(false);
+  const pathname = usePathname();
+  const [shownPath, setShownPath] = useState(pathname);
+  const shownEntry = useRef<LightboxEntry | null>(null);
+
+  // A route change (the case-study link) closes the lightbox, adjusting state during render so
+  // the next page never renders with it open. Focus then stays with the new page.
+  if (shownPath !== pathname) {
+    setShownPath(pathname);
+    if (lightbox.open) setLightbox({ ...lightbox, open: false, returnFocus: false });
+  }
+
+  // Focus returns to the tile of the screen on display, however the lightbox closed (Esc, the
+  // close button, the scrim). Radix has no trigger here, so it would otherwise land on <body>.
+  useEffect(() => {
+    if (lightbox.open) {
+      shownEntry.current = lightbox.entry;
+      return;
+    }
+    const closed = shownEntry.current;
+    shownEntry.current = null;
+    if (closed && lightbox.returnFocus) closed.focus();
+  }, [lightbox]);
+
+  const register = useCallback((entry: LightboxEntry) => {
+    registry.current.set(entry.id, entry);
+    return () => {
+      if (registry.current.get(entry.id) === entry) registry.current.delete(entry.id);
+    };
+  }, []);
+
+  const open = useCallback((entry: LightboxEntry) => {
+    registry.current.set(entry.id, entry);
+    setRequested(true);
+    setLightbox({ entry, open: true, returnFocus: true });
+  }, []);
+
+  const preload = useCallback(() => {
+    void loadLightbox();
+  }, []);
+
+  const actions = useMemo<ShowcaseActions>(() => ({ register, open, preload }), [register, open, preload]);
+
+  const step = useCallback(
+    (delta: number) => {
+      const current = lightbox.entry;
+      if (!current || order.length === 0) return;
+      const nextId = order[stepIndex(order.indexOf(current.id), delta, order.length)];
+      const next = nextId === undefined ? undefined : registry.current.get(nextId);
+      if (next) setLightbox({ entry: next, open: true, returnFocus: true });
+    },
+    [lightbox.entry, order],
+  );
+
+  const close = useCallback(() => setLightbox((current) => ({ ...current, open: false, returnFocus: true })), []);
+
+  const position = lightbox.entry ? order.indexOf(lightbox.entry.id) + 1 : 0;
+
+  return (
+    <ActionsContext value={actions}>
+      <ViewContext value={view}>
+        <Suspense fallback={null}>
+          <FiltersParamSync brands={brands} onReady={onReady} onUrl={onUrl} />
+        </Suspense>
+        {children}
+        {requested && lightbox.entry ? (
+          <Suspense fallback={null}>
+            <LightboxDialog
+              open={lightbox.open}
+              entry={lightbox.entry}
+              position={position}
+              total={order.length}
+              onStep={step}
+              onClose={close}
+            />
+          </Suspense>
+        ) : null}
+      </ViewContext>
+    </ActionsContext>
+  );
+}

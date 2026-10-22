@@ -2,15 +2,16 @@ import 'server-only';
 import type { BrandOption, BrandScopeProps } from '@/components/showcase/brand-scope';
 import { STORE_NAME } from '@/components/ui/store-link';
 import { listingsForBrand } from '@/content/apps/store';
-import { brandsFor, defaultBrand } from '@/content/derived';
+import { brandsFor, defaultBrand, screenshotsByBrand } from '@/content/derived';
 import type { CitizenBrand, ResponderBrand, Segments, StoreListing, StorePlatform } from '@/content/types';
 import { brandVars } from '@/lib/brand-vars';
 import { ph } from '@/lib/placeholder';
 
 /*
  * Server-side data for BrandScope (design §5.5): one serialisable option per public brand, with
- * its --app-* variables, its mark, its kept store screenshot count (for SourceToggle) and an
- * honest status line. Server-only: it reads the store data.
+ * its --app-* variables, its mark, its kept store screenshot count (for SourceToggle, from
+ * screenshotsByBrand in src/content/derived.ts: counts are never computed here) and an honest
+ * status line. Server-only: it reads the store data.
  */
 
 /** A store as it reads after "on": "Google Play", "the App Store". */
@@ -47,7 +48,7 @@ function citizenOption(brand: CitizenBrand): BrandOption {
     name: brand.name,
     vars: brandVars(brand),
     icon: brand.icon,
-    screenshots: listings.reduce((total, listing) => total + listing.screenshots.length, 0),
+    screenshots: screenshotsByBrand[brand.id],
     status: storePresence(listings),
   };
 }
