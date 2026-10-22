@@ -46,7 +46,8 @@ const TOPIC_OPTIONS: readonly SegmentedOption<ContactTopic>[] = CONTACT_TOPICS.m
 
 /** Reads ?topic= (inside Suspense, as useSearchParams needs on a static page). Renders nothing. */
 function TopicFromUrl({ onTopic }: { readonly onTopic: (topic: ContactTopic | null) => void }): null {
-  const raw = useSearchParams().get('topic');
+  // Null-safe: the App Router always provides search params, other renderers (tests) may not.
+  const raw = useSearchParams()?.get('topic') ?? null;
   const topic = isContactTopic(raw) ? raw : null;
   useEffect(() => {
     onTopic(topic);

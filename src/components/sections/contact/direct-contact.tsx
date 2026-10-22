@@ -9,7 +9,7 @@ import { cvState } from '@/components/ui/placeholder-values';
 import { SectionHeader } from '@/components/ui/section-header';
 import { contactLine, profile } from '@/content/profile';
 import { site } from '@/content/site';
-import type { SocialLink } from '@/content/types';
+import type { PlaceholderMode, SocialLink } from '@/content/types';
 
 /** A social link's mark, decorative beside its visible label. */
 function LinkGlyph({ link }: { readonly link: SocialLink }) {
@@ -23,9 +23,9 @@ function LinkGlyph({ link }: { readonly link: SocialLink }) {
  * and the CV control (a link once cvUrl is set; a placeholder chip in label mode; nothing in
  * hide mode).
  */
-export function DirectContact() {
+export function DirectContact({ mode = site.placeholders }: { readonly mode?: PlaceholderMode }) {
   const socials = profile.links.filter((link) => link.id !== 'email');
-  const showCv = cvState(profile.cvUrl, site.placeholders).kind !== 'none';
+  const showCv = cvState(profile.cvUrl, mode).kind !== 'none';
   return (
     <div className="flex flex-col gap-3">
       <SectionHeader as="h2" size="card" title="Reach me directly" />
@@ -35,7 +35,7 @@ export function DirectContact() {
         </ExternalLink>
         <CopyButton value={profile.email} label="Copy email" copiedLabel="Email copied" size="sm" />
       </div>
-      <MetaLine segments={contactLine} className="text-meta text-ink-3" />
+      <MetaLine segments={contactLine} mode={mode} className="text-meta text-ink-3" />
       <ul className="mt-1 flex flex-wrap gap-2">
         {socials.map((link) => (
           <li key={link.id} className="flex">
@@ -47,7 +47,7 @@ export function DirectContact() {
         ))}
         {showCv ? (
           <li className="flex">
-            <CvLink href={profile.cvUrl} size="sm" />
+            <CvLink href={profile.cvUrl} size="sm" mode={mode} />
           </li>
         ) : null}
       </ul>
