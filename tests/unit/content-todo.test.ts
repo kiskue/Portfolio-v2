@@ -179,6 +179,10 @@ describe('scanSource: examples, confirm notes, null facts and the release switch
       ]);
       expect(only(scanSource('src/content/site.ts', siteSource('hide', value)), 'release'), value).toEqual([]);
     }
+    // The shorthand `{ placeholders }` reads the same-named constant.
+    const shorthand = (mode: PlaceholderMode) => `const placeholders = resolvePlaceholderMode(process.env.MODE, '${mode}');\nexport const site = { placeholders };`;
+    expect(only(scanSource('x.ts', shorthand('label')), 'release')).toEqual([expect.objectContaining({ line: 1, where: 'site.placeholders' })]);
+    expect(only(scanSource('x.ts', shorthand('hide')), 'release')).toEqual([]);
   });
 
   it('lists a release switch it cannot read statically, so --strict fails closed', () => {

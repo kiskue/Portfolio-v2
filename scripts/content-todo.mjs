@@ -258,8 +258,8 @@ function constantHolding(node) {
  * one build, not the default, so it never clears the item. A value the scan cannot read is
  * listed too, so --strict fails closed.
  */
-function releaseFinding(file, sourceFile, property, consts, where, flags) {
-  const source = placeholderDefault(property.initializer, consts);
+function releaseFinding(file, sourceFile, property, value, consts, where, flags) {
+  const source = placeholderDefault(value, consts);
   if (source === null) return null;
   if (source.unknown) {
     const text = `could not tell whether the default is 'label' (‹computed: ${source.unknown.getText(sourceFile)}›): make sure it is 'hide' to go public`;
@@ -369,9 +369,13 @@ export function scanSource(file, text) {
         const credential = name !== 'url' || CREDENTIAL_KINDS.has(literalText(ownProperty(object, 'kind')) ?? '');
         if (credential) found.push(item('null', file, lineOf(sourceFile, node), `${where}.${name}`, fact.note, flagsFor(node, fact.optional)));
       } else if (name === 'placeholders') {
-        const release = releaseFinding(file, sourceFile, node, consts, `${where}.${name}`, flagsFor(node));
+        const release = releaseFinding(file, sourceFile, node, node.initializer, consts, `${where}.${name}`, flagsFor(node));
         if (release) found.push(release);
       }
+    } else if (ts.isShorthandPropertyAssignment(node) && propertyName(node.name) === 'placeholders') {
+      // `{ placeholders }`: the value is the same-named constant.
+      const release = releaseFinding(file, sourceFile, node, node.name, consts, `${contextPath(node.parent)}.placeholders`, flagsFor(node));
+      if (release) found.push(release);
     }
     ts.forEachChild(node, visit);
   };
