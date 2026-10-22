@@ -12,8 +12,7 @@ import { CASE_STUDY_ROUTES } from '../support/routes';
  * - without JavaScript the first frames (posters) show and nothing moves;
  * - the global reduced-motion rules (src/styles/motion.css) apply from the setting, and from the
  *   media query when no script ran.
- * The checks live in tests/support/motion.ts. Tests tagged @needs-pages need Home (W8) and the
- * case-study heroes (W9): run them after the merge.
+ * The checks live in tests/support/motion.ts.
  */
 
 /* One worker per file, tests in order (see tests/e2e/smoke.spec.ts for why). */
@@ -43,21 +42,21 @@ test.describe('reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
 
   for (const player of PLAYERS) {
-    test(`${player.name}: every track holds its poster frame, Play is offered and nothing animates @needs-pages`, async ({ page }) => {
+    test(`${player.name}: every track holds its poster frame, Play is offered and nothing animates`, async ({ page }) => {
       await page.goto(player.route, { waitUntil: 'load' });
       await hydrated(page);
       expect((await htmlState(page)).motion).toBe('reduce');
       await expectPostersHeld(player.root(page));
     });
 
-    test(`${player.name}: each step shows its posterState when chosen @needs-pages`, async ({ page }) => {
+    test(`${player.name}: each step shows its posterState when chosen`, async ({ page }) => {
       await page.goto(player.route, { waitUntil: 'load' });
       await hydrated(page);
       await expectStepPosters(player.root(page));
     });
   }
 
-  test('the tools marquee is static: no animation runs and the track stands still @needs-pages', async ({ page }) => {
+  test('the tools marquee is static: no animation runs and the track stands still', async ({ page }) => {
     await page.goto('/', { waitUntil: 'load' });
     await hydrated(page);
     const track = marqueeTrack(page);
@@ -71,7 +70,7 @@ test.describe('full motion', () => {
   test.use({ reducedMotion: 'no-preference' });
 
   for (const player of PLAYERS) {
-    test(`${player.name}: Pause freezes the animations inside the phones and holds the step @needs-pages`, async ({ page }) => {
+    test(`${player.name}: Pause freezes the animations inside the phones and holds the step`, async ({ page }) => {
       await page.goto(player.route, { waitUntil: 'load' });
       await hydrated(page);
       await expectPauseFreezes(page, player.root(page));
@@ -83,13 +82,13 @@ test.describe('without JavaScript', () => {
   test.use({ javaScriptEnabled: false });
 
   for (const player of PLAYERS) {
-    test(`${player.name}: the first frames show and nothing animates @needs-pages`, async ({ page }) => {
+    test(`${player.name}: the first frames show and nothing animates`, async ({ page }) => {
       await page.goto(player.route, { waitUntil: 'load' });
       await expectNoJsPosters(player.root(page));
     });
   }
 
-  test('the tools marquee stands still @needs-pages', async ({ page }) => {
+  test('the tools marquee stands still', async ({ page }) => {
     await page.goto('/', { waitUntil: 'load' });
     const track = marqueeTrack(page);
     await expect(track).toHaveCount(1);
