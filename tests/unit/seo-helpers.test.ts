@@ -115,6 +115,7 @@ describe('titles and alt text', () => {
     expect(alt).toContain(site.name);
     expect(alt).toContain(home.headline.join(' '));
     for (const app of apps) expect(alt).toContain(app.name);
+    expect(alt).toContain('SME Panindio, Defensys Citizen and Defensys Responder.');
     expect(alt).not.toContain('[[');
   });
 
@@ -184,10 +185,14 @@ describe('pageMetadata', () => {
     }
   });
 
-  it('drops the query and #anchor from canonical and og:url', () => {
+  it('drops the query, #anchor and trailing slash from canonical and og:url', () => {
     const projects = pageMetadata({ title: 'Projects', description: 'All work.', path: '/projects?type=ai#list' });
     expect(projects.alternates).toEqual({ canonical: '/projects' });
     expect(projects.openGraph).toMatchObject({ url: '/projects' });
+    expect(pageMetadata({ title: 'About', description: 'x', path: '/about/' }).alternates).toEqual({ canonical: '/about' });
+    expect(pageMetadata({ title: 'Home', description: 'x', path: '/?ref=x' }).alternates).toEqual({ canonical: '/' });
+    const caseStudy = pageMetadata({ title: 'SME Panindio', description: 'x', path: '/projects/sme-panindio/' });
+    expect(caseStudy.openGraph).toMatchObject({ images: [{ url: '/projects/sme-panindio/opengraph-image' }] });
     const anchored = pageMetadata({ title: 'SME Panindio', description: 'x', path: '/projects/sme-panindio#ai' });
     expect(anchored.openGraph).toMatchObject({ images: [{ url: '/projects/sme-panindio/opengraph-image' }] });
   });

@@ -54,8 +54,8 @@ export function defaultTitle(): string {
 /** "Gerric Measco, Mobile & full-stack engineer: “Mobile apps …”" — the site card's alt text. */
 export function rootOgImageAlt(): string {
   const who = [site.name, metaText(profile.title)].filter(Boolean).join(', ');
-  const appNames = apps.map((app) => app.name);
-  const listed = `${appNames.slice(0, -1).join(', ')} and ${appNames.at(-1) ?? ''}`;
+  // "A, B and C": the site's copy uses no serial comma.
+  const listed = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(apps.map((app) => app.name));
   return `${who}: “${home.headline.join(' ')}” Colour bars for ${listed}.`;
 }
 
@@ -80,10 +80,14 @@ export function absoluteUrl(path: string, origin: string = site.url): string {
   return new URL(path, origin).href;
 }
 
-/** The page's own path for canonical and og:url: no query (filters) and no #anchor. */
+/**
+ * The page's own path for canonical and og:url: no query (filters), no #anchor, and no trailing
+ * slash (the site serves /about, not /about/).
+ */
 function canonicalPath(path: string): string {
   assertRootRelative(path);
-  return path.split(/[?#]/, 1)[0] ?? path;
+  const bare = path.split(/[?#]/, 1)[0] ?? path;
+  return bare.length > 1 ? bare.replace(/\/+$/, '') || '/' : bare;
 }
 
 function caseStudySlugOf(path: string): CaseStudySlug | null {
