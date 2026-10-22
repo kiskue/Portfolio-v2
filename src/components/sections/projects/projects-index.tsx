@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { CaseStudyCards } from '@/components/sections/projects/case-study-cards';
 import { FacetBar, FacetEmpty, FacetScope } from '@/components/sections/projects/facet-filter';
 import { MoreWorkGrid } from '@/components/sections/projects/more-work-grid';
-import { Copy } from '@/components/ui/copy';
 import { IconTile } from '@/components/ui/icon-tile';
+import { SectionHeader } from '@/components/ui/section-header';
 import { facetCounts, projectFacetCounts } from '@/content/derived';
 import { emptyStates } from '@/content/home';
 import { projects as allProjects } from '@/content/projects';
@@ -45,8 +45,7 @@ export function ProjectsIndex({ mode = site.placeholders, projects = allProjects
           <MoreWorkGrid projects={shown.filter((project) => project.caseStudy === undefined)} mode={mode} />
           <FacetEmpty clearLabel={empty.cta?.label ?? 'Clear filters'}>
             <IconTile icon="folder-open" tone="soft" size={32} />
-            <h2 className="text-h3-hero text-ink">{empty.title}</h2>
-            <Copy as="p" text={empty.body} mode={mode} className="text-body-sm text-ink-3" />
+            <SectionHeader as="h2" size="card" title={empty.title} intro={empty.body} />
           </FacetEmpty>
         </div>
       </div>
