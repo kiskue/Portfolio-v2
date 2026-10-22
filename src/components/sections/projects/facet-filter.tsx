@@ -14,7 +14,6 @@ import {
   type RefObject,
 } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { SegmentedControl, type SegmentedOption } from '@/components/ui/segmented-control';
 import { useSearchParam } from '@/hooks/use-search-param';
 import { cn } from '@/lib/cn';
@@ -48,7 +47,8 @@ import {
  * - A change writes the URL with history.replaceState: no history entry, no server request.
  *   projectsHref builds it, so type always comes before context, and a reset clears both at once.
  * - FacetSection and FacetItem wrap server-rendered sections and cards and only toggle their
- *   `hidden` attribute, so no card re-renders. FacetEmpty shows when nothing matches.
+ *   `hidden` attribute, so no card re-renders. FacetEmpty shows the server-rendered empty state
+ *   (the shared EmptyState block) when nothing matches; FacetClear is its Clear filters action.
  */
 
 interface FacetContextValue {
@@ -193,16 +193,24 @@ export function FacetItem({ slug, children, className }: FacetItemProps): ReactN
 }
 
 export interface FacetEmptyProps {
-  readonly clearLabel: string;
-  /** The server-rendered message (icon, title, body). */
+  /** The server-rendered empty state (components/content EmptyState, with FacetClear as its action). */
   readonly children: ReactNode;
-  readonly className?: string;
 }
 
-/** The empty state, shown only when no project passes the filters, with Clear filters when filtered. */
-export function FacetEmpty({ clearLabel, children, className }: FacetEmptyProps): ReactNode {
-  const { filters, setFilters, matched, barRef } = useFacets();
-  if (matched.size > 0) return null;
+/** Shows its empty state only when no project passes the filters. */
+export function FacetEmpty({ children }: FacetEmptyProps): ReactNode {
+  const { matched } = useFacets();
+  return matched.size > 0 ? null : children;
+}
+
+export interface FacetClearProps {
+  readonly label: string;
+}
+
+/** The empty state's action: Clear filters, offered only while a filter is set. */
+export function FacetClear({ label }: FacetClearProps): ReactNode {
+  const { filters, setFilters, barRef } = useFacets();
+  if (!isFiltered(filters)) return null;
 
   const clear = () => {
     // The button disappears with the empty state, so focus moves to the Type group's All radio,
@@ -212,13 +220,8 @@ export function FacetEmpty({ clearLabel, children, className }: FacetEmptyProps)
   };
 
   return (
-    <Card as="div" surface="sunken" className={cn('flex flex-col items-start gap-3', className)} data-facet-empty="">
-      {children}
-      {isFiltered(filters) ? (
-        <Button variant="secondary" size="sm" icon="rotate-ccw" onClick={clear} className="mt-1">
-          {clearLabel}
-        </Button>
-      ) : null}
-    </Card>
+    <Button variant="secondary" size="sm" icon="rotate-ccw" onClick={clear}>
+      {label}
+    </Button>
   );
 }
