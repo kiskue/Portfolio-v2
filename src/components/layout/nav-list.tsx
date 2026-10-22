@@ -22,8 +22,12 @@ function isCurrent(item: Pick<NavItem, 'href' | 'match'>, pathname: string): boo
 /*
  * Design §4.1: 40px rows (44 on coarse pointers), radius 12, padding 0 12, 12px icon gap, 18px
  * icons. Inactive: icon ink-3, label ink-2. Current: nav-active pill, a 3×18 ink bar at the
- * inline start, label ink 600, icon accent-ink, aria-current="page". In forced-colours mode the
- * pill and bar vanish, so the current row keeps a visible system-colour border instead.
+ * inline start, label ink 600, icon accent-ink, aria-current="page".
+ * Forced colours turn the pill and the bar into Canvas and draw every row's transparent border in
+ * LinkText, so the current row takes a checked SegmentedControl option's treatment: a Highlight
+ * fill and border, with HighlightText for its label, icon and bar. It opts out of forcing, or the
+ * browser would paint a Canvas backplate behind its HighlightText and hide the label; so it drops
+ * any shadow and keeps its focus ring a system colour (CanvasText).
  * Plain strings, no class merging: tailwind-merge stays out of this first-load island.
  */
 const LINK = [
@@ -34,7 +38,9 @@ const LINK = [
   'aria-[current=page]:[&_svg]:text-accent-ink',
   'before:absolute before:start-0 before:top-1/2 before:hidden before:h-4.5 before:w-0.75 before:-translate-y-1/2 before:rounded-full before:bg-ink',
   'aria-[current=page]:before:block',
-  'forced-colors:aria-[current=page]:border-[CanvasText]',
+  'forced-colors:aria-[current=page]:forced-color-adjust-none forced-colors:aria-[current=page]:border-[Highlight] forced-colors:aria-[current=page]:bg-[Highlight] forced-colors:aria-[current=page]:text-[HighlightText]',
+  'forced-colors:aria-[current=page]:[box-shadow:none] forced-colors:aria-[current=page]:outline-[CanvasText]',
+  'forced-colors:aria-[current=page]:[&_svg]:text-inherit forced-colors:aria-[current=page]:before:bg-[HighlightText]',
 ].join(' ');
 
 /**
