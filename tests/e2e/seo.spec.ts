@@ -11,8 +11,9 @@ import { absoluteUrl, personJsonLd, sitemapPaths } from '@/lib/seo';
  *
  * Label mode (the default): every page is noindex, robots.txt names no sitemap, /sitemap.xml is
  * a 404. Hide mode: pages are indexable and the sitemap lists every nav route and case study.
- * Both: the Open Graph cards are 1200×630 PNGs, every page's og:image resolves to one, the
- * layout's Person JSON-LD parses, and the GM icon is served and linked.
+ * Both: the Open Graph cards are 1200×630 PNGs, every page's og:image and twitter:image name its
+ * card (a case study's own, the site card on every other page) and load, the layout's Person
+ * JSON-LD parses, and the GM icon is served and linked.
  *
  * Per-page titles, descriptions and canonicals come from each page's own pageMetadata() call and
  * are checked after the pages land, not here.
@@ -24,8 +25,15 @@ import { absoluteUrl, personJsonLd, sitemapPaths } from '@/lib/seo';
 test.describe.configure({ mode: 'default' });
 
 const MODE = site.placeholders;
-const ROUTES: readonly string[] = [...site.nav.map((item) => item.href), ...CASE_STUDY_SLUGS.map((slug) => `/projects/${slug}`)];
-const OG_IMAGES: readonly string[] = ['/opengraph-image', ...CASE_STUDY_SLUGS.map((slug) => `/projects/${slug}/opengraph-image`)];
+const CASE_STUDY_ROUTES: readonly string[] = CASE_STUDY_SLUGS.map((slug) => `/projects/${slug}`);
+const ROUTES: readonly string[] = [...site.nav.map((item) => item.href), ...CASE_STUDY_ROUTES];
+/** The site card (src/app/opengraph-image.tsx). */
+const SITE_CARD = '/opengraph-image';
+/** A case study's own card (src/app/projects/[slug]/opengraph-image.tsx). */
+const caseStudyCard = (route: string): string => `${route}/opengraph-image`;
+const OG_IMAGES: readonly string[] = [SITE_CARD, ...CASE_STUDY_ROUTES.map(caseStudyCard)];
+/** The card a route's og:image and twitter:image name: its own on a case study, the site card everywhere else. */
+const cardFor = (route: string): string => (CASE_STUDY_ROUTES.includes(route) ? caseStudyCard(route) : SITE_CARD);
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 async function html(request: APIRequestContext, route: string): Promise<string> {
@@ -104,14 +112,14 @@ test.describe('Open Graph cards', () => {
     expect((await request.get('/projects/nope/opengraph-image')).status()).toBe(404);
   });
 
-  test('every page’s og:image and twitter:image load, and case studies show their own card', async ({ request }) => {
+  test('every page’s og:image and twitter:image load: case studies show their own card, every other page the site card', async ({ request }) => {
     for (const route of ROUTES) {
       const head = headOf(await html(request, route));
       for (const [attribute, key] of [['property', 'og:image'], ['name', 'twitter:image']] as const) {
         const content = metaContent(head, attribute, key);
         expect(content, `${route} ${key}`).not.toBeNull();
         const url = new URL(content ?? '');
-        if (route.startsWith('/projects/')) expect(url.pathname, `${route} ${key}`).toBe(`${route}/opengraph-image`);
+        expect(url.pathname, `${route} ${key}`).toBe(cardFor(route));
         const image = await request.get(`${url.pathname}${url.search}`);
         expect(image.status(), `${route} ${key}`).toBe(200);
         expect(image.headers()['content-type'], `${route} ${key}`).toBe('image/png');
