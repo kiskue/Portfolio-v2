@@ -67,7 +67,10 @@ function asWarning(assertion) {
 export function parseArgs(argv) {
   const options = { formFactor: 'all', seoStrict: false, seoOnly: false, port: DEFAULT_PORT, runs: null };
   for (const arg of argv) {
-    const [name, value] = arg.split('=', 2);
+    // Split at the first "=" only: `--port=3122=3100` is an invalid value, not port 3122.
+    const equals = arg.indexOf('=');
+    const name = equals === -1 ? arg : arg.slice(0, equals);
+    const value = equals === -1 ? undefined : arg.slice(equals + 1);
     if (name === '--form-factor' && ['mobile', 'desktop', 'all'].includes(value ?? '')) options.formFactor = value;
     else if (name === '--seo-strict' && value === undefined) options.seoStrict = true;
     else if (name === '--seo-only' && value === undefined) options.seoOnly = true;
