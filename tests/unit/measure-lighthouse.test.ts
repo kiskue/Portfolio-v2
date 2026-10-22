@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 /*
  * npm run lhci (scripts/measure-lighthouse.mjs) and lighthouserc.json decide which Lighthouse
  * numbers fail the build. These tests pin the PLAN's targets (PLAN "Verification → Lighthouse CI",
- * PLAN.md:411-421) in the real lighthouserc.json, so loosening a threshold, dropping a URL or
+ * PLAN.md lines 411-421) in the real lighthouserc.json, so loosening a threshold, dropping a URL or
  * easing how runs are measured fails here. They also check what each option does to the config
  * LHCI receives: the form factor's performance target, --seo-strict, --seo-only (CI's hide-mode
  * job, where only SEO decides the exit code), --port and --runs. main() runs with spawnSync and
@@ -88,21 +88,21 @@ const rc = JSON.parse(readFileSync(path.join(ROOT, 'lighthouserc.json'), 'utf8')
 const FORM_FACTORS = ['mobile', 'desktop'] as const;
 type FormFactor = (typeof FORM_FACTORS)[number];
 
-/** PLAN.md:411: the four URLs Lighthouse CI audits. */
+/** The four URLs Lighthouse CI audits (PLAN.md line 411). */
 const PLAN_PATHS = ['/', '/projects/defensys-citizen', '/showcase', '/contact'];
-/** PLAN.md:415: performance ≥0.95 on desktop, ≥0.90 on mobile. */
+/** Performance ≥0.95 on desktop, ≥0.90 on mobile (PLAN.md line 415). */
 const PERFORMANCE: Readonly<Record<FormFactor, number>> = { mobile: 0.9, desktop: 0.95 };
-/** PLAN.md:416-419: best practices ≥0.95, LCP ≤2.5 s, CLS ≤0.05 and TBT ≤150 ms, as errors. */
+/** Best practices ≥0.95, LCP ≤2.5 s, CLS ≤0.05 and TBT ≤150 ms, as errors (PLAN.md lines 416-419). */
 const PLAN_ERRORS: Readonly<Record<string, readonly ['error', Options]>> = {
   'categories:best-practices': ['error', { minScore: 0.95 }],
   'largest-contentful-paint': ['error', { maxNumericValue: 2500 }],
   'cumulative-layout-shift': ['error', { maxNumericValue: 0.05 }],
   'total-blocking-time': ['error', { maxNumericValue: 150 }],
 };
-/** PLAN.md:420: SEO 1.0 in hide mode. Label mode is noindex, so by default SEO is only a warning. */
+/** SEO 1.0 in hide mode (PLAN.md line 420). Label mode is noindex, so by default SEO is only a warning. */
 const SEO_ERROR: Assertion = ['error', { minScore: 1 }];
 const SEO_WARNING: Assertion = ['warn', { minScore: 1 }];
-/** PLAN.md:421: accessibility is recorded (replica contrast may cap it below 1.0). */
+/** Accessibility is recorded; replica contrast may cap it below 1.0 (PLAN.md line 421). */
 const ACCESSIBILITY: Assertion = ['warn', { minScore: 1 }];
 /** The SEO audits that do not depend on the placeholder mode: errors in every mode. */
 const SEO_AUDITS = ['document-title', 'meta-description', 'http-status-code', 'link-text', 'crawlable-anchors', 'robots-txt', 'hreflang', 'canonical'];
@@ -210,7 +210,7 @@ describe('parseArgs', () => {
   });
 });
 
-describe('lighthouserc.json: the PLAN targets (PLAN.md:411-421)', () => {
+describe('lighthouserc.json: the PLAN targets (PLAN.md lines 411-421)', () => {
   it("collects the PLAN's four URLs from `next start` on port 3100, three runs each", () => {
     expect(rc.ci.collect.url).toEqual(PLAN_PATHS.map((pathname) => urlOn(3100, pathname)));
     expect(rc.ci.collect.startServerCommand).toBe('npm run start -- -p 3100');

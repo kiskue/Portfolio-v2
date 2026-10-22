@@ -161,8 +161,8 @@ function playwrightListing(tests: number, files: number): string {
 
 describe('listedCount', () => {
   it("reads the total of Playwright's --list output, in the plural and singular forms", () => {
-    expect(listedCount('Listing tests:\n  [mobile] › e2e/smoke.spec.ts:30:5 › every route › / returns 200\nTotal: 75 tests in 1 file\n')).toBe(75);
-    expect(listedCount('Listing tests:\n  [desktop] › e2e/budgets.spec.ts:260:3 › Core Web Vitals in the lab › LCP\nTotal: 1 test in 1 file\n')).toBe(1);
+    expect(listedCount('Listing tests:\n  [mobile] › e2e/smoke.spec.ts:9:5 › every route › / returns 200\nTotal: 75 tests in 1 file\n')).toBe(75);
+    expect(listedCount('Listing tests:\n  [desktop] › e2e/budgets.spec.ts:7:3 › Core Web Vitals in the lab › LCP\nTotal: 1 test in 1 file\n')).toBe(1);
     expect(listedCount('Listing tests:\nTotal: 808 tests in 19 files\n')).toBe(808);
     expect(listedCount('Listing tests:\r\nTotal: 2 tests in 2 files\r\n')).toBe(2);
   });
