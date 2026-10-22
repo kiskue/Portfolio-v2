@@ -30,7 +30,7 @@ export function DirectContact({ mode = site.placeholders }: { readonly mode?: Pl
     <div className="flex flex-col gap-3">
       <SectionHeader as="h2" size="card" title="Reach me directly" />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <ExternalLink href={`mailto:${profile.email}`} className="text-lead font-bold [overflow-wrap:anywhere]">
+        <ExternalLink href={`mailto:${profile.email}`} className="inline-flex min-h-6 items-center text-lead font-bold [overflow-wrap:anywhere]">
           {profile.email}
         </ExternalLink>
         <CopyButton value={profile.email} label="Copy email" copiedLabel="Email copied" size="sm" />

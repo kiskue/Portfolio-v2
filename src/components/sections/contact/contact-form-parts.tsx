@@ -169,7 +169,12 @@ export function ErrorSummary({ fieldErrors, formError, focusRef }: ErrorSummaryP
           <ul className="mt-2 flex list-disc flex-col gap-1 ps-5 text-body-sm marker:text-danger-ink">
             {fields.map((field) => (
               <li key={field}>
-                <a href={`#${fieldId(field)}`} onClick={(event) => focusField(event, field)} className={cn(inlineLinkClass, 'text-danger-ink')}>
+                {/* At least 24px tall: these stand alone, so the inline-link exception of 2.5.8 does not apply. */}
+                <a
+                  href={`#${fieldId(field)}`}
+                  onClick={(event) => focusField(event, field)}
+                  className={cn(inlineLinkClass, 'inline-flex min-h-6 items-center text-danger-ink')}
+                >
                   {fieldErrors[field]}
                 </a>
               </li>
