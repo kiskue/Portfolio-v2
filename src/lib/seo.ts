@@ -119,7 +119,7 @@ export function rootMetadata(mode: PlaceholderMode = site.placeholders): Metadat
 }
 
 export interface PageMetadataInput {
-  /** The page title without the site name; the root layout's template adds " · Gerric Measco". */
+  /** The page title without the site name; pageMetadata() appends " · Gerric Measco". */
   readonly title: string;
   readonly description: string;
   /** The page's path, e.g. '/', '/projects' or '/projects/defensys-citizen'. */
@@ -149,6 +149,10 @@ function ogImageFor(path: string, title: string, explicit: string | undefined): 
  * URLs stay root-relative and resolve against metadataBase. The query and #anchor are dropped
  * from canonical and og:url (/projects?type=ai is /projects). A description that is blank or a
  * placeholder token falls back to the site description.
+ *
+ * The title is returned whole ("Services · Gerric Measco") as `absolute`: the root layout's
+ * template only reaches child segments, so Home, which shares the root segment, would otherwise
+ * lose the suffix. Document title, og:title and twitter:title are always the same string.
  */
 export function pageMetadata(input: PageMetadataInput): Metadata {
   const path = canonicalPath(input.path);
@@ -157,7 +161,7 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
   const fullTitle = title ? `${title}${TITLE_SEPARATOR}${site.name}` : defaultTitle();
   const image = ogImageFor(path, title ?? site.name, input.image?.trim() || undefined);
   return {
-    ...(title ? { title } : {}),
+    title: { absolute: fullTitle },
     description,
     alternates: { canonical: path },
     openGraph: {

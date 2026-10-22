@@ -203,17 +203,19 @@ export function SiteCard({ data, theme }: { readonly data: SiteCardData; readonl
         style={{
           display: 'flex',
           flexDirection: 'column',
-          marginTop: 50,
-          fontSize: 66,
+          justifyContent: 'center',
+          flexGrow: 1,
+          paddingBottom: 8,
+          fontSize: 72,
           fontWeight: 800,
           lineHeight: 1.04,
-          letterSpacing: -2.3,
+          letterSpacing: -2.5,
         }}
       >
         <div>{data.headline[0]}</div>
         <div>{data.headline[1]}</div>
       </div>
-      <div style={{ display: 'flex', gap: 28, marginTop: 'auto' }}>
+      <div style={{ display: 'flex', gap: 28 }}>
         {data.apps.map((app) => (
           <div key={app.name} style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, flexBasis: 0, gap: 14 }}>
             <ColourBar colours={app.colours} height={14} radius={7} />

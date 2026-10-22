@@ -143,9 +143,16 @@ describe('pageMetadata', () => {
   const services = pageMetadata({ title: 'Services', description: 'Five ways I can help.', path: '/services' });
 
   it('sets the title, description and a canonical URL resolved against metadataBase', () => {
-    expect(services.title).toBe('Services');
+    expect(services.title).toEqual({ absolute: 'Services · Gerric Measco' });
     expect(services.description).toBe('Five ways I can help.');
     expect(services.alternates).toEqual({ canonical: '/services' });
+  });
+
+  it('gives Home the suffix too (a layout template never reaches a page in its own segment)', () => {
+    const home = pageMetadata({ title: 'Mobile & full-stack engineer', description: 'Home.', path: '/' });
+    expect(home.title).toEqual({ absolute: 'Mobile & full-stack engineer · Gerric Measco' });
+    expect(home.alternates).toEqual({ canonical: '/' });
+    expect(home.openGraph).toMatchObject({ url: '/', title: 'Mobile & full-stack engineer · Gerric Measco' });
   });
 
   it('sets the Open Graph and Twitter fields, with the site card on routes without their own', () => {
@@ -193,7 +200,7 @@ describe('pageMetadata', () => {
 
   it('never puts a placeholder token into metadata', () => {
     const metadata = pageMetadata({ title: ph('Page title'), description: ph('Intro'), path: '/about' });
-    expect(metadata).not.toHaveProperty('title');
+    expect(metadata.title).toEqual({ absolute: defaultTitle() });
     expect(metadata.description).toBe(seo.description);
     expect(strings(metadata).some((text) => text.includes('[['))).toBe(false);
     expect(metadata.openGraph).toMatchObject({ title: defaultTitle() });
