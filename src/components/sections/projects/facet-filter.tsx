@@ -122,7 +122,7 @@ function segments<T extends string>(options: readonly FacetOption<T>[]): Segment
     label: option.label,
     srLabel: `${option.label}, ${projectCount(option.count)}`,
     media: (
-      <span aria-hidden="true" className="order-last font-medium text-ink-3 tabular-nums">
+      <span aria-hidden="true" className="order-last font-medium text-ink-3 tabular-nums forced-colors:text-inherit">
         {option.count}
       </span>
     ),
