@@ -239,3 +239,40 @@ export function facetCounts(list: readonly Project[], mode: PlaceholderMode): Re
 }
 
 export const projectFacetCounts: Readonly<Record<ProjectFacet, number>> = facetCounts(projects, site.placeholders);
+
+// ─── W10a-S additions ───
+
+/**
+ * Kept (shown) store screenshots per public Citizen brand, across all of its listings: the n of
+ * the source toggle's "Real screenshots (n)". Excluded screenshots are already gone from the
+ * listings (src/content/apps/store.ts), so they never count. Brands without a listing count 0.
+ */
+export function screenshotCounts(
+  listings: readonly StoreListing[],
+  brandList: readonly CitizenBrand[],
+): Readonly<Record<CitizenBrand['id'], number>> {
+  const counts = Object.fromEntries(brandList.map((brand) => [brand.id, 0])) as Record<CitizenBrand['id'], number>;
+  for (const listing of listings) counts[listing.brand] = (counts[listing.brand] ?? 0) + listing.screenshots.length;
+  return counts;
+}
+
+export const screenshotsByBrand: Readonly<Record<CitizenBrand['id'], number>> = screenshotCounts(storeListings, brandsFor('citizen'));
+
+/** The Showcase wall's totals: every tile, split by source, and per app (group headers). */
+export interface ShowcaseSummary {
+  readonly total: number;
+  readonly replica: number;
+  readonly real: number;
+  readonly byApp: Readonly<Record<AppId, { readonly replica: number; readonly real: number }>>;
+}
+
+export function summarizeShowcase(entries: readonly ShowcaseEntry[], appList: readonly AppInfo[]): ShowcaseSummary {
+  const count = (app: AppId | null, source: ShowcaseEntry['source']): number =>
+    entries.filter((entry) => (app === null || entry.app === app) && entry.source === source).length;
+  const byApp = Object.fromEntries(
+    appList.map((app) => [app.id, { replica: count(app.id, 'replica'), real: count(app.id, 'real') }]),
+  ) as Record<AppId, { readonly replica: number; readonly real: number }>;
+  return { total: entries.length, replica: count(null, 'replica'), real: count(null, 'real'), byApp };
+}
+
+export const showcaseSummary: ShowcaseSummary = summarizeShowcase(showcaseEntries, apps);

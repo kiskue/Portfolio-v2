@@ -7,21 +7,32 @@ import type { BrandId } from '@/content/types';
 import { cn } from '@/lib/cn';
 
 /*
- * "Coded replica | Store screenshots (n)" (design §5.4) as a SegmentedControl. It offers the
- * store side only when the selected brand has kept store screenshots: inside a BrandScope the
- * count is the selected option's `screenshots` (from the store data, see brand-options.tsx);
- * outside one it is counts.store. Without screenshots (SME, Responder) it shows the fixed label
+ * "Coded replica | Real screenshots (n)" (PLAN "Source toggle", which wins over design §5.4's
+ * "Store screenshots") as a SegmentedControl. It offers the real side only when the selected
+ * brand has kept store screenshots: inside a BrandScope the count is the selected option's
+ * `screenshots` (screenshotsByBrand in src/content/derived.ts, via brand-options.ts); outside
+ * one it is counts.store. Without screenshots (SME, Responder) it shows the fixed label
  * "Coded replica · fictional data".
  *
  * The toggle shows one of its SourcePane children. Store screenshots are all 'marketing' images
  * (caption and device baked in): their pane renders them frameless, as ScreenCards, never inside
  * a phone (StorePanes in store-panes.tsx).
+ *
+ * The labels are exported so the Showcase source filter reads the same words.
  */
 
 export type SourceKind = 'replica' | 'store';
 
+/** The replica side's label. */
+export const REPLICA_LABEL = 'Coded replica';
+
+/** The real side's label, with the count of kept screenshots it shows. */
+export function realScreenshotsLabel(count: number): string {
+  return `Real screenshots (${count})`;
+}
+
 /** The fixed label where no store screenshots exist (design §5.4). */
-const REPLICA_ONLY = 'Coded replica · fictional data';
+export const REPLICA_ONLY_LABEL = 'Coded replica · fictional data';
 
 interface SourceContextValue {
   readonly source: SourceKind;
@@ -55,15 +66,15 @@ export function SourceToggle({ counts, children, label = 'Screens', className }:
             legend={label}
             legendHidden
             options={[
-              { value: 'replica', label: 'Coded replica', disabled: counts.replica === 0 },
-              { value: 'store', label: `Store screenshots (${store})` },
+              { value: 'replica', label: REPLICA_LABEL, disabled: counts.replica === 0 },
+              { value: 'store', label: realScreenshotsLabel(store) },
             ]}
             value={source}
             onValueChange={setChosen}
             size="sm"
           />
         ) : (
-          <p className="text-meta font-semibold text-ink-2">{REPLICA_ONLY}</p>
+          <p className="text-meta font-semibold text-ink-2">{REPLICA_ONLY_LABEL}</p>
         )}
         {children}
       </div>

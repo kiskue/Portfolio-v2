@@ -76,10 +76,10 @@ describe('SourceToggle', () => {
     expect(markup).toContain('<div hidden="" data-source-pane="store">screenshots</div>');
   });
 
-  it('offers "Coded replica | Store screenshots (n)" when there are some, replicas first', () => {
+  it('offers "Coded replica | Real screenshots (n)" when there are some, replicas first', () => {
     const markup = html(5);
     expect(markup).toContain('Coded replica');
-    expect(markup).toContain('Store screenshots (5)');
+    expect(markup).toContain('Real screenshots (5)');
     expect(markup.match(/type="radio"/g)).toHaveLength(2);
     expect(markup).toMatch(/checked=""[^>]*value="replica"|value="replica"[^>]*checked=""/);
   });
