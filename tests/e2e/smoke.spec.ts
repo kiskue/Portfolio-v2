@@ -1,6 +1,6 @@
 import { expect, test, type ConsoleMessage, type Page } from '@playwright/test';
 import { site } from '@/content/site';
-import { CASE_STUDY_SLUGS } from '@/content/types';
+import { CASE_STUDY_ROUTES, NAV_ROUTES, NOT_FOUND_ROUTE } from '../support/routes';
 
 /*
  * Smoke test (architecture "E2E tests", PLAN "Verification"), against the production build that
@@ -19,7 +19,8 @@ import { CASE_STUDY_SLUGS } from '@/content/types';
  */
 test.describe.configure({ mode: 'default' });
 
-const ROUTES: readonly string[] = [...site.nav.map((item) => item.href), ...CASE_STUDY_SLUGS.map((slug) => `/projects/${slug}`)];
+/** The nav routes and the case studies, from site.nav and the slugs (tests/support/routes.ts). */
+const ROUTES: readonly string[] = [...NAV_ROUTES, ...CASE_STUDY_ROUTES];
 
 /** Messages that must never appear, named so a failure says what went wrong. */
 const KNOWN_PROBLEMS: readonly [RegExp, string][] = [
@@ -76,7 +77,7 @@ test('the skip link is the first stop and moves focus to the main content', asyn
 });
 
 test.describe('unknown pages', () => {
-  for (const route of ['/projects/nope', '/no-such-page']) {
+  for (const route of ['/projects/nope', NOT_FOUND_ROUTE]) {
     test(`${route} is a 404 rendered inside the shell`, async ({ page }) => {
       const response = await page.goto(route);
       expect(response?.status(), route).toBe(404);
@@ -92,4 +93,33 @@ test.describe('unknown pages', () => {
       expect(response?.status(), route).toBe(404);
     }
   });
+});
+
+/** The nav item a route belongs to: an exact match, or a prefix item's sub-route (Projects on a case study). */
+function currentNavHref(route: string): string | null {
+  const item = site.nav.find((entry) => route === entry.href || (entry.match === 'prefix' && route.startsWith(`${entry.href}/`)));
+  return item?.href ?? null;
+}
+
+test.describe('without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  for (const route of [...ROUTES, NOT_FOUND_ROUTE]) {
+    test(`${route} renders its content, with its nav item current, from the server HTML`, async ({ page }) => {
+      const response = await page.goto(route, { waitUntil: 'load' });
+      expect(response?.status(), route).toBe(route === NOT_FOUND_ROUTE ? 404 : 200);
+      await expect(page.locator('h1')).toHaveCount(1);
+      await expect(page.locator('h1')).toBeVisible();
+      await expect(page.locator('main#content')).toBeVisible();
+      // The nav is in the server HTML (the docked rail; CSS hides it below 1280px).
+      const current = page.locator('nav[aria-label="Primary"] a[aria-current="page"]');
+      const expected = currentNavHref(route);
+      if (expected === null) {
+        await expect(current).toHaveCount(0);
+      } else {
+        await expect(current).toHaveCount(1);
+        await expect(current).toHaveAttribute('href', expected);
+      }
+    });
+  }
 });
