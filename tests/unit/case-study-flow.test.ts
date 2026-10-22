@@ -1,7 +1,15 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { FLOW_OWNER_LABEL, FLOW_OWNERS, FlowDiagram, FlowLegend, flowOwners } from '@/components/sections/case-study/flow-diagram';
+import {
+  FLOW_FADED_LABEL,
+  FLOW_OWNER_LABEL,
+  FLOW_OWNERS,
+  FlowDiagram,
+  FlowLegend,
+  flowOwners,
+  hasFaded,
+} from '@/components/sections/case-study/flow-diagram';
 import { numbersFootnote } from '@/components/sections/case-study/numbers-section';
 import { caseStudies } from '@/content/case-studies';
 import type { CaseStudyMetric } from '@/content/derived';
@@ -89,6 +97,12 @@ describe('FlowDiagram markup', () => {
     expect(html).toContain('Vendor<span class="sr-only"> (external service)</span>');
     expect(html).toContain('Radio R&amp;D<span class="sr-only"> (prototype)</span>');
     expect(html).toMatch(/data-faded=""[^>]*>[^<]*<span class="[^"]*text-ink-3[^"]*">Old module/);
+    expect(html).toContain('Old module<span class="sr-only"> (my work, off this path)</span>');
+    // A muted node has no fill of its own (hatching only) but keeps its owner's accent bar.
+    const faded = [...html.matchAll(/<li [^>]*data-faded=""[^>]*>/g)].map((match) => match[0]).find((tag) => tag.includes('rounded-control')) ?? '';
+    expect(faded).toContain('bg-transparent');
+    expect(faded).not.toMatch(/(?:^| |")bg-raised(?: |")/);
+    expect(faded).toContain('border-s-accent');
   });
 
   it('labels connectors in words, protocols in mono, and dashes the dashed ones', () => {
@@ -112,8 +126,12 @@ describe('FlowDiagram markup', () => {
     expect([...legend.matchAll(/data-owner="([a-z]+)"/g)].map((match) => match[1])).toEqual([...FLOW_OWNERS]);
     for (const owner of FLOW_OWNERS) expect(legend).toContain(FLOW_OWNER_LABEL[owner]);
     expect(legend).not.toMatch(/\shidden(?:=|\s|>)/);
+    // The fixture has a muted node, so the key explains muted nodes too.
+    expect(hasFaded(FIXTURE)).toBe(true);
+    expect(legend).toContain(FLOW_FADED_LABEL);
     const solo = renderToStaticMarkup(createElement(FlowLegend, { owners: ['me'] }));
     expect([...solo.matchAll(/data-owner="([a-z]+)"/g)].map((match) => match[1])).toEqual(['me']);
+    expect(solo).not.toContain(FLOW_FADED_LABEL);
   });
 });
 

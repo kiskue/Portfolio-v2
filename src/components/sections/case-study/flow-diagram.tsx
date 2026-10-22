@@ -61,8 +61,23 @@ function OwnerSwatch({ owner }: { readonly owner: FlowOwner }): ReactNode {
   );
 }
 
-/** The always-visible key for the owner styles a diagram uses. */
-export function FlowLegend({ owners, className }: { readonly owners: readonly FlowOwner[]; readonly className?: string }): ReactNode {
+/** The key's words for a muted ("faded") node: a part that sits beside the flow, not on it. */
+export const FLOW_FADED_LABEL = 'Off this path';
+
+/** Whether a diagram has muted nodes (the key then explains them). */
+export function hasFaded(diagram: FlowDiagramData): boolean {
+  return diagram.lanes.some((lane) => lane.nodes.some((node) => node.faded === true));
+}
+
+export interface FlowLegendProps {
+  readonly owners: readonly FlowOwner[];
+  /** Add the muted-node entry. */
+  readonly faded?: boolean;
+  readonly className?: string;
+}
+
+/** The always-visible key for the owner styles a diagram uses (and its muted nodes, if any). */
+export function FlowLegend({ owners, faded = false, className }: FlowLegendProps): ReactNode {
   return (
     <ul aria-label="Key" className={cn('flex flex-wrap gap-x-4 gap-y-2 text-meta text-ink-3', className)} data-flow-legend="">
       {owners.map((owner) => (
@@ -71,9 +86,24 @@ export function FlowLegend({ owners, className }: { readonly owners: readonly Fl
           {FLOW_OWNER_LABEL[owner]}
         </li>
       ))}
+      {faded ? (
+        <li className="inline-flex items-center gap-2" data-faded="">
+          <span aria-hidden="true" className="inline-block h-4 w-6 shrink-0 rounded-[5px] border border-line bg-[repeating-linear-gradient(135deg,var(--c-line)_0_1px,transparent_1px_5px)]" />
+          {FLOW_FADED_LABEL}
+        </li>
+      ) : null}
     </ul>
   );
 }
+
+/** What a screen reader hears after a node's label: " (my work)", " (my work, off this path)". */
+function spokenOwner(node: FlowNode): string {
+  const owner = FLOW_OWNER_LABEL[node.owner].toLowerCase();
+  return node.faded ? ` (${owner}, ${FLOW_FADED_LABEL.toLowerCase()})` : ` (${owner})`;
+}
+
+/** A muted node: no fill or shadow, light hatching, lighter label. Its owner style stays. */
+const FADED_CLASS = 'bg-transparent bg-[repeating-linear-gradient(135deg,var(--c-line)_0_1px,transparent_1px_7px)] shadow-none';
 
 function Node({ node }: { readonly node: FlowNode }): ReactNode {
   return (
@@ -82,13 +112,13 @@ function Node({ node }: { readonly node: FlowNode }): ReactNode {
       surface={OWNER_SURFACE[node.owner]}
       radius="control"
       pad="sm"
-      className={cn('flex flex-col gap-1', OWNER_CLASS[node.owner], node.faded && 'bg-transparent shadow-none')}
+      className={cn('flex flex-col gap-1', OWNER_CLASS[node.owner], node.faded && FADED_CLASS)}
       data-owner={node.owner}
       data-faded={node.faded ? '' : undefined}
     >
-      <span className={cn('text-body-sm leading-snug font-semibold', node.faded ? 'text-ink-3' : 'text-ink')}>
+      <span className={cn('text-body-sm leading-snug', node.faded ? 'font-medium text-ink-3' : 'font-semibold text-ink')}>
         {node.label}
-        <span className="sr-only"> ({FLOW_OWNER_LABEL[node.owner].toLowerCase()})</span>
+        <span className="sr-only">{spokenOwner(node)}</span>
       </span>
       {node.mono ? <code className="font-mono text-fig text-ink-2">{node.mono}</code> : null}
       <Copy as="span" text={node.detail} className="text-meta text-ink-3" />
@@ -143,7 +173,7 @@ export function FlowDiagram({ diagram, headingLevel: Heading = 'h3', className }
         <Heading id={titleId} className="text-h3-hero text-ink">
           {diagram.title}
         </Heading>
-        <FlowLegend owners={flowOwners(diagram)} />
+        <FlowLegend owners={flowOwners(diagram)} faded={hasFaded(diagram)} />
       </div>
       <ol className="cs-flow" data-lanes={lanes} style={columns}>
         {diagram.lanes.map((lane, index) => {
