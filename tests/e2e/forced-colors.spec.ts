@@ -370,8 +370,8 @@ for (const scheme of SCHEMES) {
  * current row (aria-current="page"; the docked rail at 1280px and wider, the menu sheet below),
  * the case studies' pressed Brands "Preview" button (aria-pressed="true") and the glimpse player's
  * current step dot (aria-current="step"). Forcing turns what sets each apart (the nav-active pill,
- * the ink button, the dot's filled mark) into Canvas, and outlines every row and button alike.
- * Each is checked in the light and the dark forced palette:
+ * the ink button's fill, the dot's filled mark) into Canvas, which left each painted like its
+ * unselected siblings, or weaker. Each is checked in the light and the dark forced palette:
  * - it is painted apart from an unselected sibling: on screen, the colour most of its pixels show
  *   (its fill), or for a dot the colour at the centre of its mark, contrasts with theirs. Painted
  *   colours, not equal ones: the page's grain shows through a transparent sibling;
@@ -456,9 +456,9 @@ interface SelectedState {
 }
 
 /**
- * The checks for one selected or current state: it is painted differently from an unselected
- * sibling, every colour it paints is a system colour, its text and icons show, and its focus ring
- * is CanvasText.
+ * The checks for one selected or current state: its painted fill contrasts with an unselected
+ * sibling's, every colour it paints is a system colour, its text and icons show, and its focus
+ * ring is CanvasText.
  */
 async function expectSelectedStandsOut(page: Page, state: SelectedState, what: string): Promise<void> {
   const { selected, other, text, icons } = state;
@@ -544,7 +544,8 @@ for (const scheme of SCHEMES) {
       await expect(current).toHaveAttribute('aria-current', 'page');
       const state = {
         selected: current,
-        other: nav.getByRole('link', { name: 'Home', exact: true }),
+        // Not Home: focusing a link to a page with phones starts its prefetch (link-prefetch.ts).
+        other: nav.getByRole('link', { name: 'Services', exact: true }),
         text: current.locator(':scope > span'),
         icons: current.locator(':scope > svg'),
       };
@@ -566,8 +567,8 @@ for (const scheme of SCHEMES) {
       await hydrated(page);
       const dots = page.locator('[data-cs-hero]').getByRole('group', { name: 'Defensys Citizen steps', exact: true });
       const current = dots.locator('button[aria-current="step"]');
-      await expect(current).toBeVisible();
       await expect(current).toHaveCount(1);
+      await expect(current).toBeVisible();
       await settle(dots);
 
       // Its mark is painted apart from another step's: at the centre, a filled pill against a hollow ring.
