@@ -23,17 +23,15 @@ export interface ModuleHeaderProps {
 export function ModuleHeader({ icon, title, subtitle, action, tone = 'module' }: ModuleHeaderProps): ReactNode {
   return (
     <div className="rx-citizen-module">
-      <span className="rx-citizen-module__lead">
-        <span className="rx-citizen-module__icon" data-tone={tone}>
-          <RGlyph icon={icon} size={24} />
-        </span>
-        <span className="rx-citizen-module__titles">
-          <span className="rx-citizen-module__title">{title}</span>
-          <span className="rx-citizen-module__subtitle">{subtitle}</span>
-        </span>
+      <span className="rx-citizen-module__icon" data-tone={tone}>
+        <RGlyph icon={icon} size={24} />
+      </span>
+      <span className="rx-citizen-module__titles">
+        <span className="rx-citizen-module__title">{title}</span>
+        <span className="rx-citizen-module__subtitle">{subtitle}</span>
       </span>
       <span className="rx-citizen-module__action">
-        <span>{action}</span>
+        {action}
         <RGlyph icon={CircleArrowRight} size={16} />
       </span>
     </div>

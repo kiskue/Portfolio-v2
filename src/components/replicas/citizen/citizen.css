@@ -61,6 +61,17 @@
     background: var(--rx-border-faint);
   }
 
+  /*
+   * The bottom safe-area inset (AppProviders' SafeAreaView, edges right/bottom/left, bg-white):
+   * screens end above the 34 px home-indicator zone, which shows white under the device's bar.
+   */
+  .rx-citizen-inset {
+    display: block;
+    flex: none;
+    height: 34px;
+    background: #ffffff;
+  }
+
   .rx-citizen-danger {
     color: #d84343;
   }
@@ -245,22 +256,13 @@
 
   /* ─── ModuleHeader: the Home section band ─────────────────────────────────────────── */
 
+  /* One row: icon, titles (taking the rest), action pill. */
   .rx-citizen-module {
     display: flex;
     flex: none;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
     padding: 10.5px 10.5px 14px;
     background: linear-gradient(99deg, var(--rx-primary), var(--rx-secondary));
-  }
-
-  .rx-citizen-module__lead {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    gap: 7px;
-    min-width: 0;
   }
 
   .rx-citizen-module__icon {
@@ -270,7 +272,8 @@
     justify-content: center;
     width: 38px;
     height: 38px;
-    margin-right: 10.5px;
+    /* The circle’s mr-3 (10.5) plus the row’s gap-2 (7). */
+    margin-right: 17.5px;
     border-radius: 50%;
     background: #ffedd5;
     color: #f97316;
@@ -286,6 +289,7 @@
     flex: 1;
     flex-direction: column;
     min-width: 0;
+    margin-right: 8px;
   }
 
   .rx-citizen-module__title {
@@ -776,13 +780,13 @@
   /* ─── 2.2 Home feed ───────────────────────────────────────────────────────────────── */
 
   /*
-   * The app's BAR_SCROLL_INSET (bar margin 12 + bar 64 + 12) measured from where the bar sits on
-   * this canvas (28 px up), so at full scroll the last card clears the bar by 12 px, as shipped.
+   * The app's BAR_SCROLL_INSET (bar margin 12 + bar 64 + 12 = 88), from the bottom of the scroll
+   * view, which ends at the safe-area inset: at full scroll the last card clears the bar by 12 px.
    */
   .rx-citizen-feed {
     display: flex;
     flex-direction: column;
-    padding-bottom: 104px;
+    padding-bottom: 88px;
   }
 
   .rx-citizen-feed__services {
@@ -823,10 +827,13 @@
   }
 
   /* Hazard report card (severity hue fixed per case type). */
+  /* A grid: the icon and the chevron span the three text rows, which centre as one block. */
   .rx-citizen-hazard {
     --rx-citizen-hue: #6b7280;
-    display: flex;
+    display: grid;
     flex: none;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-content: center;
     align-items: center;
     height: 112px;
     margin-bottom: 3.5px;
@@ -843,6 +850,7 @@
     flex: none;
     align-items: center;
     justify-content: center;
+    grid-row: 1 / span 3;
     width: 49px;
     height: 49px;
     margin-right: 14px;
@@ -851,11 +859,10 @@
     color: var(--rx-citizen-hue);
   }
 
-  .rx-citizen-hazard__body {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
+  .rx-citizen-hazard__type,
+  .rx-citizen-hazard__note,
+  .rx-citizen-hazard__meta {
+    grid-column: 2;
   }
 
   .rx-citizen-hazard__type {
@@ -907,7 +914,8 @@
   }
 
   .rx-citizen-hazard__chev {
-    flex: none;
+    grid-row: 1 / span 3;
+    grid-column: 3;
     margin-left: 7px;
     color: #9ca3af;
   }
@@ -1042,9 +1050,15 @@
     gap: 3.5px;
   }
 
-  .rx-citizen-quake__depth svg,
-  .rx-citizen-quake__sep {
+  .rx-citizen-quake__depth svg {
     color: var(--rx-citizen-muted);
+  }
+
+  /* The "•" the app draws between the depth and the date (its own muted Text). */
+  .rx-citizen-quake__date::before {
+    margin-right: 10.5px;
+    color: var(--rx-citizen-muted);
+    content: "•";
   }
 
   .rx-citizen-quake__chev {
@@ -1166,11 +1180,12 @@
     letter-spacing: 0.025em;
   }
 
-  .rx-citizen-news__dot {
+  .rx-citizen-news__new::before {
     width: 5.25px;
     height: 5.25px;
     border-radius: 50%;
     background: #ffffff;
+    content: "";
   }
 
   .rx-citizen-news__stamp {
@@ -1585,7 +1600,6 @@
 
   /* The list → map flow (state list): the modal waits below the canvas until the Flood tap. */
   .rx-citizen-hflow {
-    --rx-citizen-map-at: 1700ms;
     position: absolute;
     inset: 0;
   }
@@ -1660,10 +1674,10 @@
     box-shadow: var(--rx-citizen-shadow-lg);
   }
 
+  /* The map inside sets the height (W6's 'report' scene, 182 px). */
   .rx-citizen-loc__map {
     position: relative;
     display: block;
-    height: 182px;
   }
 
   .rx-citizen-loc__live {
@@ -1889,13 +1903,16 @@
 
   /* ─── Motion: in-screen animations, only under [data-active] (contract rule 1) ────── */
 
-  /* 2.3 idle: SOS pressed at 0.9 s (90 ms dip to 0.92), the commit ring, then the popup. */
+  /*
+   * 2.3 idle (CZ_SOS_TIMELINE in parts/timeline.ts, set as custom properties by the screen): the
+   * SOS dips to 0.92 and the commit ring leaves, then the popup counts down.
+   */
   [data-active] .rx-citizen-sosflow--press .rx-citizen-sos {
-    animation: rx-citizen-sos-press 300ms ease-out 900ms both;
+    animation: rx-citizen-sos-press 300ms ease-out var(--rx-citizen-press-at) both;
   }
 
   [data-active] .rx-citizen-sosflow--press .rx-citizen-sos__ring {
-    animation: rx-citizen-sos-commit 620ms cubic-bezier(0.33, 1, 0.68, 1) 990ms both;
+    animation: rx-citizen-sos-commit 620ms cubic-bezier(0.33, 1, 0.68, 1) var(--rx-citizen-commit-at) both;
   }
 
   [data-active] .rx-citizen-sosflow--press .rx-modal {
@@ -1911,18 +1928,18 @@
     animation: rx-citizen-sos-bar 2200ms linear var(--rx-citizen-sos-at) both;
   }
 
-  /* Confirm Call pressed at 3.3 s (active:bg-red-700). */
+  /* Confirm Call pressed (active:bg-red-700). */
   [data-active] .rx-citizen-sosflow--press .rx-citizen-sosm__confirm {
-    animation: rx-citizen-confirm-press 280ms ease-out 3300ms both;
+    animation: rx-citizen-confirm-press 280ms ease-out var(--rx-citizen-confirm-at) both;
   }
 
-  /* 2.5 list: the Flood card is tapped at 1.2 s, the map modal slides up, then its card rises. */
+  /* 2.5 list (CZ_HAZARD_TIMELINE): the Flood card dims, the map modal slides up, then its card rises. */
   [data-active] .rx-citizen-hflow .rx-citizen-hlist__rows > .rx-citizen-hazard:first-child {
-    animation: rx-citizen-tap 300ms ease-out 1200ms both;
+    animation: rx-citizen-tap 300ms ease-out var(--rx-citizen-tap-at) both;
   }
 
   [data-active] .rx-citizen-hflow__modal {
-    animation: rx-citizen-sheet-up 420ms cubic-bezier(0.32, 0.72, 0, 1) 1320ms both;
+    animation: rx-citizen-sheet-up 420ms cubic-bezier(0.32, 0.72, 0, 1) var(--rx-citizen-sheet-at) both;
   }
 
   [data-active] .rx-citizen-hmap__card {

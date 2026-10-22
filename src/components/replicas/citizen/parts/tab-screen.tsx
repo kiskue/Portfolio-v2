@@ -21,8 +21,18 @@ export interface TabScreenProps {
 }
 
 /**
+ * The bottom safe-area inset under a screen of the app's tree: AppProviders wraps everything in
+ * a SafeAreaView (edges right, bottom, left) with bg-white, so content stops above the
+ * home-indicator zone and the 34 px inset below it shows white.
+ */
+export function SafeAreaInset(): ReactNode {
+  return <span className="rx-citizen-inset" />;
+}
+
+/**
  * A screen inside the Citizen tab navigator: the drawer header, an optional banner, the body
- * on the #f2f5f9 canvas, the floating tab bar with SOS, and any overlay on top.
+ * on the #f2f5f9 canvas, the white bottom inset, the floating tab bar with SOS (12 px above the
+ * inset) and any overlay on top.
  */
 export function TabScreen({ title, titleSize, tab, sos, banner, children, overlay, className, style }: TabScreenProps): ReactNode {
   return (
@@ -30,6 +40,7 @@ export function TabScreen({ title, titleSize, tab, sos, banner, children, overla
       <CitizenHeader kind="drawer" title={title} titleSize={titleSize} />
       {banner}
       {children}
+      <SafeAreaInset />
       <CitizenTabBar active={tab} sos={sos} />
       {overlay}
     </div>

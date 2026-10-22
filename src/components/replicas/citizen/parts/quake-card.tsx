@@ -30,21 +30,20 @@ export function QuakeCard({ quake }: { readonly quake: CzQuake }): ReactNode {
         <span className="rx-citizen-quake__top">
           <span className="rx-citizen-quake__ago">
             <RGlyph icon={Clock} size={14} />
-            <span>{quake.ago}</span>
+            {quake.ago}
           </span>
           <span className="rx-citizen-quake__dist">
             <RGlyph icon={MapPin} size={12} fill="currentColor" className="rx-citizen-solid-pin" />
-            <span>{quake.distance}</span>
+            {quake.distance}
           </span>
         </span>
         <span className="rx-citizen-quake__place">{quake.place}</span>
         <span className="rx-citizen-quake__meta">
           <span className="rx-citizen-quake__depth">
             <RGlyph icon={Layers} size={12} />
-            <span>{quake.depth}</span>
+            {quake.depth}
           </span>
-          <span className="rx-citizen-quake__sep">•</span>
-          <span>{czToday.long}</span>
+          <span className="rx-citizen-quake__date">{czToday.long}</span>
         </span>
       </span>
       <RGlyph icon={ChevronRight} size={20} className="rx-citizen-quake__chev" />

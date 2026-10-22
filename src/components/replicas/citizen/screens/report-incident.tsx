@@ -3,13 +3,14 @@ import { pickState, RAutoScroll, RButton, RField, rBrand, type ReplicaProps } fr
 import { CitizenHeader } from '@/components/replicas/citizen/parts/citizen-header';
 import { LocationCard } from '@/components/replicas/citizen/parts/location-card';
 import { EvidencePhotosCard, IncidentDetailsCard, ReportInfoStrip } from '@/components/replicas/citizen/parts/report-cards';
+import { SafeAreaInset } from '@/components/replicas/citizen/parts/tab-screen';
 import { czReport, czTitles } from '@/components/replicas/citizen/sample-data';
 import { figureStates } from './figure-states';
 
 const STATES = figureStates('2.6');
 
 /** While active the form scrolls from the location card down to the photos and the info strip. */
-const SCROLL = { distance: 520, startMs: 1000, durationMs: 2600 } as const;
+const SCROLL = { distance: 554, startMs: 1000, durationMs: 2600 } as const;
 
 /**
  * FIG 2.6 Report incident (citizen.json report-incident): the "Create Report" stack header,
@@ -40,6 +41,7 @@ export function ReportIncidentScreen({ state }: ReplicaProps): ReactNode {
           <ReportInfoStrip />
         </div>
       </RAutoScroll>
+      <SafeAreaInset />
     </div>
   );
 }

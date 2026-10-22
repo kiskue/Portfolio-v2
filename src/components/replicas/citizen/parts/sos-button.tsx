@@ -4,8 +4,11 @@ import { RGlyph } from '@/components/replicas/kit';
 import { czSos } from '@/components/replicas/citizen/sample-data';
 
 export interface SosButtonProps {
-  /** idle: the red dome · offline: the paused grey face with the WifiOff badge. */
-  readonly state?: 'idle' | 'offline';
+  /**
+   * idle: the red dome · press: the red dome that the screen presses while active (it carries
+   * the one-shot commit ring) · offline: the paused grey face with the WifiOff badge.
+   */
+  readonly state?: 'idle' | 'press' | 'offline';
 }
 
 /**
@@ -18,7 +21,7 @@ export interface SosButtonProps {
 export function SosButton({ state = 'idle' }: SosButtonProps): ReactNode {
   return (
     <span className="rx-citizen-sos" data-state={state}>
-      <span className="rx-citizen-sos__ring" />
+      {state === 'press' ? <span className="rx-citizen-sos__ring" /> : null}
       <span className="rx-citizen-sos__face">
         <span className="rx-citizen-sos__label">{czSos.label}</span>
       </span>

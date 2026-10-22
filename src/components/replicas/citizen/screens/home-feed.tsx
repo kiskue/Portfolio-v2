@@ -9,9 +9,9 @@ const STATES = figureStates('2.2');
 
 /**
  * While active the feed scrolls to its end: past the Earthquake Monitor to the News Headline
- * card, which then rests just clear of the tab bar (the feed is 1405 px tall in a 744 px view).
+ * card, which then rests 12 px clear of the tab bar (the feed is 1389 px tall in a 710 px view).
  */
-const SCROLL = { distance: 660, startMs: 900, durationMs: 2600 } as const;
+const SCROLL = { distance: 679, startMs: 900, durationMs: 2600 } as const;
 
 /**
  * FIG 2.2 Home feed (citizen.json home-feed): the Home tab scrolled past the weather panel, so

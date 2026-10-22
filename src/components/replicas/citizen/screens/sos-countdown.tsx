@@ -4,22 +4,16 @@ import { HomeBody } from '@/components/replicas/citizen/parts/home-body';
 import { OfflineBanner } from '@/components/replicas/citizen/parts/offline-banner';
 import { SosConfirm } from '@/components/replicas/citizen/parts/sos-confirm';
 import { TabScreen } from '@/components/replicas/citizen/parts/tab-screen';
+import { CZ_SOS_TIMELINE } from '@/components/replicas/citizen/parts/timeline';
 import { czTitles } from '@/components/replicas/citizen/sample-data';
 import { figureStates } from './figure-states';
 
 const STATES = figureStates('2.3');
 
 /**
- * Glimpse row 2.3, from the step's start: SOS pressed at 0.9 s, the popup in at 1.0 s, then
- * 5 → 4 → 3 a second apart with the bar shrinking, and Confirm Call pressed at 3.3 s (the
- * citizen-side timings live in citizen.css; this is the popup's start).
- */
-const POPUP_AFTER_PRESS_MS = 1000;
-
-/**
  * FIG 2.3 SOS countdown (citizen.json sos-countdown), on the Home tab.
- * `idle`: the red SOS docked in the floating tab bar; while active it is pressed and the
- * Emergency Call popup counts 5 → 3, then Confirm Call is pressed.
+ * `idle`: the red SOS docked in the floating tab bar; while active it is pressed, the
+ * Emergency Call popup counts 5 → 3 and Confirm Call is pressed (CZ_SOS_TIMELINE, glimpse 2.3).
  * `countdown`: the popup over Home at 3 s with the bar at 60%; while active it counts 5 → 3.
  * `offline`: the paused grey SOS with its WifiOff badge under the "You are offline" strip.
  */
@@ -27,7 +21,7 @@ export function SosCountdownScreen({ state }: ReplicaProps): ReactNode {
   const current = pickState(STATES, state);
   const body = (
     <div className="rx-citizen-fill rx-citizen-clip">
-      <HomeBody />
+      <HomeBody feed={current === 'offline' ? 'none' : 'services'} />
     </div>
   );
 
@@ -39,15 +33,22 @@ export function SosCountdownScreen({ state }: ReplicaProps): ReactNode {
     );
   }
 
-  const startMs = current === 'idle' ? POPUP_AFTER_PRESS_MS : 0;
+  const press = current === 'idle';
+  const popupMs = press ? CZ_SOS_TIMELINE.popupMs : 0;
   return (
     <TabScreen
       title={czTitles.home}
       titleSize={10}
       tab="Home"
-      className={current === 'idle' ? 'rx-citizen-sosflow rx-citizen-sosflow--press' : 'rx-citizen-sosflow'}
-      style={rStyle({ '--rx-citizen-sos-at': ms(startMs) })}
-      overlay={<SosConfirm startMs={startMs} />}
+      sos={press ? 'press' : 'idle'}
+      className={press ? 'rx-citizen-sosflow rx-citizen-sosflow--press' : 'rx-citizen-sosflow'}
+      style={rStyle({
+        '--rx-citizen-sos-at': ms(popupMs),
+        '--rx-citizen-press-at': press ? ms(CZ_SOS_TIMELINE.pressMs) : undefined,
+        '--rx-citizen-commit-at': press ? ms(CZ_SOS_TIMELINE.commitMs) : undefined,
+        '--rx-citizen-confirm-at': press ? ms(CZ_SOS_TIMELINE.confirmMs) : undefined,
+      })}
+      overlay={<SosConfirm startMs={popupMs} />}
     >
       {body}
     </TabScreen>
