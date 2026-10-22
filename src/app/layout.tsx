@@ -6,17 +6,13 @@ import { DISPLAY_PREPAINT } from '@/lib/display-settings';
 import { fontClassName } from '@/lib/fonts';
 import { personJsonLd, rootMetadata } from '@/lib/seo';
 import '@/styles/globals.css';
-// The replica stylesheets apply on every page (ruling F2 in the wave 2b ledger). The root
-// not-found boundary renders a replica phone, and Next serializes that boundary, with its
-// stylesheet links, into every page; React then preloads each sheet. Pages without a phone of
-// their own would never apply those preloads, and Chrome warns about each one.
+// The replica kit's stylesheets apply on every page (ruling F2 in the wave 2b ledger). The root
+// not-found boundary renders the 404's map phone (kit only), and Next serializes that boundary,
+// with its stylesheet links, into every page; React then preloads each sheet, and on a page that
+// never applies them Chrome warns about each one. The apps' own replica CSS stays with their
+// registries; pages with phones prefetch on intent (link-prefetch.ts), so it is never preloaded.
 import '@/components/replicas/kit/charts.css';
 import '@/components/replicas/kit/map.css';
-import '@/components/replicas/citizen/citizen.css';
-import '@/components/replicas/responder/responder.css';
-import '@/components/replicas/sme/sme.css';
-import '@/components/replicas/sme/core/core.css';
-import '@/components/replicas/sme/ai/ai.css';
 
 /*
  * metadataBase (NEXT_PUBLIC_SITE_URL, then the Vercel production domain, then localhost), the

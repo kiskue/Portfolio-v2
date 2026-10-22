@@ -10,12 +10,14 @@ import { CASE_STUDY_ROUTES, NAV_ROUTES } from '../support/routes';
  * the preload was added, which is later than the smoke test looks (it stops at network idle), so
  * each route here stays open for 6 s after its load event.
  *
- * Two things used to leave such preloads (ruling F2, wave 2b ledger):
+ * Three things used to leave such preloads (ruling F2, wave 2b ledger):
  * - a viewport prefetch of Home from the top bar or the rail: React preloads every stylesheet hint
  *   in a prefetched route, and Home has CSS of its own. Links to Home now prefetch on intent
  *   (PLAN → Performance budgets → Prefetch), which the second block checks;
+ * - the same for /projects from the desktop rail, whose hints carry the replicas' CSS: the pages
+ *   with replica phones all prefetch on intent now (src/components/ui/link-prefetch.ts);
  * - the root not-found boundary: Next serializes it, with its stylesheets, into every page, so
- *   every page preloads the 404's CSS whether or not it applies that CSS.
+ *   every page preloaded the 404 map phone's kit CSS. The root layout applies that CSS now.
  *
  * E2E specs run in plain Node: import content that has no server-only guard (home.ts, site.ts).
  */

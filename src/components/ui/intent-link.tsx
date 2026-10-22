@@ -13,7 +13,7 @@ export type IntentLinkProps = Omit<ComponentProps<'a'>, 'href'> & {
 
 /**
  * A next/link that prefetches only once the user shows intent (first hover, keyboard focus or
- * touch), for Home and the heavy routes: the case studies and the Showcase wall.
+ * touch), for the pages with replica phones: Home, /projects, the case studies and the Showcase.
  *
  * It starts with `prefetch={false}` (no viewport prefetch) and switches to `null` (Next's
  * default) on intent. The switch re-mounts Next's link instance, and its IntersectionObserver
