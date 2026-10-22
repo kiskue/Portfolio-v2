@@ -1,10 +1,11 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import sharp from 'sharp';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { PlaceholderMode, Site } from '@/content/types';
 import {
   CONTENT_DIR,
   PORTRAIT_DIR,
@@ -162,7 +163,45 @@ describe('scanSource: examples, confirm notes, null facts and the release switch
     expect(only(scanSource('x.ts', override), 'release')).toHaveLength(1);
     expect(only(scanSource('x.ts', "export const site = { placeholders: (process.env.MODE as PlaceholderMode) ?? 'label' };"), 'release')).toHaveLength(1);
   });
+
+  it("resolves the release switch through a same-file constant, with or without resolvePlaceholderMode's environment override", () => {
+    // src/content/site.ts keeps the owner's switch in a constant; NEXT_PUBLIC_PLACEHOLDERS overrides it for one build.
+    for (const value of ['resolvePlaceholderMode(process.env.NEXT_PUBLIC_PLACEHOLDERS, PLACEHOLDERS)', 'PLACEHOLDERS']) {
+      // One item, on the line the owner flips.
+      expect(only(scanSource('src/content/site.ts', siteSource('label', value)), 'release'), value).toEqual([
+        expect.objectContaining({
+          file: 'src/content/site.ts',
+          line: 2,
+          where: 'site.placeholders',
+          text: "placeholders are in 'label' mode (noindex, no sitemap): switch PLACEHOLDERS to 'hide' to go public",
+          optional: false,
+        }),
+      ]);
+      expect(only(scanSource('src/content/site.ts', siteSource('hide', value)), 'release'), value).toEqual([]);
+    }
+  });
+
+  it('lists a release switch it cannot read statically, so --strict fails closed', () => {
+    const [item, ...rest] = only(scanSource('x.ts', 'export const site = { placeholders: modeFor(build) };'), 'release');
+    expect(rest).toEqual([]);
+    expect(item).toMatchObject({ line: 1, where: 'site.placeholders', optional: false });
+    expect(item?.text).toContain('‹computed: modeFor(build)›');
+    // An environment read is the override, unset by default: the default here is 'hide'.
+    expect(only(scanSource('x.ts', "export const site = { placeholders: process.env.MODE ?? 'hide' };"), 'release')).toEqual([]);
+  });
 });
+
+/** A site.ts in today's shape: the owner's switch in a constant, then site.placeholders = `value`. */
+function siteSource(mode: PlaceholderMode, value: string): string {
+  return [
+    "import type { PlaceholderMode } from '@/content/types';",
+    `const PLACEHOLDERS: PlaceholderMode = '${mode}';`,
+    'export const site = {',
+    "  name: 'Gerric Measco',",
+    `  placeholders: ${value},`,
+    '};',
+  ].join('\n');
+}
 
 describe('scanJson', () => {
   it('finds tokens in JSON string values by line', () => {
@@ -243,9 +282,36 @@ describe('the real content', () => {
     expect(only(scanned, 'null').map((item) => item.where).sort()).toEqual(expected.sort());
   });
 
+  /** src/content/site.ts evaluated afresh with NEXT_PUBLIC_PLACEHOLDERS set to `value` (undefined: unset). */
+  async function siteWith(value: string | undefined): Promise<Site> {
+    vi.stubEnv('NEXT_PUBLIC_PLACEHOLDERS', value);
+    vi.resetModules();
+    try {
+      return (await import('@/content/site')).site;
+    } finally {
+      vi.unstubAllEnvs();
+      // Later imports evaluate site.ts again with the real environment.
+      vi.resetModules();
+    }
+  }
+
   it("lists the release switch while site.placeholders is 'label'", async () => {
-    const { site } = await import('@/content/site');
-    expect(only(scanned, 'release')).toHaveLength(site.placeholders === 'label' ? 1 : 0);
+    // The default: what site.ts evaluates to with no environment override.
+    const { placeholders } = await siteWith(undefined);
+    expect(only(scanned, 'release')).toHaveLength(placeholders === 'label' ? 1 : 0);
+  });
+
+  it('keeps listing it whatever NEXT_PUBLIC_PLACEHOLDERS sets for one build, on the line that holds the default', async () => {
+    const releases = only(scanned, 'release');
+    for (const override of ['hide', 'label'] as const) {
+      // The override reaches the module, but not the release switch.
+      expect((await siteWith(override)).placeholders).toBe(override);
+      expect(only(scanContent(), 'release')).toEqual(releases);
+    }
+    for (const item of releases) {
+      const lines = readFileSync(path.join(ROOT, item.file ?? ''), 'utf8').split(/\r?\n/);
+      expect(lines[(item.line ?? 0) - 1]).toContain("'label'");
+    }
   });
 
   it('reports every content item with its file and a 1-based line', () => {
@@ -330,20 +396,28 @@ describe('the report', () => {
 
 describe('the CLI', () => {
   let clean: string;
+  const roots: string[] = [];
+
+  /** A finished site: no placeholders left, a large portrait, and this site.ts. */
+  async function finishedSite(site: string): Promise<string> {
+    const root = mkdtempSync(path.join(tmpdir(), 'content-todo-clean-'));
+    roots.push(root);
+    mkdirSync(path.join(root, CONTENT_DIR), { recursive: true });
+    mkdirSync(path.join(root, PORTRAIT_DIR), { recursive: true });
+    writeFileSync(path.join(root, CONTENT_DIR, 'site.ts'), site);
+    await sharp({ create: { width: 1200, height: 1480, channels: 3, background: '#000000' } })
+      .jpeg()
+      .toFile(path.join(root, PORTRAIT_DIR, 'portrait.jpg'));
+    return root;
+  }
 
   beforeAll(async () => {
     // A finished site: no placeholders left, hide mode, a large portrait.
-    clean = mkdtempSync(path.join(tmpdir(), 'content-todo-clean-'));
-    mkdirSync(path.join(clean, CONTENT_DIR), { recursive: true });
-    mkdirSync(path.join(clean, PORTRAIT_DIR), { recursive: true });
-    writeFileSync(path.join(clean, CONTENT_DIR, 'site.ts'), "export const site = { placeholders: 'hide', name: 'Gerric Measco' };\n");
-    await sharp({ create: { width: 1200, height: 1480, channels: 3, background: '#000000' } })
-      .jpeg()
-      .toFile(path.join(clean, PORTRAIT_DIR, 'portrait.jpg'));
+    clean = await finishedSite("export const site = { placeholders: 'hide', name: 'Gerric Measco' };\n");
   });
 
   afterAll(() => {
-    rmSync(clean, { recursive: true, force: true });
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
   });
 
   const ENV = { ...process.env, NEXT_PUBLIC_SITE_URL: '', RESEND_API_KEY: '', VERCEL_PROJECT_PRODUCTION_URL: '', GITHUB_ACTIONS: '' };
@@ -375,6 +449,26 @@ describe('the CLI', () => {
     const code = await main(['--strict'], { root: clean, env, log: (line) => lines.push(line), github: false });
     expect(lines.join('\n')).toContain('Total: 0 (nothing left); 0 required, 0 optional.');
     expect(code).toBe(0);
+  });
+
+  it("--strict fails on the release switch while site.ts defaults to 'label', even in a hide-mode build environment", async () => {
+    // Everything else is supplied, and the environment overrides the mode to 'hide' for this one build.
+    const env = { NEXT_PUBLIC_SITE_URL: 'https://example.com', RESEND_API_KEY: 're_123', NEXT_PUBLIC_PLACEHOLDERS: 'hide' };
+    const run = async (mode: PlaceholderMode) => {
+      const root = await finishedSite(siteSource(mode, 'resolvePlaceholderMode(process.env.NEXT_PUBLIC_PLACEHOLDERS, PLACEHOLDERS)'));
+      const lines: string[] = [];
+      const code = await main(['--strict'], { root, env, log: (line) => lines.push(line), github: false });
+      return { code, report: lines.join('\n') };
+    };
+    const label = await run('label');
+    expect(label.report).toContain(
+      "src/content/site.ts:2  release  site.placeholders: placeholders are in 'label' mode (noindex, no sitemap): switch PLACEHOLDERS to 'hide' to go public",
+    );
+    expect(label.report).toContain('Total: 1 (1 release switch); 1 required, 0 optional.');
+    expect(label.code).toBe(1);
+    const hide = await run('hide');
+    expect(hide.report).toContain('Total: 0 (nothing left); 0 required, 0 optional.');
+    expect(hide.code).toBe(0);
   });
 
   it('adds ::warning annotations in GitHub Actions', async () => {
