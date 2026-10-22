@@ -241,12 +241,17 @@ function placeholderDefault(node, consts, depth = 0) {
   return { unknown: current };
 }
 
-/** The `const NAME` whose initializer holds this node, or null. */
+/**
+ * The `const NAME` whose initializer holds this node, or null. Also null when the node sits in an
+ * object literal before any declaration: the owner then switches that property (`{ placeholders:
+ * 'label' }`), not the variable that holds the object, so the message names no constant.
+ */
 function constantHolding(node) {
   for (let current = node.parent; current && !ts.isSourceFile(current); current = current.parent) {
     if (ts.isVariableDeclaration(current)) {
       return ts.isIdentifier(current.name) && ts.isVariableDeclarationList(current.parent) && (current.parent.flags & ts.NodeFlags.Const) !== 0 ? current.name.text : null;
     }
+    if (ts.isPropertyAssignment(current) || ts.isShorthandPropertyAssignment(current) || ts.isObjectLiteralExpression(current)) return null;
     if (ts.isFunctionLike(current)) return null;
   }
   return null;

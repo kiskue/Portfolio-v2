@@ -36,6 +36,15 @@ function only(items: readonly TodoItem[], kind: TodoItem['kind']): TodoItem[] {
   return items.filter((item) => item.kind === kind);
 }
 
+/**
+ * The release switch's text. A 'label' default kept in a constant names that constant (the line
+ * the owner flips); one written inline in the object names none, because the property is what
+ * gets switched, not the variable that holds the object.
+ */
+function releaseText(constant: string | null = null): string {
+  return `placeholders are in 'label' mode (noindex, no sitemap): switch ${constant ? `${constant} ` : ''}to 'hide' to go public`;
+}
+
 describe('scanSource: tokens', () => {
   it('finds ph() tokens with their line and a readable path', () => {
     const source = [
@@ -157,11 +166,21 @@ describe('scanSource: examples, confirm notes, null facts and the release switch
   });
 
   it("lists placeholders: 'label' as the release switch, also behind an environment override", () => {
-    expect(only(items, 'release')).toEqual([expect.objectContaining({ line: 15, where: 'site.placeholders' })]);
+    // Written inline, the default is the property itself: the text names no constant (not "switch site to 'hide'").
+    expect(only(items, 'release')).toEqual([expect.objectContaining({ line: 15, where: 'site.placeholders', text: releaseText() })]);
+    expect(only(scanSource('x.ts', "export const site = { placeholders: 'label' };"), 'release')).toEqual([
+      expect.objectContaining({ line: 1, where: 'site.placeholders', text: releaseText() }),
+    ]);
     expect(only(scanSource('x.ts', "export const site = { placeholders: 'hide' };"), 'release')).toEqual([]);
     const override = "export const site = { placeholders: process.env.NEXT_PUBLIC_PLACEHOLDERS === 'hide' ? 'hide' : 'label' };";
-    expect(only(scanSource('x.ts', override), 'release')).toHaveLength(1);
-    expect(only(scanSource('x.ts', "export const site = { placeholders: (process.env.MODE as PlaceholderMode) ?? 'label' };"), 'release')).toHaveLength(1);
+    expect(only(scanSource('x.ts', override), 'release')).toEqual([expect.objectContaining({ line: 1, text: releaseText() })]);
+    expect(only(scanSource('x.ts', "export const site = { placeholders: (process.env.MODE as PlaceholderMode) ?? 'label' };"), 'release')).toEqual([
+      expect.objectContaining({ line: 1, text: releaseText() }),
+    ]);
+    // Nested deeper in a constant's object, it is still the property that gets switched.
+    expect(only(scanSource('x.ts', "const config = { site: { placeholders: 'label' } };"), 'release')).toEqual([
+      expect.objectContaining({ line: 1, where: 'config.site.placeholders', text: releaseText() }),
+    ]);
   });
 
   it("resolves the release switch through a same-file constant, with or without resolvePlaceholderMode's environment override", () => {
@@ -303,6 +322,10 @@ describe('the real content', () => {
     // The default: what site.ts evaluates to with no environment override.
     const { placeholders } = await siteWith(undefined);
     expect(only(scanned, 'release')).toHaveLength(placeholders === 'label' ? 1 : 0);
+    // site.ts keeps the owner's switch in `const PLACEHOLDERS`, and the item says to flip that constant.
+    expect(only(scanned, 'release').map((item) => [item.file, item.where, item.text])).toEqual(
+      placeholders === 'label' ? [['src/content/site.ts', 'site.placeholders', releaseText('PLACEHOLDERS')]] : [],
+    );
   });
 
   it('keeps listing it whatever NEXT_PUBLIC_PLACEHOLDERS sets for one build, on the line that holds the default', async () => {

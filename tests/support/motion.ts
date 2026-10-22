@@ -122,6 +122,48 @@ export async function expectPauseFreezes(page: Page, root: Locator): Promise<voi
   await expect(track).not.toHaveAttribute('data-paused', '');
 }
 
+/**
+ * The player width (its container-query width) below which a trio shows one phone: glimpse.css
+ * `@container glimpse (width < 25rem)` hides every column but the current one (design §5.3, the
+ * "<448px card"). The single and hero layouts always show the current column only.
+ */
+const TRIO_ALL_COLUMNS_FROM_REM = 25;
+
+interface StageColumns {
+  readonly layout: string | null;
+  /** The player's content-box width in rem (of the root font size), as its container queries see it. */
+  readonly widthRem: number;
+  /** Every column's track, in order. */
+  readonly tracks: readonly number[];
+  /** The tracks of the columns marked data-current (the server marks one). */
+  readonly current: readonly number[];
+  /** The tracks of the columns that are displayed (computed display other than none). */
+  readonly displayed: readonly number[];
+}
+
+/** The player's layout and width, and which of its columns are current and displayed. */
+async function stageColumns(root: Locator): Promise<StageColumns> {
+  return root.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const px = (value: string): number => Number.parseFloat(value) || 0;
+    const insets =
+      style.boxSizing === 'border-box' ? px(style.paddingLeft) + px(style.paddingRight) + px(style.borderLeftWidth) + px(style.borderRightWidth) : 0;
+    const rem = px(getComputedStyle(document.documentElement).fontSize);
+    const columns = [...element.querySelectorAll('[data-glimpse-column]')].map((column) => ({
+      track: Number(column.getAttribute('data-glimpse-column')),
+      current: column.hasAttribute('data-current'),
+      displayed: getComputedStyle(column).display !== 'none',
+    }));
+    return {
+      layout: element.getAttribute('data-layout'),
+      widthRem: (px(style.width) - insets) / rem,
+      tracks: columns.map((column) => column.track),
+      current: columns.filter((column) => column.current).map((column) => column.track),
+      displayed: columns.filter((column) => column.displayed).map((column) => column.track),
+    };
+  });
+}
+
 /** Without JavaScript: the server-marked posters show, the controls stay hidden, nothing animates. */
 export async function expectNoJsPosters(root: Locator): Promise<void> {
   await expect(root).toHaveCount(1);
@@ -132,7 +174,17 @@ export async function expectNoJsPosters(root: Locator): Promise<void> {
   for (const [track, glimpse] of glimpses.entries()) {
     expect(await shownFrame(root, track), `${glimpse.id} shows its poster`).toEqual(posterFrame(glimpse));
   }
-  await expect(root.locator('[data-glimpse-track] > [data-shown] [data-phone]').first()).toBeVisible();
+  // Every phone the layout puts on the stage shows (PLAN → Verification → Motion: "with no JS the
+  // first frames show"): all of a trio's columns from 25rem up, else the current column alone.
+  const stage = await stageColumns(root);
+  const where = `${stage.layout ?? 'no'} layout, ${stage.widthRem.toFixed(2)}rem wide`;
+  expect(stage.tracks, 'one column per track').toEqual(glimpses.map((_, track) => track));
+  expect(stage.current, 'the server marks one current column').toHaveLength(1);
+  const allColumns = stage.layout === 'trio' && stage.widthRem >= TRIO_ALL_COLUMNS_FROM_REM;
+  expect(stage.displayed, `the columns on the stage (${where})`).toEqual(allColumns ? stage.tracks : stage.current);
+  for (const track of stage.displayed) {
+    await expect(root.locator(`[data-glimpse-track="${track}"] > [data-shown] [data-phone]`), `${glimpses[track]?.id} shows its phone (${where})`).toBeVisible();
+  }
   await expect(root.locator('[data-active]')).toHaveCount(0);
   expect(await runningAnimations(root)).toEqual([]);
 }

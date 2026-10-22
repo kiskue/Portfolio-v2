@@ -67,25 +67,58 @@ test.describe('Home weight', () => {
     expect(total.gzip).toBeLessThanOrEqual(JS_GZIP_BUDGET);
   });
 
-  test('cross-check: the scripts a browser fetches while Home loads and hydrates', async ({ page, request }, testInfo) => {
-    const listed = new Set(htmlScriptChunks(await (await request.get('/')).text()));
+  /*
+   * The budget above counts the chunks Home's HTML lists, so the browser may load no other
+   * first-party script while Home loads and hydrates (a client-side import() on mount, say): it
+   * would escape that count. Router prefetches are not Home's first load, though: a prefetch
+   * fetches another route's RSC payload, and the browser then loads that route's client chunks
+   * (today /contact's, from the viewport prefetch of its links). So the router's prefetch requests
+   * are stopped before they reach the server. In this build each one is a fetch() with
+   * `next-router-prefetch: 1` (plus `next-router-segment-prefetch`, `rsc: 1` and `?_rsc=`). That
+   * header marks a prefetch (node_modules/next/dist/docs, guides/cdn-caching.md), and Next 16.4
+   * sets it on nothing else (next/dist/client/components/segment-cache/cache.js: 1, or 2 and 3
+   * in its PPR modes), whereas `_rsc` also marks navigations and refreshes, whose chunks must
+   * still count. Every other request goes through, and every first-party /_next/static JS
+   * request counts, whatever started it: a prefetch that comes another way (a <link
+   * rel=prefetch>, or a prefetch={true} of a dynamic route, which carries no such header) fails
+   * here. Home has none.
+   */
+  test('the browser loads no first-party script the HTML does not list (router prefetches stopped)', async ({ page, request, baseURL }, testInfo) => {
+    if (!baseURL) throw new Error('playwright.config.ts sets the baseURL this check compares origins with');
+    const origin = new URL(baseURL).origin;
+    const listed = new Set(htmlScriptChunks(await (await request.get('/')).text()).map((path) => new URL(path, origin).pathname));
+    const prefetches: string[] = [];
+    await page.route('**/*', async (route) => {
+      const pending = route.request();
+      const prefetch = pending.headers()['next-router-prefetch'];
+      if (prefetch === undefined) return route.fallback();
+      const url = new URL(pending.url());
+      prefetches.push(`${url.pathname} ${pending.headers()['next-router-segment-prefetch'] ?? ''}${prefetch === '1' ? '' : ` (next-router-prefetch: ${prefetch})`}`.trim());
+      return route.abort('blockedbyclient');
+    });
     const loaded = new Set<string>();
+    let lastScriptAt = 0;
     page.on('request', (request_) => {
       const url = new URL(request_.url());
-      if (request_.resourceType() === 'script' && url.pathname.startsWith('/_next/static/')) loaded.add(url.pathname);
+      if (url.origin !== origin || !url.pathname.startsWith('/_next/static/') || !url.pathname.endsWith('.js')) return;
+      loaded.add(url.pathname);
+      lastScriptAt = Date.now();
     });
     await page.goto('/', { waitUntil: 'load' });
     await hydrated(page);
+    await page.waitForLoadState('networkidle');
+    // Network idle fires once per document, possibly before hydration ended: also let a second
+    // pass with no new script request, so a chunk that hydration starts late is still seen.
+    await expect.poll(() => Date.now() - lastScriptAt, { message: 'a second with no new script request', timeout: 15_000 }).toBeGreaterThanOrEqual(1_000);
     const unlisted = [...loaded].filter((path) => !listed.has(path));
     const unfetched = [...listed].filter((path) => !loaded.has(path));
-    // Recorded, not asserted: the budget is defined by the HTML (measurements.md), and route
-    // prefetching may fetch more after hydration. A non-empty "not in the HTML" list means the
-    // HTML-based figure above may undercount: look at it before trusting the headroom.
     record(
       testInfo,
-      `Home scripts fetched at load: ${loaded.size}; not in the HTML: ${JSON.stringify(unlisted)}; in the HTML but not fetched: ${JSON.stringify(unfetched)}`,
+      `Home scripts fetched at load: ${loaded.size}; not in the HTML: ${JSON.stringify(unlisted)}; in the HTML but not fetched: ${JSON.stringify(unfetched)}; router prefetches stopped: ${prefetches.length} ${JSON.stringify(prefetches)}`,
     );
     expect(loaded.size, 'the browser fetched the framework chunks').toBeGreaterThanOrEqual(5);
+    // Anything here would escape the HTML-based budget above.
+    expect(unlisted, 'first-party scripts Home loads that its HTML does not list').toEqual([]);
   });
 
   test('the DOM has at most 3,000 nodes', async ({ page }, testInfo) => {

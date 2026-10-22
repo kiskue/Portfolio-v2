@@ -1,4 +1,3 @@
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { projects } from '@/content/projects';
 import { site } from '@/content/site';
@@ -13,6 +12,7 @@ import {
   type ProjectFilterState,
 } from '@/lib/project-filters';
 import { caseStudyHref } from '@/lib/routes';
+import { axeViolations } from '../support/axe';
 
 /*
  * /projects (PLAN → Routes, Other pages; design §8), against the production build: the Type and
@@ -28,7 +28,6 @@ import { caseStudyHref } from '@/lib/routes';
 /* One worker per file, tests in order (see tests/e2e/smoke.spec.ts for why). */
 test.describe.configure({ mode: 'default' });
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 const entries = visible(projects, site.placeholders).map(facetEntry);
 const allSlugs = entries.map((entry) => entry.slug);
 const total = entries.length;
@@ -197,18 +196,19 @@ test.describe('filters', () => {
     expect(await shownSlugs(page)).toEqual(allSlugs);
   });
 
+  // axe as the PLAN specifies (tests/support/axe.ts): every WCAG rule over the whole page, and only
+  // the contrast rule skips the replica canvases (PLAN → Verification → Accessibility).
   test('the filtered and empty states pass axe, and the default state in both themes', async ({ page }) => {
-    const axe = () => new AxeBuilder({ page }).withTags(TAGS).exclude('[data-replica-canvas]');
     await open(page, '/projects?type=web&context=personal');
-    expect((await axe().analyze()).violations, 'filtered').toEqual([]);
+    expect(await axeViolations(page), 'filtered').toEqual([]);
     await open(page, '/projects?context=client');
-    expect((await axe().analyze()).violations, 'empty').toEqual([]);
+    expect(await axeViolations(page), 'empty').toEqual([]);
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme });
       await open(page);
       if (colorScheme === 'dark') await expect(page.locator('html')).toHaveClass(/\bdark\b/);
       else await expect(page.locator('html')).not.toHaveClass(/\bdark\b/);
-      expect((await axe().analyze()).violations, colorScheme).toEqual([]);
+      expect(await axeViolations(page), colorScheme).toEqual([]);
     }
   });
 });
