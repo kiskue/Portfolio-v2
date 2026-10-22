@@ -11,6 +11,8 @@ import { site } from '@/content/site';
 import type { PlaceholderMode } from '@/content/types';
 
 export interface PortraitCardProps {
+  /** profile.cvUrl: a download button when set, a placeholder chip (label) or nothing (hide) when null. */
+  readonly cvUrl?: string | null;
   readonly mode?: PlaceholderMode;
 }
 
@@ -26,7 +28,7 @@ export interface PortraitCardProps {
  * The portrait is the page's largest image and sits above the fold at every width, so it is
  * preloaded. The CV is a non-link placeholder chip in label mode and nothing in hide mode (CvLink).
  */
-export function PortraitCard({ mode = site.placeholders }: PortraitCardProps) {
+export function PortraitCard({ cvUrl = profile.cvUrl, mode = site.placeholders }: PortraitCardProps) {
   return (
     <div
       className="relative [--sticky-top:5rem] xl:[--sticky-top:1.5rem] @4xl:[@media(min-height:50rem)]:sticky @4xl:[@media(min-height:50rem)]:top-(--sticky-top)"
@@ -45,7 +47,6 @@ export function PortraitCard({ mode = site.placeholders }: PortraitCardProps) {
               fill
               sizes="(min-width: 60rem) 320px, 240px"
               preload
-              placeholder="blur"
               className="object-cover object-[52%_30%] grayscale"
             />
           </div>
@@ -59,7 +60,7 @@ export function PortraitCard({ mode = site.placeholders }: PortraitCardProps) {
               <MetaLine as="span" segments={[profile.location, profile.timezone]} mode={mode} />
             </p>
             <AvailabilityPill mode={mode} />
-            <CvLink href={profile.cvUrl} size="sm" mode={mode} />
+            <CvLink href={cvUrl} size="sm" mode={mode} />
             <SocialRow themeToggle={false} />
           </div>
         </div>

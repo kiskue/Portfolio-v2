@@ -61,13 +61,19 @@ export function CredentialsList({ credentials, education, mode = site.placeholde
       ) : null}
       <div id="education" className="flex flex-col gap-4">
         <SectionHeader as="h3" size="card" title="Education" />
-        <Card surface="raised" radius="control" pad="sm" className="flex items-start gap-3">
-          <IconTile icon="graduation-cap" tone="soft" size={28} />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <strong className="text-body-sm font-bold text-ink">{education.degree}</strong>
-            <MetaLine segments={[`${education.school} (${education.short})`, education.year]} mode={mode} className="text-meta text-ink-3" />
-          </div>
-        </Card>
+        <ul className="grid gap-3 @xl:grid-cols-2">
+          <Card as="li" surface="raised" radius="control" pad="sm" className="flex items-start gap-3" data-education="">
+            <IconTile icon="graduation-cap" tone="soft" size={28} />
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <strong className="text-body-sm font-bold text-ink">{education.degree}</strong>
+              <MetaLine
+                segments={[`${education.school} (${education.short})`, education.year]}
+                mode={mode}
+                className="text-meta text-ink-3"
+              />
+            </div>
+          </Card>
+        </ul>
       </div>
     </section>
   );
