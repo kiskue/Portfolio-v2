@@ -155,9 +155,12 @@ describe('scanSource: examples, confirm notes, null facts and the release switch
     expect(hidden.every((item) => item.optional)).toBe(true);
   });
 
-  it("lists placeholders: 'label' as the release switch", () => {
+  it("lists placeholders: 'label' as the release switch, also behind an environment override", () => {
     expect(only(items, 'release')).toEqual([expect.objectContaining({ line: 15, where: 'site.placeholders' })]);
     expect(only(scanSource('x.ts', "export const site = { placeholders: 'hide' };"), 'release')).toEqual([]);
+    const override = "export const site = { placeholders: process.env.NEXT_PUBLIC_PLACEHOLDERS === 'hide' ? 'hide' : 'label' };";
+    expect(only(scanSource('x.ts', override), 'release')).toHaveLength(1);
+    expect(only(scanSource('x.ts', "export const site = { placeholders: (process.env.MODE as PlaceholderMode) ?? 'label' };"), 'release')).toHaveLength(1);
   });
 });
 

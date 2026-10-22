@@ -191,6 +191,22 @@ function contextPath(node) {
   return joined.startsWith('.') ? joined.slice(1) : joined;
 }
 
+/**
+ * True when a `placeholders` value can be 'label': the literal itself, or a conditional or
+ * fallback that has it as an outcome (e.g. an environment override that defaults to 'label').
+ */
+function mayBeLabel(node) {
+  const current = unwrap(node);
+  if (!current) return false;
+  if (literalText(current) === 'label') return true;
+  if (ts.isConditionalExpression(current)) return mayBeLabel(current.whenTrue) || mayBeLabel(current.whenFalse);
+  if (ts.isBinaryExpression(current)) {
+    const kind = current.operatorToken.kind;
+    if (kind === ts.SyntaxKind.QuestionQuestionToken || kind === ts.SyntaxKind.BarBarToken) return mayBeLabel(current.left) || mayBeLabel(current.right);
+  }
+  return false;
+}
+
 /** True when the node sits in an object literal marked `hidden: true` (never rendered). */
 function insideHidden(node) {
   for (let current = node.parent; current && !ts.isSourceFile(current); current = current.parent) {
@@ -289,7 +305,7 @@ export function scanSource(file, text) {
         const fact = NULL_FACTS[name];
         const credential = name !== 'url' || CREDENTIAL_KINDS.has(literalText(ownProperty(object, 'kind')) ?? '');
         if (credential) found.push(item('null', file, lineOf(sourceFile, node), `${where}.${name}`, fact.note, flagsFor(node, fact.optional)));
-      } else if (name === 'placeholders' && literalText(value) === 'label') {
+      } else if (name === 'placeholders' && mayBeLabel(value)) {
         found.push(item('release', file, lineOf(sourceFile, node), `${where}.${name}`, "placeholders are in 'label' mode (noindex, no sitemap): switch to 'hide' to go public", flagsFor(node)));
       }
     }
