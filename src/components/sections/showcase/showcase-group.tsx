@@ -161,7 +161,7 @@ export function ShowcaseGroup({ app, entries, scoped = false }: ShowcaseGroupPro
         action={
           <ButtonLink href={caseStudyHref(app.caseStudy)} variant="secondary" size="sm" icon="arrow-right">
             {CASE_STUDY_LABEL}
-            <span className="sr-only">: {app.name}</span>
+            <span className="sr-only"> about {app.name}</span>
           </ButtonLink>
         }
       />

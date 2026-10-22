@@ -13,9 +13,9 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
-  type RefObject,
 } from 'react';
 import type { BrandId, SiteRoute } from '@/content/types';
+import { withParam } from '@/hooks/search-param';
 import { useSearchParam } from '@/hooks/use-search-param';
 import {
   APP_FILTERS,
@@ -39,9 +39,9 @@ import {
  * The Showcase wall's state (design §7). One provider around the server-rendered wall holds:
  *
  * - the filters, synced to ?app= and ?source= (and reading the BrandScope keys ?brand= and
- *   ?rbrand=) through useSearchParam, the way BrandScope does: history.replaceState, no server
- *   request, and only a tiny sync component inside Suspense, so the page stays static and the
- *   server (and a no-JS visit) shows the whole wall;
+ *   ?rbrand=) the way BrandScope does: useSearchParam reads them in a tiny component inside
+ *   Suspense, so the page stays static and the server (and a no-JS visit) shows the whole wall;
+ *   choices are written at once with history.replaceState (no history entry, no server request);
  * - the lightbox: every WallTile registers its server-rendered screen and details here, and the
  *   Radix dialog (loaded on first intent, like the menu sheet) renders the active one again at
  *   a fitted size. Nothing is rendered twice on the server and no screen is sent twice.
@@ -120,34 +120,32 @@ const LightboxDialog = lazy(loadLightbox);
 
 const PARAM_KEYS: readonly string[] = Object.values(SHOWCASE_PARAM);
 
-interface UrlSetters {
-  readonly app: (app: AppFilter) => void;
-  readonly source: (source: SourceFilter) => void;
+/**
+ * Writes the query now, from the current location (the rules of useSearchParam: replaceState, the
+ * fallback removes its key). Not through the hook's setter: that one only exists once the
+ * Suspense-wrapped reader has mounted, a moment after hydration, and a choice made in between
+ * would be lost, then undone when the reader saw the old URL.
+ */
+function writeQuery(query: (search: string) => string): void {
+  const { pathname, search, hash } = window.location;
+  window.history.replaceState(null, '', `${pathname}${query(search)}${hash}`);
 }
 
 interface FiltersParamSyncProps {
   readonly brands: Readonly<Record<BrandableApp, BrandParam>>;
   readonly onUrl: (filters: ShowcaseFilters) => void;
-  readonly settersRef: RefObject<UrlSetters | null>;
 }
 
-/** Reads (and writes) the filter params. Inside Suspense: it needs useSearchParams. Renders nothing. */
-function FiltersParamSync({ brands, onUrl, settersRef }: FiltersParamSyncProps): ReactNode {
-  const [app, setApp] = useSearchParam(SHOWCASE_PARAM.app, APP_FILTERS, 'all');
-  const [source, setSource] = useSearchParam(SHOWCASE_PARAM.source, SOURCE_FILTERS, 'all');
+/** Reads the filter params (and the BrandScope keys). Inside Suspense: it needs useSearchParams. Renders nothing. */
+function FiltersParamSync({ brands, onUrl }: FiltersParamSyncProps): ReactNode {
+  const [app] = useSearchParam(SHOWCASE_PARAM.app, APP_FILTERS, 'all');
+  const [source] = useSearchParam(SHOWCASE_PARAM.source, SOURCE_FILTERS, 'all');
   const [citizen] = useSearchParam(SHOWCASE_PARAM.citizenBrand, brands.citizen.ids, brands.citizen.fallback);
   const [responder] = useSearchParam(SHOWCASE_PARAM.responderBrand, brands.responder.ids, brands.responder.fallback);
 
   useEffect(() => {
     onUrl({ app, source, brands: { citizen, responder } });
   }, [app, source, citizen, responder, onUrl]);
-
-  useEffect(() => {
-    settersRef.current = { app: setApp, source: setSource };
-    return () => {
-      settersRef.current = null;
-    };
-  }, [setApp, setSource, settersRef]);
 
   return null;
 }
@@ -177,26 +175,23 @@ export function ShowcaseProvider({ facets, brands, appFieldId, children }: Showc
     [brands],
   );
   const [filters, setFilters] = useState<ShowcaseFilters>(defaults);
-  const setters = useRef<UrlSetters | null>(null);
 
   const onUrl = useCallback((next: ShowcaseFilters) => setFilters((prev) => (sameFilters(prev, next) ? prev : next)), []);
 
   const setApp = useCallback((app: AppFilter) => {
     setFilters((prev) => (prev.app === app ? prev : { ...prev, app }));
-    setters.current?.app(app);
+    writeQuery((search) => withParam(search, SHOWCASE_PARAM.app, app, 'all'));
   }, []);
 
   const setSource = useCallback((source: SourceFilter) => {
     setFilters((prev) => (prev.source === source ? prev : { ...prev, source }));
-    setters.current?.source(source);
+    writeQuery((search) => withParam(search, SHOWCASE_PARAM.source, source, 'all'));
   }, []);
 
-  // One history write for every key: separate useSearchParam setters would each start from the
-  // same (stale) query and undo one another. The BrandScopes follow the URL back to their defaults.
+  // One history write for every key. The BrandScopes follow the URL back to their defaults.
   const clear = useCallback(() => {
     setFilters(defaults);
-    const { pathname, search, hash } = window.location;
-    window.history.replaceState(null, '', `${pathname}${withoutParams(search, PARAM_KEYS)}${hash}`);
+    writeQuery((search) => withoutParams(search, PARAM_KEYS));
     requestAnimationFrame(() => {
       document.getElementById(appFieldId)?.querySelector<HTMLInputElement>('input:checked')?.focus();
     });
@@ -288,7 +283,7 @@ export function ShowcaseProvider({ facets, brands, appFieldId, children }: Showc
     <ActionsContext value={actions}>
       <ViewContext value={view}>
         <Suspense fallback={null}>
-          <FiltersParamSync brands={brands} onUrl={onUrl} settersRef={setters} />
+          <FiltersParamSync brands={brands} onUrl={onUrl} />
         </Suspense>
         {children}
         {requested && lightbox.entry ? (

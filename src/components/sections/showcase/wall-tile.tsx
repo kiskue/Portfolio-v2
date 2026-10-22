@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useShowcaseActions, useShowcaseView, type LightboxEntry } from '@/components/sections/showcase/showcase-provider';
 import { useOptionalBrand } from '@/components/showcase/brand-scope';
 import { stretchedLinkClass } from '@/components/ui/card';
@@ -14,11 +14,13 @@ import { cn } from '@/lib/cn';
  * drawn around the tile.
  *
  * The screen arrives server-rendered (ScreenView) and is passed exactly once: the tile draws it
- * here and registers it for the lightbox, which draws the same element again. It sits in its own
- * Suspense boundary, so React hydrates the tile at once but the heavy replica markup later, at
- * idle priority in small slices, which keeps long tasks off the main thread. A replica's box also
- * skips rendering while far off screen (content-visibility, design §7); its clip margin keeps
- * the phone's shadow visible.
+ * here and registers it for the lightbox, which draws the same element again. A replica's box
+ * skips rendering while far off screen (content-visibility, design §7); its clip margin keeps the
+ * phone's shadow visible.
+ *
+ * No Suspense boundary wraps the screen: React streams a completed boundary of more than 500
+ * bytes out of place once 12.8 KB of the page is out (a template plus a hidden copy that a script
+ * swaps in), so without JavaScript the phones would never appear.
  */
 
 export interface WallTileProps {
@@ -103,7 +105,7 @@ export function WallTile({
           )}
           data-tile-screen=""
         >
-          <Suspense fallback={null}>{screen}</Suspense>
+          {screen}
         </div>
         <figcaption className="flex flex-col gap-2">
           <button
