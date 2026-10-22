@@ -86,7 +86,7 @@ test('the transition watcher records a transition, and catches one a duplicate n
   expect(duplicates(aborted?.names ?? [])).toEqual(['qa-duplicate']);
 });
 
-test("Home's trio names each phone phone-<slug>, once per case study @needs-pages", async ({ page }) => {
+test("Home's trio names each phone phone-<slug>, once per case study", async ({ page }) => {
   await page.goto('/', { waitUntil: 'load' });
   await hydrated(page);
   const { react } = await viewTransitionNames(page);
@@ -94,7 +94,7 @@ test("Home's trio names each phone phone-<slug>, once per case study @needs-page
 });
 
 for (const route of CASE_STUDY_ROUTES) {
-  test(`${route}: the hero phone receives the morph as phone-<slug>, and no other phone reuses it @needs-pages`, async ({ page }) => {
+  test(`${route}: the hero phone receives the morph as phone-<slug>, and no other phone reuses it`, async ({ page }) => {
     await page.goto(route, { waitUntil: 'load' });
     await hydrated(page);
     const { react } = await viewTransitionNames(page);
@@ -103,7 +103,7 @@ for (const route of CASE_STUDY_ROUTES) {
 }
 
 for (const slug of CASE_STUDY_SLUGS) {
-  test(`the phone morph runs from Home into ${slug} without a duplicate name @needs-pages`, async ({ page }) => {
+  test(`the phone morph runs from Home into ${slug} without a duplicate name`, async ({ page }) => {
     const errors: string[] = [];
     page.on('console', (message) => {
       if (/view-transition|ViewTransition/i.test(message.text())) errors.push(message.text());

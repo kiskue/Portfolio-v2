@@ -115,7 +115,7 @@ const ROUTES_WITH_RADIOS = new Set<string>([
 
 test.describe('every SegmentedControl on every page', () => {
   for (const route of PAGE_ROUTES) {
-    test(`${route}: radio groups work with the arrow keys and keep focus @needs-pages`, async ({ page }) => {
+    test(`${route}: radio groups work with the arrow keys and keep focus`, async ({ page }) => {
       await page.goto(route, { waitUntil: 'load' });
       await hydrated(page);
       const total = await radioGroups(page).count();

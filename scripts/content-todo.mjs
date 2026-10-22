@@ -8,7 +8,10 @@
  *   confirm  a `confirm` note (never rendered; the owner confirms the claim, then deletes the note);
  *   env      NEXT_PUBLIC_SITE_URL (the production domain) or RESEND_API_KEY not set;
  *   asset    the portrait below 1200×1480;
- *   release  site.placeholders still 'label' (switch to 'hide' to go public).
+ *   release  site.placeholders still defaults to 'label' (switch to 'hide' to go public), listed on
+ *            the line that holds the default (site.ts: the PLACEHOLDERS constant). The
+ *            NEXT_PUBLIC_PLACEHOLDERS override changes one build, not the default, so it never
+ *            clears this item.
  * Items inside `hidden: true` entries, the CV, and verification links are listed as optional.
  *
  * How: the content files are TypeScript with @/ imports, so they are PARSED, not run. The
@@ -191,20 +194,80 @@ function contextPath(node) {
   return joined.startsWith('.') ? joined.slice(1) : joined;
 }
 
+/** True for `process.env.NAME` or `process.env['NAME']`. */
+function isEnvRead(node) {
+  if (!ts.isPropertyAccessExpression(node) && !ts.isElementAccessExpression(node)) return false;
+  const target = unwrap(node.expression);
+  return ts.isPropertyAccessExpression(target) && ts.isIdentifier(target.expression) && target.expression.text === 'process' && target.name.text === 'env';
+}
+
+/** Of two default sources, the one that decides: a 'label' literal, then an unreadable value. */
+function decisive(first, second) {
+  if (first?.label) return first;
+  if (second?.label) return second;
+  return first ?? second;
+}
+
 /**
- * True when a `placeholders` value can be 'label': the literal itself, or a conditional or
- * fallback that has it as an outcome (e.g. an environment override that defaults to 'label').
+ * Where a `placeholders` value gets its default mode, the one a build uses with no environment
+ * override set: `{ label }` (the 'label' literal it can take), `{ unknown }` (a value this static
+ * scan cannot read), or null (never 'label'). It follows literals, same-file constants (site.ts
+ * keeps the owner's switch in `const PLACEHOLDERS`), conditionals and `??`/`||` fallbacks (every
+ * branch counts), and resolvePlaceholderMode(override, fallback). A process.env read is the
+ * override itself: unset by default, so never the default. Anything else is unknown, and listed.
  */
-function mayBeLabel(node) {
+function placeholderDefault(node, consts, depth = 0) {
   const current = unwrap(node);
-  if (!current) return false;
-  if (literalText(current) === 'label') return true;
-  if (ts.isConditionalExpression(current)) return mayBeLabel(current.whenTrue) || mayBeLabel(current.whenFalse);
+  if (!current || depth > MAX_DEPTH) return { unknown: node };
+  if (ts.isStringLiteral(current) || ts.isNoSubstitutionTemplateLiteral(current)) return current.text === 'label' ? { label: current } : null;
+  if (isEnvRead(current) || (ts.isIdentifier(current) && current.text === 'undefined')) return null;
+  if (ts.isIdentifier(current)) {
+    const initializer = consts.get(current.text);
+    return initializer ? placeholderDefault(initializer, consts, depth + 1) : { unknown: current };
+  }
+  if (ts.isConditionalExpression(current)) {
+    return decisive(placeholderDefault(current.whenTrue, consts, depth + 1), placeholderDefault(current.whenFalse, consts, depth + 1));
+  }
   if (ts.isBinaryExpression(current)) {
     const kind = current.operatorToken.kind;
-    if (kind === ts.SyntaxKind.QuestionQuestionToken || kind === ts.SyntaxKind.BarBarToken) return mayBeLabel(current.left) || mayBeLabel(current.right);
+    if (kind === ts.SyntaxKind.QuestionQuestionToken || kind === ts.SyntaxKind.BarBarToken) {
+      return decisive(placeholderDefault(current.left, consts, depth + 1), placeholderDefault(current.right, consts, depth + 1));
+    }
   }
-  return false;
+  if (ts.isCallExpression(current) && ts.isIdentifier(current.expression) && current.expression.text === 'resolvePlaceholderMode' && current.arguments.length === 2) {
+    const [override, fallback] = current.arguments;
+    return decisive(placeholderDefault(override, consts, depth + 1), placeholderDefault(fallback, consts, depth + 1));
+  }
+  return { unknown: current };
+}
+
+/** The `const NAME` whose initializer holds this node, or null. */
+function constantHolding(node) {
+  for (let current = node.parent; current && !ts.isSourceFile(current); current = current.parent) {
+    if (ts.isVariableDeclaration(current)) {
+      return ts.isIdentifier(current.name) && ts.isVariableDeclarationList(current.parent) && (current.parent.flags & ts.NodeFlags.Const) !== 0 ? current.name.text : null;
+    }
+    if (ts.isFunctionLike(current)) return null;
+  }
+  return null;
+}
+
+/**
+ * The release switch: one item while a `placeholders` property defaults to 'label', on the line
+ * the owner flips (the literal, wherever a constant keeps it). An environment override changes
+ * one build, not the default, so it never clears the item. A value the scan cannot read is
+ * listed too, so --strict fails closed.
+ */
+function releaseFinding(file, sourceFile, property, value, consts, where, flags) {
+  const source = placeholderDefault(value, consts);
+  if (source === null) return null;
+  if (source.unknown) {
+    const text = `could not tell whether the default is 'label' (‹computed: ${source.unknown.getText(sourceFile)}›): make sure it is 'hide' to go public`;
+    return item('release', file, lineOf(sourceFile, property), where, text, flags);
+  }
+  const constant = constantHolding(source.label);
+  const text = `placeholders are in 'label' mode (noindex, no sitemap): switch ${constant ? `${constant} ` : ''}to 'hide' to go public`;
+  return item('release', file, lineOf(sourceFile, source.label), where, text, flags);
 }
 
 /** True when the node sits in an object literal marked `hidden: true` (never rendered). */
@@ -305,9 +368,14 @@ export function scanSource(file, text) {
         const fact = NULL_FACTS[name];
         const credential = name !== 'url' || CREDENTIAL_KINDS.has(literalText(ownProperty(object, 'kind')) ?? '');
         if (credential) found.push(item('null', file, lineOf(sourceFile, node), `${where}.${name}`, fact.note, flagsFor(node, fact.optional)));
-      } else if (name === 'placeholders' && mayBeLabel(value)) {
-        found.push(item('release', file, lineOf(sourceFile, node), `${where}.${name}`, "placeholders are in 'label' mode (noindex, no sitemap): switch to 'hide' to go public", flagsFor(node)));
+      } else if (name === 'placeholders') {
+        const release = releaseFinding(file, sourceFile, node, node.initializer, consts, `${where}.${name}`, flagsFor(node));
+        if (release) found.push(release);
       }
+    } else if (ts.isShorthandPropertyAssignment(node) && propertyName(node.name) === 'placeholders') {
+      // `{ placeholders }`: the value is the same-named constant.
+      const release = releaseFinding(file, sourceFile, node, node.name, consts, `${contextPath(node.parent)}.placeholders`, flagsFor(node));
+      if (release) found.push(release);
     }
     ts.forEachChild(node, visit);
   };
