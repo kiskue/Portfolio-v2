@@ -27,8 +27,9 @@ import { cn } from '@/lib/cn';
  * phones inside are server-rendered children (ScreenView brandMode="inherit") whose DOM never
  * changes. BrandSwitcher is the native-radio chip group; useBrand reads the selection.
  *
- * The selection follows ?brand= through useSearchParam (history.replaceState: no history entry,
- * no server request). Reading the URL needs a Suspense boundary on a static page, so only a
+ * The selection follows ?brand= (or the scope's own `param`, e.g. ?rbrand= for a Responder scope
+ * beside a Citizen one) through useSearchParam (history.replaceState: no history entry, no
+ * server request). Reading the URL needs a Suspense boundary on a static page, so only a
  * tiny sync component sits inside one: the server and the first paint show the default brand,
  * and the page stays static. There is no crossfade: the site's one View Transition is the
  * phone morph (PLAN → Motion).
@@ -56,8 +57,12 @@ export interface BrandScopeProps {
   readonly app: 'citizen' | 'responder';
   readonly defaultBrand: BrandId;
   readonly options: readonly BrandOption[];
-  /** The search param that keeps the selection (default 'brand'). */
-  readonly param?: 'brand';
+  /**
+   * The search param that keeps the selection (default 'brand'). Scopes with the same param
+   * follow one selection; give a second app's scope its own key (e.g. 'rbrand' for Responder
+   * next to a Citizen scope on Showcase), or a brand id of one app resets the other to its default.
+   */
+  readonly param?: string;
   readonly children: ReactNode;
   /** Classes for the wrapper (default: display contents, so it adds no layout box). */
   readonly className?: string;
@@ -84,7 +89,7 @@ interface BrandParamSyncProps {
   readonly setterRef: RefObject<UrlSetter | null>;
 }
 
-/** Reads and writes ?brand= (inside Suspense: it needs useSearchParams). Renders nothing. */
+/** Reads and writes ?<param>= (inside Suspense: it needs useSearchParams). Renders nothing. */
 function BrandParamSync({ param, ids, fallback, onUrlBrand, setterRef }: BrandParamSyncProps): ReactNode {
   const [value, setValue] = useSearchParam(param, ids, fallback);
   useEffect(() => {
@@ -120,7 +125,7 @@ export function BrandScope({ app, defaultBrand, options, param = 'brand', childr
 
   return (
     <BrandContext value={state}>
-      <div className={cn('contents', className)} data-brand-scope={app} data-brand={brand} style={option?.vars}>
+      <div className={cn('contents', className)} data-brand-scope={app} data-brand={brand} data-brand-param={param} style={option?.vars}>
         <Suspense fallback={null}>
           <BrandParamSync param={param} ids={ids} fallback={fallback} onUrlBrand={onUrlBrand} setterRef={urlSetter} />
         </Suspense>

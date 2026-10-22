@@ -31,17 +31,17 @@ describe('GlimpsePlayer: the Home trio as server HTML', () => {
   const frames = tags(html, 'gl-frame');
   const homeSteps = glimpses.filter((glimpse) => HOME.includes(glimpse.id)).flatMap((glimpse) => glimpse.steps);
 
-  it('renders every step as one frame: each Home poster step plays a state that is its own poster', () => {
-    // A poster step whose posterState differs from its state needs a second tree; Home has none
-    // (1.1 kpis, 2.1 top, 3.1 online), which keeps the trio inside the Home DOM budget.
-    expect(frames).toHaveLength(homeSteps.length);
-    expect(frames.filter((frame) => frame.includes('data-kind="poster"'))).toHaveLength(0);
+  it('renders every step as a frame, plus the Responder poster frame', () => {
+    // A poster step whose posterState differs from its state needs a second tree: Responder 3.1
+    // animates from its state to its posterState, so it carries one still poster frame.
+    expect(frames).toHaveLength(homeSteps.length + 1);
+    expect(frames.filter((frame) => frame.includes('data-kind="poster"'))).toHaveLength(1);
   });
 
   it('shows exactly each track’s poster frame, with nothing active or queued', () => {
     const shown = frames.filter((frame) => frame.includes('data-shown=""'));
     expect(shown).toHaveLength(3);
-    expect(shown.every((frame) => frame.includes('data-step="0"'))).toBe(true);
+    expect(shown.filter((frame) => frame.includes('data-kind="poster"'))).toHaveLength(1);
     expect(html).not.toMatch(/data-active=""/);
     expect(html).not.toMatch(/data-leaving=""/);
     for (const frame of frames.filter((candidate) => !candidate.includes('data-shown'))) expect(frame).toContain('aria-hidden="true"');

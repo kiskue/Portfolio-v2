@@ -38,7 +38,8 @@ export function BrandsSection(): ReactNode {
       intro={
         <>
           Selecting a brand sets <Term>data-brand</Term> and the brand&apos;s CSS variables on one wrapper, so no phone
-          re-renders; the choice is kept in <Term>?brand=</Term>. The source toggle offers store screenshots only for brands
+          re-renders; the choice is kept in <Term>?brand=</Term> (Citizen) or <Term>?rbrand=</Term> (Responder: its own
+          key, so one page can host both apps). The source toggle offers store screenshots only for brands
           that have them, shown frameless and labelled by their listing. SME and Responder show a fixed label.
         </>
       }
@@ -59,7 +60,7 @@ export function BrandsSection(): ReactNode {
           </section>
         </BrandScope>
 
-        <BrandScope {...brandScopeProps('responder')}>
+        <BrandScope {...brandScopeProps('responder')} param="rbrand">
           <section aria-labelledby="dev-brands-responder" className="flex flex-col gap-5" data-dev-brands="responder">
             <h3 id="dev-brands-responder" className="text-h3-hero">
               Defensys Responder

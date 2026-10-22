@@ -15,7 +15,8 @@ import type { Glimpse, GlimpseStep } from '@/content/types';
  *   about 180 ms after a tap's `atMs` (the tap ring has then fully scaled in).
  * - `posterState` is the static state shown for reduced motion, without JavaScript, before
  *   playback starts and after it ends ("its final coherent state", e.g. 3.3 at 18 m · ON SITE).
- * - `taps` are in logical px on the 390×844 canvas (design §5.3); a hold keeps its ring for holdMs.
+ * - `taps` are in logical px on the 390×844 canvas, measured at each target's centre on the
+ *   replicas (/dev/figure, 2026-10-22) rather than design §5.3's estimates; a hold keeps its ring for holdMs.
  * - `caption` is the FIG line's text (the player adds "FIG <id>"); it matches the figure's
  *   caption in figures.ts (tests/unit/glimpse-data.test.ts), and the player appends the brand
  *   name on rotating skins and an "In rollout" note for figures that are not fully shipped.
@@ -38,8 +39,8 @@ const SME_POS: GlimpseStep = {
   posterState: 'confirmed',
   holdMs: 4400, // grid 1.4s, then the checkout sheet 3.0s (Cash, "Change: ₱190.00", Sale Confirmed!)
   taps: [
-    { x: 262, y: 806, atMs: 1200, kind: 'tap' }, // Checkout
-    { x: 195, y: 812, atMs: 2900, kind: 'tap' }, // Confirm Sale
+    { x: 251, y: 804, atMs: 1200, kind: 'tap' }, // Checkout
+    { x: 195, y: 783, atMs: 2900, kind: 'tap' }, // Confirm Sale
   ],
   caption: 'Point of sale: cash, GCash, Maya, card or utang',
 };
@@ -49,7 +50,7 @@ const SME_AI: GlimpseStep = {
   state: 'idle',
   posterState: 'enhanced',
   holdMs: 3800, // "Enhancing…" 0.6s, typewriter 1.8s, then "AI-generated"
-  taps: [{ x: 300, y: 168, atMs: 600, kind: 'tap' }], // Enhance with AI
+  taps: [{ x: 298, y: 179, atMs: 600, kind: 'tap' }], // Enhance with AI
   caption: 'AI insight: the phone does the math, the model writes the words',
 };
 
@@ -75,8 +76,8 @@ const CITIZEN_SOS: GlimpseStep = {
   posterState: 'countdown',
   holdMs: 3700, // Home 0.9s, then the countdown modal 2.8s (5 → 3, bar 1 → .6)
   taps: [
-    { x: 195, y: 768, atMs: 700, kind: 'tap' }, // SOS
-    { x: 276, y: 590, atMs: 3200, kind: 'tap' }, // Confirm Call
+    { x: 195, y: 734, atMs: 700, kind: 'tap' }, // SOS
+    { x: 273, y: 542, atMs: 3200, kind: 'tap' }, // Confirm Call
   ],
   caption: 'SOS: one tap, then a 5-second countdown you can cancel',
 };
@@ -94,7 +95,7 @@ const CITIZEN_HAZARDS: GlimpseStep = {
   state: 'list',
   posterState: 'map',
   holdMs: 3800, // the hazard list 1.2s, then the map with the flood and "Your Location" pins 2.6s
-  taps: [{ x: 195, y: 250, atMs: 1000, kind: 'tap' }], // Flood
+  taps: [{ x: 195, y: 276, atMs: 1000, kind: 'tap' }], // Flood
   caption: "Hazards: what's near you, pinned to your location",
 };
 
@@ -103,7 +104,7 @@ const RESPONDER_DUTY: GlimpseStep = {
   state: 'offline',
   posterState: 'online',
   holdMs: 2800, // "You're Offline" → "Connecting…" (amber, 0.4s) → "You're Online" (green)
-  taps: [{ x: 352, y: 74, atMs: 500, kind: 'tap' }], // the duty switch
+  taps: [{ x: 351, y: 72, atMs: 500, kind: 'tap' }], // the duty switch
   caption: 'On duty: one switch makes a responder dispatchable',
 };
 
@@ -112,7 +113,7 @@ const RESPONDER_DISPATCH: GlimpseStep = {
   state: 'toast',
   posterState: 'sheet',
   holdMs: 3000, // the "New ticket assigned" toast, then the sheet rises to 50%: NEW EMERGENCY · FIRE
-  taps: [{ x: 292, y: 806, atMs: 2400, kind: 'tap' }], // ACCEPT
+  taps: [{ x: 289, y: 807, atMs: 2400, kind: 'tap' }], // ACCEPT
   caption: 'Dispatch: siren, auto-open map, accept or decline',
 };
 
@@ -129,7 +130,7 @@ const RESPONDER_CHANNELS: GlimpseStep = {
   state: 'recording',
   posterState: 'thread',
   holdMs: 3400, // hold the mic 1.2s ("● 0:07 · Slide to cancel"); release: own voice bubble, transcript, "English" chip
-  taps: [{ x: 360, y: 806, atMs: 300, kind: 'hold', holdMs: 1200 }], // the mic
+  taps: [{ x: 356, y: 806, atMs: 300, kind: 'hold', holdMs: 1200 }], // the mic
   caption: 'Channels: hold to talk, transcribed in English or Tagalog',
 };
 

@@ -14,7 +14,8 @@ export function HeroSection(): ReactNode {
         <>
           <Term>layout=&quot;hero&quot;</Term>: one phone (lg, md when narrow) with 24px step dots and Pause, no links.
           Inside a <Term>BrandScope</Term> the phones inherit the selected brand; switching re-skins them without
-          re-rendering. These heroes carry no morph names (the trio above does).
+          re-rendering. The Citizen scopes keep <Term>?brand=</Term> and the Responder scopes <Term>?rbrand=</Term>, so
+          the two apps never reset each other. These heroes carry no morph names (the trio above does).
         </>
       }
     >
@@ -25,7 +26,7 @@ export function HeroSection(): ReactNode {
             <BrandSwitcher />
           </div>
         </BrandScope>
-        <BrandScope {...brandScopeProps('responder')}>
+        <BrandScope {...brandScopeProps('responder')} param="rbrand">
           <div className="flex min-w-0 flex-col gap-6" data-dev-hero="responder">
             <GlimpsePlayer glimpses={['hero.defensys-responder']} layout="hero" size="inherit" morph={false} id="dev-hero-responder" />
             <BrandSwitcher />

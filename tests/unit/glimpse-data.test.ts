@@ -59,20 +59,21 @@ describe('glimpse steps', () => {
     expect(problems).toEqual([]);
   });
 
-  it('use taps from design §5.3 for the steps that have them', () => {
+  it('tap the centres of their targets, as measured on the replicas (/dev/figure)', () => {
     const taps = (id: GlimpseId, index: number) => byId(id).steps[index]?.taps?.map(({ x, y, kind }) => [x, y, kind]);
     expect(taps('home.sme', 1)).toEqual([
-      [262, 806, 'tap'],
-      [195, 812, 'tap'],
+      [251, 804, 'tap'], // Checkout
+      [195, 783, 'tap'], // Confirm Sale
     ]);
-    expect(taps('home.sme', 2)).toEqual([[300, 168, 'tap']]);
+    expect(taps('home.sme', 2)).toEqual([[298, 179, 'tap']]); // Enhance with AI
     expect(taps('home.citizen', 1)).toEqual([
-      [195, 768, 'tap'],
-      [276, 590, 'tap'],
+      [195, 734, 'tap'], // SOS, docked on the tab bar's top edge
+      [273, 542, 'tap'], // Confirm Call
     ]);
-    expect(taps('home.responder', 0)).toEqual([[352, 74, 'tap']]);
-    expect(taps('home.responder', 1)).toEqual([[292, 806, 'tap']]);
-    expect(taps('hero.defensys-responder', 3)).toEqual([[360, 806, 'hold']]);
+    expect(taps('hero.defensys-citizen', 3)).toEqual([[195, 276, 'tap']]); // the Flood card
+    expect(taps('home.responder', 0)).toEqual([[351, 72, 'tap']]); // the duty switch
+    expect(taps('home.responder', 1)).toEqual([[289, 807, 'tap']]); // ACCEPT
+    expect(taps('hero.defensys-responder', 3)).toEqual([[356, 806, 'hold']]); // the mic
   });
 
   it('end each step on its final coherent state (3.3 on site)', () => {
