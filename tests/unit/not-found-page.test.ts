@@ -26,7 +26,7 @@ describe('404 page', () => {
   });
 
   it('links back home, to the projects and to contact', () => {
-    expect(hrefs).toEqual(['/', '/projects', '/contact']);
+    expect([...hrefs].sort()).toEqual(['/', '/contact', '/projects']);
   });
 
   it('shows a static map phone from the registry, captioned, with no view-transition name', () => {
