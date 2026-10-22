@@ -157,7 +157,9 @@
   /* ─── Static mode: reduced motion (setting, or the OS when scripts are blocked) ─────── */
 
   :root[data-motion="reduce"] {
+    /* A block, so the list (a flex item that never shrinks while it scrolls) wraps to the width. */
     & .ts-track {
+      display: block;
       width: auto;
       animation: none;
     }
@@ -218,6 +220,7 @@
   @media (prefers-reduced-motion: reduce) {
     :root:not([data-motion]) {
       & .ts-track {
+        display: block;
         width: auto;
         animation: none;
       }
