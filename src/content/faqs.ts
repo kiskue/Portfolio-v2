@@ -1,4 +1,4 @@
-import type { Faq } from '@/content/types';
+import type { Faq, Field, Meta } from '@/content/types';
 import { ph } from '@/lib/placeholder';
 
 /**
@@ -62,3 +62,17 @@ export const faqs: readonly Faq[] = [
     a: 'Most are coded replicas, built from the real apps’ screen layouts and filled with fictional data, so no real person’s information appears in them. Defensys Citizen also shows a selection of the screenshots its brands publish on Google Play and the App Store.',
   },
 ];
+
+/**
+ * The privacy notice shown with the contact form (PLAN → Contact; RA 10173, the Philippine Data
+ * Privacy Act of 2012): why the form collects what it does, who processes it, and how long it
+ * is kept. Each part is a whole field, so hide mode drops the retention placeholder cleanly.
+ */
+export const contactPrivacy = {
+  title: 'Privacy',
+  purpose: 'I use your name, email address and message only to reply to you.',
+  processor: 'The form delivers them to my inbox through Resend, an email service that processes them on my behalf.',
+  retention: ph('How long you keep messages, and how someone can ask you to delete theirs'),
+  confirm:
+    'Privacy notice (RA 10173): confirm the purpose and processor wording, then replace the placeholder with how long you keep contact messages and how people can ask you to delete theirs.',
+} as const satisfies Meta & Readonly<Record<'title' | 'purpose' | 'processor' | 'retention', Field>>;
