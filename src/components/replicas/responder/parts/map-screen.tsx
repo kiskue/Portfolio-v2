@@ -1,10 +1,8 @@
 import type { ReactNode } from 'react';
 
 export interface MapScreenProps {
-  /** The full-bleed map (RMapCanvas with className rx-responder-map). */
+  /** The full-bleed map: RMapCanvas with a scene and className rx-responder-map (it draws the puck). */
   readonly map: ReactNode;
-  /** The heading puck overlay, in canvas px. */
-  readonly puck: ReactNode;
   readonly header: ReactNode;
   /** A full-width strip under the header (the public alert). */
   readonly strip?: ReactNode;
@@ -18,11 +16,10 @@ export interface MapScreenProps {
  * The Emergency Map screen frame. The map fills the canvas (so town coordinates are screen
  * coordinates); the header, the strip and the floating chrome sit over it in a column.
  */
-export function MapScreen({ map, puck, header, strip, overlay, children }: MapScreenProps): ReactNode {
+export function MapScreen({ map, header, strip, overlay, children }: MapScreenProps): ReactNode {
   return (
     <>
       {map}
-      {puck}
       <div className="rx-responder-mapscreen">
         {header}
         {strip}

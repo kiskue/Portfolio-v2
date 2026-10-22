@@ -202,29 +202,6 @@
     min-height: 0;
   }
 
-  .rx-responder-puck {
-    position: absolute;
-    z-index: 1;
-    width: 44px;
-    height: 44px;
-    color: var(--rx-primary);
-  }
-
-  .rx-responder-puck__art {
-    position: relative;
-    display: block;
-    filter: drop-shadow(0 2px 3px rgb(15 23 42 / 0.35));
-  }
-
-  .rx-responder-puck__accuracy {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    border: 1px solid color-mix(in srgb, var(--rx-primary) 28%, transparent);
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--rx-primary) 12%, transparent);
-  }
-
   .rx-responder-glass-stack {
     position: absolute;
     top: 12px;
@@ -402,8 +379,9 @@
     border-radius: 99px;
   }
 
-  .rx-responder-sheet__content {
-    padding: 4px 12px 36px;
+  /* The scrolling body (BottomSheetScrollView): 12px sides; the footer stays pinned below it. */
+  .rx-sheet.rx-responder-sheet > .rx-sheet__body {
+    padding: 4px 12px 0;
   }
 
   .rx-responder-band {
@@ -414,8 +392,14 @@
     background: #085499;
   }
 
+  /*
+   * The band's two sides never shrink (React Native's flexShrink 0): NEW EMERGENCY stays on one
+   * line and, with JOIN STREAM beside it, the row runs about 5px into the right padding, as in
+   * the app at 390 wide.
+   */
   .rx-responder-band__lead {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 10px;
   }
@@ -459,6 +443,7 @@
 
   .rx-responder-join {
     display: inline-flex;
+    flex: none;
     align-items: center;
     gap: 5px;
     padding: 7px 12px;
@@ -529,37 +514,31 @@
     color: #9ca3af;
   }
 
-  /* Distance card: zone parts read --rx-responder-zone (fill 10%, edge 28%). */
-  .rx-responder-dcard-wrap {
-    padding: 10px 0 4px;
-  }
-
+  /*
+   * Distance card: its `color` is the zone colour (set inline; recoloured by a drive), and every
+   * zone part reads currentColor (fill 10%, edge 28%, as the app's zone tokens). Texts set their
+   * own ink.
+   */
   .rx-responder-dcard {
-    --rx-responder-zone: #f87171;
     position: relative;
+    margin: 10px 0 4px;
     padding: 14px 14px 12px;
     overflow: hidden;
     border: 1px solid rgb(8 84 153 / 0.09);
     border-radius: 16px;
     background: #ffffff;
-    box-shadow: 0 6px 14px color-mix(in srgb, var(--rx-responder-zone) 12%, transparent);
+    box-shadow: 0 6px 14px color-mix(in srgb, currentColor 12%, transparent);
+    color: #f87171;
   }
 
-  .rx-responder-dcard > .rx-responder-dcard__strip,
-  .rx-responder-dcard__strip-seq {
+  .rx-responder-dcard__strip {
     position: absolute;
     top: 0;
     right: 22%;
     left: 22%;
     height: 2px;
-  }
-
-  .rx-responder-dcard__strip {
-    --rx-responder-zone: #f87171;
-    display: block;
-    height: 2px;
     border-radius: 0 0 2px 2px;
-    background: var(--rx-responder-zone);
+    background: currentColor;
     opacity: 0.65;
   }
 
@@ -571,18 +550,16 @@
   }
 
   .rx-responder-dcard__tile {
-    --rx-responder-zone: #f87171;
     display: flex;
     flex: none;
     align-items: center;
     justify-content: center;
     width: 46px;
     height: 46px;
-    border: 1px solid color-mix(in srgb, var(--rx-responder-zone) 28%, transparent);
+    border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
     border-radius: 14px;
-    background: color-mix(in srgb, var(--rx-responder-zone) 10%, transparent);
-    box-shadow: 0 2px 6px color-mix(in srgb, var(--rx-responder-zone) 18%, transparent);
-    color: var(--rx-responder-zone);
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    box-shadow: 0 2px 6px color-mix(in srgb, currentColor 18%, transparent);
   }
 
   .rx-responder-dcard__text {
@@ -602,14 +579,9 @@
     letter-spacing: 1px;
   }
 
-  .rx-responder-dcard__dist {
-    display: flex;
-    align-items: baseline;
-    gap: 3px;
-    margin-bottom: 6px;
-  }
-
+  /* The 30px count; its 13px unit is the ::after of each reading, so it follows the digits. */
   .rx-responder-dcard__count {
+    margin-bottom: 6px;
     color: #0f172a;
     font-size: 30px;
     font-weight: 700;
@@ -618,35 +590,60 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .rx-responder-dcard__unit {
+  .rx-responder-dcard__count:not(.rx-seq),
+  .rx-responder-dcard__count > .rx-seq__frame {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+  }
+
+  .rx-responder-dcard__count:not(.rx-seq)::after,
+  .rx-responder-dcard__count > .rx-seq__frame::after {
+    content: "m";
     color: rgb(100 116 139 / 0.55);
     font-size: 13px;
+    font-weight: 400;
     line-height: 19.5px;
+    letter-spacing: 0;
   }
 
   .rx-responder-zone {
-    --rx-responder-zone: #f87171;
     display: inline-flex;
     align-items: center;
     gap: 1px;
     padding: 3px 10px 3px 4px;
-    border: 1px solid color-mix(in srgb, var(--rx-responder-zone) 28%, transparent);
+    border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
     border-radius: 99px;
-    background: color-mix(in srgb, var(--rx-responder-zone) 10%, transparent);
+    background: color-mix(in srgb, currentColor 10%, transparent);
     white-space: nowrap;
   }
 
+  /*
+   * Sequence frames around inline-flex words (the zone pill, the duty label) are flex boxes, so
+   * a played state is exactly as tall as the still one (a block frame would add a line strut).
+   */
+  .rx-responder-zone > .rx-seq > .rx-seq__frame,
+  .rx-responder-duty > .rx-seq > .rx-seq__frame {
+    display: flex;
+    align-items: center;
+  }
+
+  /* "FAR" 10px Bold, then its ::after "· Distance critical" 9px (data-sub). */
   .rx-responder-zone__label {
-    color: var(--rx-responder-zone);
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
     font-size: 10px;
     font-weight: 700;
     line-height: 15px;
     letter-spacing: 0.8px;
   }
 
-  .rx-responder-zone__sub {
+  .rx-responder-zone__label::after {
+    content: attr(data-sub);
     color: rgb(100 116 139 / 0.55);
     font-size: 9px;
+    font-weight: 400;
     line-height: 13.5px;
     letter-spacing: 0.2px;
   }
@@ -669,11 +666,11 @@
     white-space: nowrap;
   }
 
-  /* The ticket's info card. */
+  /* The ticket's info card, 12px under the distance card (its 4px margin collapses into this). */
   .rx-responder-info {
     display: flex;
     flex-direction: column;
-    margin-top: 8px;
+    margin-top: 12px;
     padding: 16px;
     border: 1px solid rgb(9 7 7 / 0.07);
     border-radius: 16px;
@@ -788,42 +785,6 @@
 
   .rx-responder-info__note .rx-responder-info__text {
     color: #92400e;
-  }
-
-  .rx-responder-info__images-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
-  }
-
-  .rx-responder-info__count {
-    padding: 2px 7px;
-    border-radius: 99px;
-    background: rgb(0 0 0 / 0.06);
-    color: rgb(100 116 139 / 0.75);
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 15px;
-  }
-
-  .rx-responder-info__images {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  /* Placeholder photos: abstract tiles, never a picture. */
-  .rx-responder-photo {
-    width: 106px;
-    height: 106px;
-    border: 1px solid rgb(9 7 7 / 0.07);
-    border-radius: 10px;
-    background: linear-gradient(160deg, #e2e8f0, #94a3b8);
-  }
-
-  .rx-responder-photo[data-tone="1"] {
-    background: linear-gradient(200deg, #f1f5f9, #64748b);
   }
 
   .rx-responder-footer {
@@ -1368,16 +1329,27 @@
     background: rgb(255 255 255 / 0.2);
   }
 
+  /* Incoming text is textPrimary #0f172a (15/22), on the mention-me amber wash too. */
+  .rx-responder-msg > .rx-bubble[data-mention] {
+    color: #0f172a;
+  }
+
+  /* The mentions-me span: SemiBold textPrimary on #fcd34d, a nested Text (no padding or radius). */
   .rx-responder-mention {
-    padding: 0 2px;
-    border-radius: 4px;
-    background: rgb(180 83 9 / 0.14);
+    background: #fcd34d;
+    color: #0f172a;
     font-weight: 600;
   }
 
   .rx-responder-land {
     display: grid;
     grid-template-rows: 1fr;
+  }
+
+  /* A voice note still being recorded: collapsed until it lands (while active). */
+  .rx-responder-land[data-land] {
+    grid-template-rows: 0fr;
+    opacity: 0;
   }
 
   .rx-responder-land__inner {
@@ -1635,7 +1607,7 @@
     animation: rx-responder-ping 1200ms ease-out infinite;
   }
 
-  /* 3.1: the duty switch slides on when tapped. */
+  /* 3.1 'offline': the duty switch slides on when tapped. */
   [data-active] .rx-responder-switch[data-flip] .rx-responder-switch__thumb {
     animation: rx-responder-thumb 200ms ease-out var(--rx-responder-flip-at, 0ms) both;
   }
@@ -1644,13 +1616,35 @@
     animation: rx-responder-track 200ms ease-out var(--rx-responder-flip-at, 0ms) both;
   }
 
-  /* 3.2: the toast drops in, then the sheet rises to its snap. */
+  /* 3.2 'toast': the toast drops in, the sheet rises to its snap, ACCEPT springs at the tap. */
   [data-active] .rx-responder-toast {
     animation: rx-responder-drop 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
   }
 
   [data-active] .rx-responder-sheet--rise {
     animation: rx-responder-rise 420ms cubic-bezier(0.2, 0.9, 0.3, 1) var(--rx-responder-rise-at, 0ms) both;
+  }
+
+  [data-active] .rx-btn.rx-responder-footbtn--press {
+    animation: rx-responder-spring 300ms ease-out var(--rx-responder-press-at, 0ms) both;
+  }
+
+  /* 3.3 'far': the distance card takes each zone's colour at its moment; later changes win. */
+  [data-active] .rx-responder-dcard[data-drive="1"] {
+    animation: rx-responder-zone-1 1ms linear var(--rx-responder-z1-at) forwards;
+  }
+
+  [data-active] .rx-responder-dcard[data-drive="2"] {
+    animation:
+      rx-responder-zone-1 1ms linear var(--rx-responder-z1-at) forwards,
+      rx-responder-zone-2 1ms linear var(--rx-responder-z2-at) forwards;
+  }
+
+  [data-active] .rx-responder-dcard[data-drive="3"] {
+    animation:
+      rx-responder-zone-1 1ms linear var(--rx-responder-z1-at) forwards,
+      rx-responder-zone-2 1ms linear var(--rx-responder-z2-at) forwards,
+      rx-responder-zone-3 1ms linear var(--rx-responder-z3-at) forwards;
   }
 
   /* 3.4: the still ring gives way to the expanding rings (it stays under reduced motion). */
@@ -1662,7 +1656,7 @@
     animation: rx-responder-breathe 900ms ease-in-out infinite alternate;
   }
 
-  /* 3.5: the mic is pressed and released; the own voice note lands and pushes the list up. */
+  /* 3.5 'recording': the mic is pressed and released; the own voice note lands and pushes the list up. */
   [data-active] .rx-responder-mic[data-press] {
     animation:
       rx-responder-press 160ms ease-out var(--rx-responder-hold-at, 0ms) both,
@@ -1720,6 +1714,39 @@
     }
     to {
       transform: translateY(0);
+    }
+  }
+
+  /* FooterBtn: a spring to 0.95 on press and back on release. */
+  @keyframes rx-responder-spring {
+    0%,
+    100% {
+      transform: none;
+    }
+
+    35% {
+      transform: scale(0.95);
+    }
+  }
+
+  @keyframes rx-responder-zone-1 {
+    from,
+    to {
+      color: var(--rx-responder-z1);
+    }
+  }
+
+  @keyframes rx-responder-zone-2 {
+    from,
+    to {
+      color: var(--rx-responder-z2);
+    }
+  }
+
+  @keyframes rx-responder-zone-3 {
+    from,
+    to {
+      color: var(--rx-responder-z3);
     }
   }
 

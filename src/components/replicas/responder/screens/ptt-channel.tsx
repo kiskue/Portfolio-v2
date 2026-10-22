@@ -8,13 +8,15 @@ import { PTT_TIMELINE } from '@/components/replicas/responder/parts/timeline';
 import type { FigureState } from '@/content/apps/figures';
 
 /**
- * 'thread' plays the push-to-talk glimpse while active: the mic is held (● 0:07 · Slide to
- * cancel), released, and the own voice note lands. 'recording' is the held moment, still.
+ * 'thread' (the glimpse poster) is the thread with the sent voice note, still. 'recording' is the
+ * held moment (● 0:07 · Slide to cancel, the note not yet sent) and the glimpse step (recording
+ * → thread): while active the mic is pressed at the hold, released when the finger lifts, and
+ * the own voice note lands.
  */
 const VIEWS = {
-  thread: { recording: false, animated: true },
-  recording: { recording: true, animated: false },
-} as const satisfies Record<FigureState<'3.5'>, { readonly recording: boolean; readonly animated: boolean }>;
+  thread: { recording: false },
+  recording: { recording: true },
+} as const satisfies Record<FigureState<'3.5'>, { readonly recording: boolean }>;
 
 const STATES = stateTuple(VIEWS);
 
@@ -24,12 +26,12 @@ const STATES = stateTuple(VIEWS);
  * Own bubbles, the accent glyphs and the mic follow the brand.
  */
 export function PttChannelScreen({ state }: ReplicaProps): ReactNode {
-  const view = VIEWS[pickState(STATES, state)];
+  const { recording } = VIEWS[pickState(STATES, state)];
   return (
     <div className="rx-responder-channel">
       <ChannelHeader />
-      <ChannelThread sent={!view.recording} landsAt={view.animated ? PTT_TIMELINE.landAt : undefined} />
-      <ChannelComposer recording={view.recording} timeline={view.animated ? PTT_TIMELINE : undefined} />
+      <ChannelThread voiceNote={recording ? { landsAt: PTT_TIMELINE.landAt } : 'sent'} />
+      <ChannelComposer recording={recording} hold={recording ? PTT_TIMELINE : undefined} />
     </div>
   );
 }

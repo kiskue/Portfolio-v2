@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { ms, R_CANVAS, RBottomSheet, rStyle } from '@/components/replicas/kit';
+import { ms, RBottomSheet, rStyle } from '@/components/replicas/kit';
 import { cn } from '@/lib/cn';
 import { DispatchBand, DispatchToolbar } from './dispatch-band';
 import type { TicketStage } from './dispatch-footer';
+import { MAP_AREA } from './map-scene';
 import { DISPATCH } from './palette';
 
-/** The sheet's container is the map screen under the 44px status bar and the 56px header. */
-const SHEET_CONTAINER = R_CANVAS.height - R_CANVAS.statusBar - 56;
+/** The sheet's container is the map area under the status bar and the header. */
+const SHEET_CONTAINER = MAP_AREA.height;
 
 /** Snap points 18% / 50% / 85% of the container (the 18% peek is not drawn). */
 export const SHEET_SNAP = {
@@ -53,7 +54,7 @@ export function DispatchSheet({ snap, stage, footer, riseAt, children }: Dispatc
       }
       footer={footer}
     >
-      <div className="rx-responder-sheet__content">{children}</div>
+      {children}
     </RBottomSheet>
   );
 }

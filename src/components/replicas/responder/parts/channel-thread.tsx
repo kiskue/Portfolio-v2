@@ -5,10 +5,11 @@ import { responderChannel } from '@/components/replicas/responder/sample-data';
 const { staging, urgent, mention, voiceNote } = responderChannel;
 
 export interface ChannelThreadProps {
-  /** The own voice note has been sent (false while it is still being recorded). */
-  readonly sent: boolean;
-  /** While active, the own voice note lands at this time (the list pushes up); the poster shows it. */
-  readonly landsAt?: number;
+  /**
+   * The responder's own voice note: 'sent' shows it; `{ landsAt }` keeps it unsent (still being
+   * recorded) and, while active, lands it at that time, pushing the list up.
+   */
+  readonly voiceNote: 'sent' | { readonly landsAt: number };
 }
 
 /**
@@ -16,7 +17,8 @@ export interface ChannelThreadProps {
  * run) — the staging call, the URGENT reroute (2px #c62828 edge) and the amber mention — then
  * the responder's own voice note with its transcript and English chip.
  */
-export function ChannelThread({ sent, landsAt }: ChannelThreadProps): ReactNode {
+export function ChannelThread({ voiceNote: note }: ChannelThreadProps): ReactNode {
+  const landsAt = note === 'sent' ? undefined : note.landsAt;
   return (
     <div className="rx-responder-thread">
       <RBubble from="them" sender={staging.sender} className="rx-responder-msg">
@@ -30,24 +32,22 @@ export function ChannelThread({ sent, landsAt }: ChannelThreadProps): ReactNode 
           <span className="rx-responder-mention">{mention.handle}</span> {mention.text}
         </span>
       </RBubble>
-      {sent ? (
-        <div
-          className="rx-responder-land"
-          data-land={landsAt === undefined ? undefined : ''}
-          style={rStyle({ '--rx-responder-land-at': landsAt === undefined ? undefined : ms(landsAt) })}
-        >
-          <div className="rx-responder-land__inner">
-            <RBubble
-              from="me"
-              voice={{ seconds: voiceNote.seconds, played: 0, seed: 7 }}
-              transcript={voiceNote.transcript}
-              lang={voiceNote.language}
-              tail={false}
-              className="rx-responder-msg rx-responder-msg--block"
-            />
-          </div>
+      <div
+        className="rx-responder-land"
+        data-land={landsAt === undefined ? undefined : ''}
+        style={rStyle({ '--rx-responder-land-at': landsAt === undefined ? undefined : ms(landsAt) })}
+      >
+        <div className="rx-responder-land__inner">
+          <RBubble
+            from="me"
+            voice={{ seconds: voiceNote.seconds, played: 0, seed: 7 }}
+            transcript={voiceNote.transcript}
+            lang={voiceNote.language}
+            tail={false}
+            className="rx-responder-msg rx-responder-msg--block"
+          />
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
