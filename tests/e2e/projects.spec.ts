@@ -197,12 +197,19 @@ test.describe('filters', () => {
     expect(await shownSlugs(page)).toEqual(allSlugs);
   });
 
-  test('the filtered and empty states pass axe', async ({ page }) => {
+  test('the filtered and empty states pass axe, and the default state in both themes', async ({ page }) => {
     const axe = () => new AxeBuilder({ page }).withTags(TAGS).exclude('[data-replica-canvas]');
     await open(page, '/projects?type=web&context=personal');
     expect((await axe().analyze()).violations, 'filtered').toEqual([]);
     await open(page, '/projects?context=client');
     expect((await axe().analyze()).violations, 'empty').toEqual([]);
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme });
+      await open(page);
+      if (colorScheme === 'dark') await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+      else await expect(page.locator('html')).not.toHaveClass(/\bdark\b/);
+      expect((await axe().analyze()).violations, colorScheme).toEqual([]);
+    }
   });
 });
 

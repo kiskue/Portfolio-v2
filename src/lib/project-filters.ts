@@ -8,7 +8,7 @@ import { projectsHref } from '@/lib/routes';
  *
  * - Two groups, combined with AND. 'all' is each group's unfiltered value and never appears in
  *   the URL.
- * - The type group offers mobile, web and ai only (PLAN.md:78). 'tooling' stays in the content
+ * - The type group offers mobile, web and ai only (PLAN → Routes). 'tooling' stays in the content
  *   model, but its only project is hidden, so it is not a filter value: ?type=tooling reads as All.
  * - Unknown or missing values read as All.
  * - URLs come from projectsHref (type first, then context); other query params follow them and
