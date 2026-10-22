@@ -19,7 +19,12 @@ export interface SegmentedOption<T extends string> {
   readonly label: string;
   /** A fuller accessible name for a short label ("SME" → "SME Panindio"). It must contain the label (2.5.3). */
   readonly srLabel?: string;
-  /** Decorative leading media, e.g. a 24px store icon (alt="") or a status shape. */
+  /**
+   * Decorative leading media, e.g. a 24px store icon (alt="") or a status shape. In forced colours
+   * the checked option opts out of colour forcing, so media that sets its own colours hands them
+   * back: `forced-colors:text-inherit` for text or a currentColor shape, or
+   * `forced-colors:forced-color-adjust-auto` for a tile with its own fill.
+   */
   readonly media?: ReactNode;
   readonly disabled?: boolean;
 }
@@ -72,6 +77,12 @@ const optionVariants = cva(
     'transition-colors duration-(--dur-1) ease-out',
     'has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus',
     'has-disabled:cursor-not-allowed has-disabled:opacity-45',
+    // Forced colours drop the shadow and fill and draw every transparent border, so the checked
+    // option is filled with the system Highlight instead. It opts out of forcing, or the browser
+    // would paint a Canvas backplate behind its HighlightText and hide the label; so it also
+    // drops its own shadow and ring, and keeps its focus ring a system colour (CanvasText).
+    'forced-colors:has-checked:forced-color-adjust-none forced-colors:has-checked:border-[Highlight] forced-colors:has-checked:bg-[Highlight] forced-colors:has-checked:text-[HighlightText]',
+    'forced-colors:has-checked:[box-shadow:none] forced-colors:has-checked:outline-[CanvasText]',
   ],
   {
     variants: {
