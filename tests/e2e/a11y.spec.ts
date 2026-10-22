@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import axeCore from 'axe-core';
 import { caseStudyHref } from '@/lib/routes';
-import { axeViolations } from '../support/axe';
+import { axeViolations, renderSkippedContent } from '../support/axe';
 import { fontsReady, htmlState, hydrated, storeDisplay, type StoredDisplay } from '../support/page';
 import { PAGE_ROUTES, expectedStatus } from '../support/routes';
 
@@ -41,6 +41,8 @@ async function openForAudit(page: Page, route: string, variant: Variant): Promis
   await fontsReady(page);
   // The variant really applies (a dark run that silently tested light would prove nothing).
   expect(await htmlState(page)).toEqual(variant.expected);
+  // The layout visitors see, not content-visibility placeholders (see tests/support/axe.ts).
+  await renderSkippedContent(page);
 }
 
 for (const route of PAGE_ROUTES) {
@@ -61,9 +63,11 @@ for (const route of PAGE_ROUTES) {
  * No visitor sees that. axe reads the layout of the page as loaded, while the sections below
  * the hero have not rendered yet, and a section that has not rendered is only as tall as its
  * content-visibility placeholder; Brands is taller than that on a phone, so its phone lay over
- * the Screens section in the layout axe read. So the toggle's text must have no part of any
- * phone (frame, screen or replica) in axe's own background stacks, in either theme (in light the
- * wrong background happened to pass), and the Screens section must pass axe.
+ * the Screens section in the layout axe read. The audit now renders such content before axe
+ * runs (renderSkippedContent in tests/support/axe.ts); the sections keep their rendering skip.
+ * So the toggle's text must have no part of any phone (frame, screen or replica) in axe's own
+ * background stacks, in either theme (in light the wrong background happened to pass), and the
+ * Screens section must pass axe.
  */
 
 /** The parts of axe-core's in-page API read below (axe.commons is its helper API for rules). */

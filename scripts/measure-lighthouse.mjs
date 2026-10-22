@@ -8,15 +8,18 @@
  * by LHCI) says what each form factor changes, and this script runs LHCI once per form factor
  * with a complete config derived from it:
  *   Performance ≥ 0.95 desktop, ≥ 0.90 mobile; Best practices ≥ 0.95; LCP ≤ 2.5 s;
- *   CLS ≤ 0.05; TBT ≤ 150 ms; Home scripts ≤ 180,000 B as served (gzip; .planning/measurements.md);
- *   Accessibility and SEO recorded as warnings (replica contrast may cap accessibility, and label
- *   mode is noindex by design), with the mode-independent SEO audits as errors.
+ *   CLS ≤ 0.05; TBT ≤ 150 ms. Accessibility and SEO are recorded as warnings (replica contrast
+ *   may cap accessibility, and label mode is noindex by design), with the mode-independent SEO
+ *   audits as errors. Home's scripts are recorded against 180,000 B as a warning: Lighthouse's
+ *   resource summary also counts response headers and the chunks route prefetches fetch after
+ *   load, so it reads about 204 KB where the PLAN's first-load JS is about 173 KB gzip.
+ *   tests/e2e/budgets.spec.ts enforces that budget exactly (wave 2b ledger, integration rulings).
  * --seo-strict makes SEO 1.0 an error: use it on a hide-mode build.
  * --seo-only implies --seo-strict and turns every other error into a warning, so only SEO decides
  *   the exit code. CI's hide-mode job uses it: the check job already asserts performance, best
- *   practices, the vitals and Home's scripts, over three runs, and a one-run copy of those
- *   assertions would fail the SEO job for reasons that are not SEO. The warnings and the reports
- *   still show every number.
+ *   practices and the vitals over three runs, and a one-run copy of those assertions would fail
+ *   the SEO job for reasons that are not SEO. The warnings and the reports still show every
+ *   number.
  *
  * The CLI runs through npx at an exact version (no dependency). Build first (`npm run build`);
  * LHCI starts `next start` itself. Reports land in .lighthouseci/reports/<form factor>/.

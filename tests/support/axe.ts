@@ -34,8 +34,50 @@ function summarize(violations: readonly { id: string; impact?: string | null; he
   }));
 }
 
+/** Resolves after `count` animation frames in the page. */
+async function animationFrames(page: Page, count: number): Promise<void> {
+  await page.evaluate(
+    (frames) =>
+      new Promise<void>((resolve) => {
+        const step = (left: number): void => (left === 0 ? resolve() : void requestAnimationFrame(() => step(left - 1)));
+        step(frames);
+      }),
+    count,
+  );
+}
+
+/*
+ * content-visibility: auto (the case-study sections, the Showcase wall's replica tiles) skips
+ * rendering off-screen content, and an element that has not rendered yet is only as tall as its
+ * contain-intrinsic-size placeholder. axe reads the layout, not the paint, so on a page as loaded
+ * it would audit that placeholder layout: content taller than its placeholder overlaps whatever
+ * follows it, which no visitor ever sees, because content renders before it reaches the viewport
+ * (wave 2b ledger, F3: a Brands phone "behind" the Source toggle at 390px). So the audit renders
+ * every such element for a few frames, which records its real size (contain-intrinsic-size:
+ * auto), then restores it: the rendering skip stays on, now at the sizes visitors see.
+ */
+export async function renderSkippedContent(page: Page): Promise<number> {
+  const count = await page.evaluate(() => {
+    const skipped = [...document.querySelectorAll('*')].filter((element) => getComputedStyle(element).contentVisibility === 'auto');
+    for (const element of skipped) element.setAttribute('data-audit-render', '');
+    const style = document.createElement('style');
+    style.id = 'audit-render';
+    style.textContent = '[data-audit-render] { content-visibility: visible !important; }';
+    document.head.append(style);
+    return skipped.length;
+  });
+  await animationFrames(page, 3);
+  await page.evaluate(() => {
+    document.getElementById('audit-render')?.remove();
+    for (const element of document.querySelectorAll('[data-audit-render]')) element.removeAttribute('data-audit-render');
+  });
+  await animationFrames(page, 3);
+  return count;
+}
+
 /** Every WCAG violation on the page (or in `scope.include`), in a compact, readable form. */
 export async function axeViolations(page: Page, scope: AxeScope = {}): Promise<Violation[]> {
+  await renderSkippedContent(page);
   const rules = new AxeBuilder({ page }).withTags([...WCAG_TAGS]).disableRules(['color-contrast']);
   const contrast = new AxeBuilder({ page }).withRules(['color-contrast']).exclude(REPLICA_CANVAS);
   if (scope.include) {

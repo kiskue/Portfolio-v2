@@ -39,7 +39,7 @@
           "matchingUrlPattern": "^https?://[^/]+/?(\\?[^#]*)?$",
           "aggregationMethod": "median-run",
           "assertions": {
-            "resource-summary:script:size": ["error", { "maxNumericValue": 180000 }]
+            "resource-summary:script:size": ["warn", { "maxNumericValue": 180000 }]
           }
         }
       ]
