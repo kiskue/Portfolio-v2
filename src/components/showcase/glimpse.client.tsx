@@ -49,7 +49,7 @@ export type { Playlist } from '@/lib/glimpse';
  *   content-visibility:hidden (src/components/showcase/glimpse.css);
  * - a frame fading out under a new one keeps data-active with data-paused (its last frame);
  * - a lazy frame (a reduced-motion poster of a step other than the poster step) is mounted only
- *   while it is shown, fading out or next, so it adds no DOM until reduced motion needs it;
+ *   while it is shown or fading out, so it adds no DOM until reduced motion needs it;
  * - pause and suspension set data-paused on the track, so the phones' animations freeze;
  * - the root carries data-status and, once hydrated, data-ready (controls show only with JS).
  * Steps change through plain state, never startTransition, so no View Transition fires.
@@ -271,8 +271,8 @@ export interface GlimpseFrameProps {
   /** 'play' (default): the step's played state · 'poster': its static posterState. */
   readonly kind?: FrameKind;
   /**
-   * Render the phone only while the player needs it (shown, fading out or coming next): the
-   * reduced-motion poster frames of steps other than the poster step (frameStatus).
+   * Render the phone only while the player shows it or fades it out: the reduced-motion poster
+   * frames of steps other than the poster step (frameStatus).
    */
   readonly lazy?: boolean;
   readonly children: ReactNode;

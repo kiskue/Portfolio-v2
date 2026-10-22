@@ -16,7 +16,7 @@ import type { FigureId, Glimpse, GlimpseStep } from '@/content/types';
  * posterState. Without JavaScript only each track's poster step shows, so only that step's poster
  * frame is in the server HTML. Under reduced motion every step shows its poster frame (its final
  * coherent state, design §5.3); those of the other steps are mounted only while the player needs
- * them (shown, fading out or coming next), so they cost no DOM until then (frameStatus).
+ * them (shown or fading out), so they cost no DOM until then (frameStatus).
  *
  * The pause rules follow the site's one autoplay policy (src/hooks/autoplay-state.ts, reuse
  * rule 7) exactly; tests/unit/glimpse.test.ts proves the parity:
@@ -105,8 +105,8 @@ export interface FrameSpec {
   /** The figure state the phone is drawn at. */
   readonly state: string;
   /**
-   * Mounted only while the player needs it (shown, fading out or coming next): the poster frames
-   * of steps other than the poster step, which only reduced motion ever shows.
+   * Mounted only while the player needs it (shown or fading out): the poster frames of steps
+   * other than the poster step, which only reduced motion ever shows.
    */
   readonly lazy: boolean;
 }
@@ -455,11 +455,15 @@ export interface FrameStatus {
   readonly active: boolean;
   /** A live frame fading out keeps its last frame (data-paused). */
   readonly frozen: boolean;
-  /** In the DOM: always, except a lazy frame the player does not need right now. */
+  /**
+   * In the DOM: always, except a lazy frame that is neither shown nor fading out. A lazy frame
+   * is not mounted early as `next`: it is a still poster, so it needs no warm-up, and Home keeps
+   * at most one extra phone tree in its DOM (two while one fades out).
+   */
   readonly mounted: boolean;
 }
 
-/** A frame's status for the player's current state. A lazy frame is mounted only while shown, leaving or next. */
+/** A frame's status for the player's current state. A lazy frame is mounted only while shown or leaving. */
 export function frameStatus(playlist: Playlist, player: PlayerState, track: number, frame: FrameRef, lazy = false): FrameStatus {
   const state = player.glimpse;
   const shown = sameFrame(shownFrame(playlist, state, track), frame);
@@ -468,7 +472,7 @@ export function frameStatus(playlist: Playlist, player: PlayerState, track: numb
   const next = !shown && !leaving && sameFrame(upcomingFrame(playlist, state, track), frame);
   const frozen = leaving && leavingFrame.live;
   const active = (shown && isLive(playlist, state, track)) || frozen;
-  return { shown, leaving, next, active, frozen, mounted: !lazy || shown || leaving || next };
+  return { shown, leaving, next, active, frozen, mounted: !lazy || shown || leaving };
 }
 
 export function initPlayer(playlist: Playlist, options?: { readonly visible?: boolean }): PlayerState {

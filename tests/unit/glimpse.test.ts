@@ -592,20 +592,21 @@ describe('frameStatus: attributes and lazy mounting', () => {
   const poster = (index: number) => ({ step: index, kind: 'poster' as const });
   const mounted = (state: PlayerState) => [1, 2].filter((index) => frameStatus(POSTERS, state, 0, poster(index), true).mounted);
 
-  it('keeps lazy poster frames unmounted until the player needs them', () => {
+  it('mounts a lazy poster frame only while it shows or fades out (at most one extra phone, two in a crossfade)', () => {
     const start = step(initPlayer(POSTERS), SHOW);
     expect(mounted(start)).toEqual([]);
-    // Play: step 0 shows; step 1's poster frame mounts as next, ready to fade in.
+    // Play: step 0 shows; step 1's poster frame is next but stays unmounted (a still needs no warm-up).
     const played = step(start, { type: 'PLAY' });
-    expect(mounted(played)).toEqual([1]);
-    expect(frameStatus(POSTERS, played, 0, poster(1), true)).toMatchObject({ next: true, shown: false, active: false });
-    // Step 1: its poster frame shows (still, not active); step 2's comes next.
+    expect(frameStatus(POSTERS, played, 0, poster(1), true)).toMatchObject({ next: true, shown: false, active: false, mounted: false });
+    expect(mounted(played)).toEqual([]);
+    // Step 1: its poster frame shows, still (not active).
     const second = step(played, TICK);
     expect(frameStatus(POSTERS, second, 0, poster(1), true)).toMatchObject({ shown: true, active: false, mounted: true });
-    expect(mounted(second)).toEqual([1, 2]);
+    expect(mounted(second)).toEqual([1]);
     // Step 2: step 1's frame fades out underneath until SETTLE, then unmounts.
     const third = step(second, TICK);
     expect(frameStatus(POSTERS, third, 0, poster(1), true)).toMatchObject({ leaving: true, frozen: false, mounted: true });
+    expect(mounted(third)).toEqual([1, 2]);
     expect(mounted(step(third, { type: 'SETTLE', track: 0 }))).toEqual([2]);
   });
 

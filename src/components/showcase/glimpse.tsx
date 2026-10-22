@@ -136,8 +136,8 @@ const defaultState = (figure: FigureId): string => getFigure(figure).states[0];
 /**
  * Every step of one glimpse as server-rendered phones (trackFrames): each step's played frame,
  * with its taps, plus a still poster frame for each step whose posterState differs. The poster
- * step's poster frame is the server HTML's; the other poster frames are lazy, mounted only when
- * reduced motion shows them, so the page carries no DOM for them until then.
+ * step's poster frame is the server HTML's; the other poster frames are lazy, mounted only while
+ * reduced motion shows them (or fades them out), so the page carries no DOM for them otherwise.
  */
 function TrackFrames({ glimpse, track }: { readonly glimpse: GlimpseData; readonly track: number }): ReactNode {
   return trackFrames(glimpse, defaultState).map((frame) => {
