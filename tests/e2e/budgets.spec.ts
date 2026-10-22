@@ -18,8 +18,10 @@ import { fontsReady, hydrated, isDesktopShell } from '../support/page';
  *   floor + 40 KB) and 180,000 B gzip, measured from the chunks the HTML requests;
  * - Home DOM at most 3,000 nodes;
  * - at 1447×722 the first screen shows the H1, the tools strip and the top bento row;
- * - Core Web Vitals in the lab: the H1 is the LCP element (within 2.5 s), CLS at most 0.05 and
- *   interactions within 200 ms (INP). Lighthouse CI (lighthouserc.json) measures them throttled.
+ * - Core Web Vitals in the lab: the H1 is the LCP element within 2.5 s (below 768px the Home
+ *   header's subline may be it instead: the ledger's LCP ruling, at the test), CLS at most 0.05
+ *   and interactions within 200 ms (INP). These wall-clock tests are tagged @vitals and run in a
+ *   pass of their own (scripts/e2e.mjs). Lighthouse CI (lighthouserc.json) measures them throttled.
  * Measured values are printed and attached to each test, for the report.
  */
 
@@ -119,7 +121,7 @@ test.describe('the first screen at 1447×722 (the template viewport)', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
-  test('shows the H1, the tools strip and the top bento row @needs-pages', async ({ page }, testInfo) => {
+  test('shows the H1, the tools strip and the top bento row', async ({ page }, testInfo) => {
     await page.goto('/', { waitUntil: 'load' });
     await hydrated(page);
     await fontsReady(page);
@@ -140,9 +142,34 @@ test.describe('the first screen at 1447×722 (the template viewport)', () => {
   });
 });
 
+/**
+ * The Home LCP element. PLAN "Performance budgets" names the H1; the ledger's LCP ruling
+ * ("Rulings (integration)", 2026-10-23) keeps the H1 from 768px up and also accepts the Home
+ * header's subline below 768px, where design §3's type scale (a 32px display H1 over an 18px
+ * lead subline of about five lines at 390px) makes the subline the larger text block, painted in
+ * the same frame as the H1. No other element counts, at any width.
+ */
+const SUBLINE_ACCEPTED_BELOW = 768;
+/** The Home H1 (a line inside it counts as the H1). */
+const HOME_H1 = 'main h1';
+/**
+ * The Home header's subline: the paragraph right after the H1 in the header row
+ * (src/components/sections/home/home-header.tsx), matched by that structure, never by its classes.
+ */
+const HOME_SUBLINE = 'main header h1 + p';
+
+/** What an LCP entry painted: the Home H1, the Home header's subline, or another element. */
+type LcpTarget = 'h1' | 'subline' | 'other';
+
+const LCP_TARGET_NAMES: Readonly<Record<LcpTarget, string>> = {
+  h1: 'the H1 (or a line inside it)',
+  subline: "the Home header's subline",
+  other: 'another element',
+};
+
 /** What the observers collect in the page (mutable there: the observers add to it). */
 interface Vitals {
-  lcp: { readonly time: number; readonly element: string; readonly inH1: boolean }[];
+  lcp: { readonly time: number; readonly element: string; readonly target: LcpTarget }[];
   cls: number;
   shifts: { readonly value: number; readonly sources: string[] }[];
   interactions: { readonly name: string; readonly duration: number; readonly id: number; readonly target: string }[];
@@ -157,13 +184,18 @@ declare global {
 
 /** Starts the Web Vitals observers before any page script runs. */
 async function observeVitals(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+  await page.addInitScript(({ h1, subline }) => {
     const vitals: Vitals = { lcp: [], cls: 0, shifts: [], interactions: [], firstInput: null };
     window.__qaVitals = vitals;
     const describe = (node: Node | null | undefined): string => {
       if (!(node instanceof Element)) return node ? node.nodeName : 'none';
       const classes = (node.getAttribute('class') ?? '').trim().split(/\s+/).slice(0, 2).join('.');
       return `${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ''}${classes ? `.${classes}` : ''}`;
+    };
+    const lcpTarget = (element: Element | null | undefined): LcpTarget => {
+      if (element?.closest(h1)) return 'h1';
+      if (element?.closest(subline)) return 'subline';
+      return 'other';
     };
     const observe = (type: string, callback: (entries: PerformanceEntryList) => void, extra: Record<string, unknown> = {}): void => {
       try {
@@ -174,7 +206,7 @@ async function observeVitals(page: Page): Promise<void> {
     };
     observe('largest-contentful-paint', (entries) => {
       for (const entry of entries as (PerformanceEntry & { element?: Element | null })[]) {
-        vitals.lcp.push({ time: entry.startTime, element: describe(entry.element), inH1: Boolean(entry.element?.closest('h1')) });
+        vitals.lcp.push({ time: entry.startTime, element: describe(entry.element), target: lcpTarget(entry.element) });
       }
     });
     observe('layout-shift', (entries) => {
@@ -196,7 +228,7 @@ async function observeVitals(page: Page): Promise<void> {
     observe('first-input', (entries) => {
       for (const entry of entries) vitals.firstInput = entry.duration;
     });
-  });
+  }, { h1: HOME_H1, subline: HOME_SUBLINE });
 }
 
 async function vitals(page: Page): Promise<Vitals> {
@@ -212,7 +244,19 @@ function inp(value: Vitals): number {
   return Math.max(0, ...byInteraction.values());
 }
 
-test.describe('Core Web Vitals in the lab', () => {
+/*
+ * Wall-clock vitals (LCP time, CLS, INP), tagged @vitals: `npm run e2e` (scripts/e2e.mjs) runs
+ * them in a pass of their own after every other test, one at a time, because lab timings measure
+ * the machine as much as the page (ledger "Rulings (integration)", 2026-10-23: the shell INP read
+ * 912 ms in a 4-worker run and 120–136 ms alone). Same tests, same thresholds.
+ */
+test.describe('Core Web Vitals in the lab', { tag: '@vitals' }, () => {
+  /**
+   * LCP within 2.5 s on the Home H1 (PLAN "Performance budgets"), under the ledger's LCP ruling
+   * ("Rulings (integration)", 2026-10-23): from 768px up the LCP element must be the H1; below
+   * 768px it may be the H1 or the Home header's subline paragraph (HOME_SUBLINE); never any other
+   * element.
+   */
   test('the H1 is the LCP element on Home, within 2.5 s', async ({ page }, testInfo) => {
     await observeVitals(page);
     await page.goto('/', { waitUntil: 'load' });
@@ -220,9 +264,14 @@ test.describe('Core Web Vitals in the lab', () => {
     await page.waitForTimeout(500);
     const { lcp } = await vitals(page);
     const last = lcp.at(-1);
-    record(testInfo, `Home LCP: ${last ? `${Math.round(last.time)} ms on ${last.element}` : 'none'}`);
+    const width = page.viewportSize()?.width;
+    const allowed: readonly LcpTarget[] = width !== undefined && width < SUBLINE_ACCEPTED_BELOW ? ['h1', 'subline'] : ['h1'];
+    record(testInfo, `Home LCP: ${last ? `${Math.round(last.time)} ms on ${last.element}, ${LCP_TARGET_NAMES[last.target]}` : 'none'}`);
     expect(last, 'an LCP entry was recorded').toBeDefined();
-    expect(last?.inH1, `the LCP element is the H1 (or a line inside it), not ${last?.element}`).toBe(true);
+    expect(
+      allowed,
+      `${width === undefined ? 'with no viewport' : `at ${width}px`} the LCP element is ${allowed.map((target) => LCP_TARGET_NAMES[target]).join(' or ')}, not ${last?.element}`,
+    ).toContain(last?.target);
     expect(last?.time ?? Infinity).toBeLessThanOrEqual(2_500);
   });
 
@@ -259,7 +308,7 @@ test.describe('Core Web Vitals in the lab', () => {
     expect(inp(value)).toBeLessThanOrEqual(200);
   });
 
-  test('Home controls respond within 200 ms (INP) @needs-pages', async ({ page }, testInfo) => {
+  test('Home controls respond within 200 ms (INP)', async ({ page }, testInfo) => {
     await observeVitals(page);
     await page.goto('/', { waitUntil: 'load' });
     await hydrated(page);
