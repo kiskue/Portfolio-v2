@@ -23,7 +23,7 @@ import { cn } from '@/lib/cn';
 export const fieldId = (field: ContactField): string => `contact-${field}`;
 
 /** Labels share the SegmentedControl legend's style, so all four fields read alike. */
-export const labelClass = 'text-meta font-semibold text-ink-2';
+const labelClass = 'text-meta font-semibold text-ink-2';
 
 /** Text controls: 44px tall, line-strong edge (≥3:1, 1.4.11), the global focus ring. */
 const controlClass = [
