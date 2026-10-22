@@ -74,11 +74,14 @@ test.describe('Home weight', () => {
    * fetches another route's RSC payload, and the browser then loads that route's client chunks
    * (today /contact's, from the viewport prefetch of its links). So the router's prefetch requests
    * are stopped before they reach the server. In this build each one is a fetch() with
-   * `next-router-prefetch: 1` (plus `next-router-segment-prefetch`, `rsc: 1` and `?_rsc=`); that
-   * header is what marks a prefetch (node_modules/next/dist/docs, guides/cdn-caching.md), whereas
-   * `_rsc` alone also marks navigations and refreshes, whose chunks must still count. Every other
-   * request goes through, and every first-party /_next/static JS request counts, whatever started
-   * it: a prefetch through another channel (a <link rel=prefetch>) would fail here. Home has none.
+   * `next-router-prefetch: 1` (plus `next-router-segment-prefetch`, `rsc: 1` and `?_rsc=`). That
+   * header marks a prefetch (node_modules/next/dist/docs, guides/cdn-caching.md), and Next 16.4
+   * sets it on nothing else (next/dist/client/components/segment-cache/cache.js: 1, or 2 and 3
+   * in its PPR modes), whereas `_rsc` also marks navigations and refreshes, whose chunks must
+   * still count. Every other request goes through, and every first-party /_next/static JS
+   * request counts, whatever started it: a prefetch that comes another way (a <link
+   * rel=prefetch>, or a prefetch={true} of a dynamic route, which carries no such header) fails
+   * here. Home has none.
    */
   test('the browser loads no first-party script the HTML does not list (router prefetches stopped)', async ({ page, request, baseURL }, testInfo) => {
     if (!baseURL) throw new Error('playwright.config.ts sets the baseURL this check compares origins with');
@@ -87,9 +90,10 @@ test.describe('Home weight', () => {
     const prefetches: string[] = [];
     await page.route('**/*', async (route) => {
       const pending = route.request();
-      if (pending.headers()['next-router-prefetch'] !== '1') return route.fallback();
+      const prefetch = pending.headers()['next-router-prefetch'];
+      if (prefetch === undefined) return route.fallback();
       const url = new URL(pending.url());
-      prefetches.push(`${url.pathname} ${pending.headers()['next-router-segment-prefetch'] ?? ''}`.trim());
+      prefetches.push(`${url.pathname} ${pending.headers()['next-router-segment-prefetch'] ?? ''}${prefetch === '1' ? '' : ` (next-router-prefetch: ${prefetch})`}`.trim());
       return route.abort('blockedbyclient');
     });
     const loaded = new Set<string>();
