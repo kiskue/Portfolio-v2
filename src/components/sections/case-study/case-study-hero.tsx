@@ -112,34 +112,26 @@ function sameColours(brand: Brand): readonly BrandId[] {
 }
 
 /**
- * One flank phone (sm, no transition name). In a Defensys hero it follows the selected brand; a
- * flank the content gives its own brand keeps it, unless that would twin the main phone (FlankBrand).
+ * A flank's phone (sm, no transition name). In a Defensys hero it follows the selected brand; a flank
+ * the content gives its own brand keeps it, unless that would twin the main phone (FlankBrand).
  */
-function Flank({ study, source, side }: { readonly study: CaseStudy; readonly source: ScreenSource; readonly side: 'start' | 'end' }): ReactNode {
-  const position = side === 'start' ? 'start-0' : 'end-0';
-  const className = cn('absolute top-12 z-0 hidden @sm/stage:block', position);
-  if (study.app === 'sme' || source.kind !== 'replica') {
-    return (
-      <div className={className} data-flank={side}>
-        <ScreenView source={source} size="sm" />
-      </div>
-    );
-  }
+function FlankPhone({ study, source }: { readonly study: CaseStudy; readonly source: ScreenSource }): ReactNode {
+  if (study.app === 'sme' || source.kind !== 'replica') return <ScreenView source={source} size="sm" />;
   const phone = <ScreenView source={source} size="sm" brandMode="inherit" />;
-  if (source.brand === undefined) {
-    return (
-      <div className={className} data-flank={side}>
-        {phone}
-      </div>
-    );
-  }
+  if (source.brand === undefined) return phone;
   const own = brandById(source.brand);
-  const fallback = defaultBrand(study.app);
   return (
-    <div className={className} data-flank={side}>
-      <FlankBrand vars={brandVars(own)} fallback={brandVars(fallback)} collidesWith={sameColours(own)}>
-        {phone}
-      </FlankBrand>
+    <FlankBrand vars={brandVars(own)} fallback={brandVars(defaultBrand(study.app))} collidesWith={sameColours(own)}>
+      {phone}
+    </FlankBrand>
+  );
+}
+
+/** A flank peeking from behind the main phone; hidden where the stage is too narrow for it. */
+function Flank({ study, source, side }: { readonly study: CaseStudy; readonly source: ScreenSource; readonly side: 'start' | 'end' }): ReactNode {
+  return (
+    <div className={cn('absolute top-12 z-0 hidden @sm/stage:block', side === 'start' ? 'start-0' : 'end-0')} data-flank={side}>
+      <FlankPhone study={study} source={source} />
     </div>
   );
 }
