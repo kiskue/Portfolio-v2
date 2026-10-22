@@ -227,7 +227,7 @@ describe('lighthouserc.json: the PLAN targets (PLAN.md lines 411-421)', () => {
       mobile: { settings: {}, performance: PERFORMANCE.mobile },
       desktop: { settings: { preset: 'desktop' }, performance: PERFORMANCE.desktop },
     });
-    // No throttling or emulation change for every form factor at once.
+    // Nothing changes throttling or emulation for both form factors at once.
     expect(rc.ci.collect.settings).toBeUndefined();
   });
 
