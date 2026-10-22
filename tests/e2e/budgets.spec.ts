@@ -107,9 +107,13 @@ test.describe('Home weight', () => {
     await page.goto('/', { waitUntil: 'load' });
     await hydrated(page);
     await page.waitForLoadState('networkidle');
-    // Network idle fires once per document, possibly before hydration ended: also let a second
-    // pass with no new script request, so a chunk that hydration starts late is still seen.
-    await expect.poll(() => Date.now() - lastScriptAt, { message: 'a second with no new script request', timeout: 15_000 }).toBeGreaterThanOrEqual(1_000);
+    // Network idle fires once per document, possibly before hydration ended: also watch for at
+    // least a second past hydration and network idle with no new script request, so a chunk that
+    // hydration starts late (an idle-callback import, say) is still seen on a slow, loaded run.
+    const settledAt = Date.now();
+    await expect
+      .poll(() => Date.now() - Math.max(lastScriptAt, settledAt), { message: 'a second with no new script request', timeout: 15_000 })
+      .toBeGreaterThanOrEqual(1_000);
     const unlisted = [...loaded].filter((path) => !listed.has(path));
     const unfetched = [...listed].filter((path) => !loaded.has(path));
     record(
