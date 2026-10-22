@@ -1,10 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { apps } from '@/content/apps/apps';
 import { CASE_STUDY_SLUGS } from '@/content/types';
 import { caseStudyHref } from '@/lib/routes';
 import { hydrated } from '../support/page';
 import { CASE_STUDY_ROUTES, PAGE_ROUTES, caseStudyOf } from '../support/routes';
-import { duplicates, viewTransitionNames } from '../support/view-transitions';
+import { duplicates, viewTransitionNames, watchViewTransitions } from '../support/view-transitions';
 
 /*
  * View transitions (PLAN "Verification": each name is unique per page; review T5; common.md §4).
@@ -56,6 +56,36 @@ test('the check catches a repeated name, and ignores elements that are not rende
   expect(duplicates([...names.react, ...css])).toEqual(['qa-same-name']);
 });
 
+test('the transition watcher records a transition, and catches one a duplicate name aborts', async ({ page }) => {
+  await watchViewTransitions(page);
+  await page.goto('/about', { waitUntil: 'load' });
+  await hydrated(page);
+  const run = (duplicate: boolean) =>
+    page.evaluate(async (withDuplicate) => {
+      if (withDuplicate) {
+        for (let copy = 0; copy < 2; copy += 1) {
+          const element = document.createElement('div');
+          element.textContent = 'duplicate';
+          element.style.setProperty('view-transition-name', 'qa-duplicate');
+          document.body.append(element);
+        }
+      }
+      const transition = document.startViewTransition(() => undefined);
+      await transition.finished.catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return window.__qaTransitions?.at(-1) ?? null;
+    }, duplicate);
+
+  const clean = await run(false);
+  expect(clean).toMatchObject({ ready: 'ok', finished: 'ok', error: null });
+  expect(clean?.names).toContain('root');
+
+  const aborted = await run(true);
+  expect(aborted?.ready).toBe('rejected');
+  expect(aborted?.error).toMatch(/InvalidStateError/);
+  expect(duplicates(aborted?.names ?? [])).toEqual(['qa-duplicate']);
+});
+
 test("Home's trio names each phone phone-<slug>, once per case study @needs-pages", async ({ page }) => {
   await page.goto('/', { waitUntil: 'load' });
   await hydrated(page);
@@ -69,47 +99,6 @@ for (const route of CASE_STUDY_ROUTES) {
     await hydrated(page);
     const { react } = await viewTransitionNames(page);
     expect(react.filter((name) => name.startsWith('phone-'))).toEqual([phoneName(caseStudyOf(route) ?? '')]);
-  });
-}
-
-declare global {
-  interface Window {
-    __qaTransitions?: { names: string[]; ready: string; finished: string; error: string | null }[];
-  }
-}
-
-/**
- * Wraps document.startViewTransition: each call records the names on the page as the browser is
- * about to capture them (React has named the old elements by then), and whether the transition
- * became ready (an aborted one, e.g. "Unexpected duplicate view-transition-name", rejects).
- */
-async function watchViewTransitions(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const original = document.startViewTransition?.bind(document);
-    if (!original) return;
-    window.__qaTransitions = [];
-    const names = (): string[] =>
-      [...document.querySelectorAll('*')]
-        .filter((element) => element.checkVisibility())
-        .map((element) => getComputedStyle(element).viewTransitionName)
-        .filter((name) => !['none', 'auto', 'match-element', ''].includes(name));
-    document.startViewTransition = ((argument?: Parameters<Document['startViewTransition']>[0]) => {
-      const record = { names: names(), ready: 'pending', finished: 'pending', error: null as string | null };
-      window.__qaTransitions?.push(record);
-      const transition = original(argument);
-      transition.ready.then(
-        () => (record.ready = 'ok'),
-        (error: unknown) => {
-          record.ready = 'rejected';
-          record.error = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-        },
-      );
-      transition.finished.then(
-        () => (record.finished = 'ok'),
-        () => (record.finished = 'rejected'),
-      );
-      return transition;
-    }) as Document['startViewTransition'];
   });
 }
 

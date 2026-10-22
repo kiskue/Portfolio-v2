@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expectArrowKeys, groupLabel, radioGroups } from '../support/keyboard';
 import { hydrated, isDesktopShell } from '../support/page';
 import { CASE_STUDY_ROUTES, PAGE_ROUTES, caseStudyOf } from '../support/routes';
 
@@ -112,35 +113,6 @@ const ROUTES_WITH_RADIOS = new Set<string>([
   ...CASE_STUDY_ROUTES.filter((route) => caseStudyOf(route) !== 'sme-panindio'), // the brand switcher
 ]);
 
-/** The visible radio groups on the page: fieldsets with two or more enabled radios. */
-function radioGroups(page: Page): Locator {
-  return page.locator('main fieldset').filter({ has: page.locator('input[type="radio"]:not([disabled])') }).filter({ visible: true });
-}
-
-/** Arrow keys on one group: Right selects the next enabled radio, Left comes back; focus stays put. */
-async function expectArrowKeys(page: Page, group: Locator, label: string): Promise<void> {
-  const radios = group.locator('input[type="radio"]:not([disabled])');
-  const count = await radios.count();
-  if (count < 2) return;
-  const checked = await radios.evaluateAll((inputs) => inputs.findIndex((input) => (input as HTMLInputElement).checked));
-  const start = Math.max(checked, 0);
-  await radios.nth(start).focus();
-  await expect(radios.nth(start), `${label}: focus lands on the radio`).toBeFocused();
-
-  await page.keyboard.press('ArrowRight');
-  const next = (start + 1) % count;
-  await expect(radios.nth(next), `${label}: ArrowRight moves focus to the next option`).toBeFocused();
-  await expect(radios.nth(next), `${label}: ArrowRight selects it`).toBeChecked();
-
-  await page.keyboard.press('ArrowLeft');
-  await expect(radios.nth(start), `${label}: ArrowLeft moves back`).toBeFocused();
-  await expect(radios.nth(start), `${label}: ArrowLeft selects it`).toBeChecked();
-
-  // One tab stop: Tab leaves the group.
-  await page.keyboard.press('Tab');
-  expect(await group.evaluate((node) => node.contains(document.activeElement)), `${label}: Tab leaves the group`).toBe(false);
-}
-
 test.describe('every SegmentedControl on every page', () => {
   for (const route of PAGE_ROUTES) {
     test(`${route}: radio groups work with the arrow keys and keep focus @needs-pages`, async ({ page }) => {
@@ -153,8 +125,7 @@ test.describe('every SegmentedControl on every page', () => {
         await page.goto(route, { waitUntil: 'load' });
         await hydrated(page);
         const group = radioGroups(page).nth(index);
-        const legend = (await group.locator('legend').first().textContent())?.trim() ?? `group ${index + 1}`;
-        await expectArrowKeys(page, group, `${route} "${legend}"`);
+        await expectArrowKeys(page, group, `${route} "${await groupLabel(group, `group ${index + 1}`)}"`);
       }
     });
   }

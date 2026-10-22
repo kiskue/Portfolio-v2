@@ -82,3 +82,44 @@ export function duplicates(names: readonly string[]): string[] {
   }
   return [...repeated].sort();
 }
+
+declare global {
+  interface Window {
+    __qaTransitions?: { names: string[]; ready: string; finished: string; error: string | null }[];
+  }
+}
+
+/**
+ * Wraps document.startViewTransition: each call records the names on the page as the browser is
+ * about to capture them (React has named the old elements by then), and whether the transition
+ * became ready (an aborted one, e.g. "Unexpected duplicate view-transition-name", rejects).
+ */
+export async function watchViewTransitions(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const original = document.startViewTransition?.bind(document);
+    if (!original) return;
+    window.__qaTransitions = [];
+    const names = (): string[] =>
+      [...document.querySelectorAll('*')]
+        .filter((element) => element.checkVisibility())
+        .map((element) => getComputedStyle(element).viewTransitionName)
+        .filter((name) => !['none', 'auto', 'match-element', ''].includes(name));
+    document.startViewTransition = ((argument?: Parameters<Document['startViewTransition']>[0]) => {
+      const record = { names: names(), ready: 'pending', finished: 'pending', error: null as string | null };
+      window.__qaTransitions?.push(record);
+      const transition = original(argument);
+      transition.ready.then(
+        () => (record.ready = 'ok'),
+        (error: unknown) => {
+          record.ready = 'rejected';
+          record.error = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        },
+      );
+      transition.finished.then(
+        () => (record.finished = 'ok'),
+        () => (record.finished = 'rejected'),
+      );
+      return transition;
+    }) as Document['startViewTransition'];
+  });
+}
