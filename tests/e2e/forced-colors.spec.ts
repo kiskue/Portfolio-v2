@@ -362,3 +362,231 @@ for (const scheme of SCHEMES) {
     });
   });
 }
+
+// ─── The other selected and current states ────────────────────────────────────────────────────
+
+/*
+ * The site's other selected and current states take the checked option's treatment too: the nav's
+ * current row (aria-current="page"; the docked rail at 1280px and wider, the menu sheet below),
+ * the case studies' pressed Brands "Preview" button (aria-pressed="true") and the glimpse player's
+ * current step dot (aria-current="step"). Forcing turns what sets each apart (the nav-active pill,
+ * the ink button's fill, the dot's filled mark) into Canvas, which left each painted like its
+ * unselected siblings, or weaker. Each is checked in the light and the dark forced palette:
+ * - it is painted apart from an unselected sibling: on screen, the colour most of its pixels show
+ *   (its fill), or for a dot the colour at the centre of its mark, contrasts with theirs. Painted
+ *   colours, not equal ones: the page's grain shows through a transparent sibling;
+ * - every colour it paints is a system colour (its fill and border, text, icon, and the nav row's
+ *   inline-start bar), and its text and icon show against what is painted behind them;
+ * - its focus ring stays a system colour (CanvasText).
+ */
+
+/** The least contrast between a selected fill and an unselected one, or an icon and its fill (WCAG non-text contrast). */
+const MIN_NON_TEXT_CONTRAST = 3;
+
+/** The WCAG contrast ratio between two colours. */
+function contrastBetween(one: Rgb, two: Rgb): number {
+  const [a, b] = [luminance(...one), luminance(...two)];
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+/** The forced palette, read the way paintOf reads it: a new probe per colour, opted out of forcing. */
+async function systemPalette(page: Page): Promise<Readonly<Record<SystemColour, string>>> {
+  return page.evaluate((names) => {
+    const palette: Record<string, string> = {};
+    for (const name of names) {
+      const probe = document.createElement('span');
+      probe.style.setProperty('forced-color-adjust', 'none');
+      probe.style.color = name;
+      document.body.append(probe);
+      palette[name] = getComputedStyle(probe).color;
+      probe.remove();
+    }
+    return palette as Record<SystemColour, string>;
+  }, SYSTEM_COLOURS);
+}
+
+/** The colour most of a screenshot's pixels show (their per-channel median): a fill, around a little text. */
+function dominantColour(image: Pixels): Rgb {
+  return median(Array.from({ length: image.width * image.height }, (_, index) => pixelAt(image, index)));
+}
+
+/** The colour painted at the centre of an element, from a 2×2 CSS px screenshot: the middle of a step dot's mark. */
+async function paintedAtCentre(page: Page, element: Locator): Promise<Rgb> {
+  const box = await element.boundingBox();
+  if (!box) throw new Error('the element has no box');
+  const clip = { x: box.x + box.width / 2 - 1, y: box.y + box.height / 2 - 1, width: 2, height: 2 };
+  const png = await page.screenshot({ clip, animations: 'disabled', caret: 'hide' });
+  const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  return dominantColour({ data, width: info.width, height: info.height, channels: info.channels });
+}
+
+/**
+ * Runs `measure` with a button's bare label (a text node beside its sr-only name) wrapped in a span,
+ * so glyphContrast can screenshot the text alone: around it, a pill's rounded corners let the page
+ * show through. The span only wraps the text (same glyphs, same place) and is removed afterwards.
+ */
+async function withBareLabel<T>(button: Locator, measure: (label: Locator) => Promise<T>): Promise<T> {
+  await button.evaluate((element) => {
+    for (const node of [...element.childNodes]) {
+      if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim()) continue;
+      const span = document.createElement('span');
+      span.setAttribute('data-bare-label', '');
+      node.replaceWith(span);
+      span.append(node);
+    }
+  });
+  try {
+    return await measure(button.locator(':scope > [data-bare-label]'));
+  } finally {
+    await button.evaluate((element) => {
+      for (const span of element.querySelectorAll(':scope > [data-bare-label]')) span.replaceWith(...span.childNodes);
+    });
+  }
+}
+
+interface SelectedState {
+  /** The current or pressed element. */
+  readonly selected: Locator;
+  /** An unselected sibling, on screen with it. */
+  readonly other: Locator;
+  /** The selected element's visible text parts. */
+  readonly text: Locator;
+  /** Its icons, if it has any. */
+  readonly icons?: Locator;
+}
+
+/**
+ * The checks for one selected or current state: its painted fill contrasts with an unselected
+ * sibling's, every colour it paints is a system colour, its text and icons show, and its focus
+ * ring is CanvasText.
+ */
+async function expectSelectedStandsOut(page: Page, state: SelectedState, what: string): Promise<void> {
+  const { selected, other, text, icons } = state;
+  await expect(selected, `${what} is on screen`).toBeVisible();
+  await expect(other, `${what} has an unselected sibling on screen`).toBeVisible();
+  // The web fonts first: a font swap between the two screenshots of a text would move its glyphs.
+  await fontsReady(page);
+  await settle(selected);
+  const palette = await systemPalette(page);
+  const systemColours = new Set(Object.values(palette));
+
+  // Painted apart from an unselected sibling: the colour most of its pixels show (its fill).
+  const fills = [dominantColour(await screenshotPixels(selected)), dominantColour(await screenshotPixels(other))] as const;
+  expect(contrastBetween(...fills), `${what}: painted like an unselected one (${fills.join(' vs ')})`).toBeGreaterThanOrEqual(MIN_NON_TEXT_CONTRAST);
+
+  // Every colour it paints keeps the user's palette: its fill and border, and a ::before mark (the
+  // nav row's inline-start bar)...
+  const own = await selected.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const before = getComputedStyle(element, '::before');
+    const colours: Record<string, string> = { fill: style.backgroundColor, border: style.borderTopColor };
+    if (before.display !== 'none' && before.content !== 'none' && before.content !== 'normal') colours['::before mark'] = before.backgroundColor;
+    return colours;
+  });
+  for (const [part, colour] of Object.entries(own)) {
+    expect(systemColours.has(colour), `${what}: its ${part} is ${colour}, not a system colour`).toBe(true);
+  }
+
+  // ...its text, which shows against what is painted behind it...
+  const parts = await text.evaluateAll((elements) => elements.map((element) => ({ text: element.textContent?.trim() ?? '', color: getComputedStyle(element).color })));
+  expect(parts.length, `${what}: shows its label`).toBeGreaterThan(0);
+  for (const [index, part] of parts.entries()) {
+    expect(systemColours.has(part.color), `${what}: "${part.text}" is ${part.color}, not a system colour`).toBe(true);
+    const contrast = await glyphContrast(text.nth(index));
+    expect(contrast, `${what}: "${part.text}" stands out from what is painted behind it`).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
+  }
+
+  // ...and its icons, which show too.
+  if (icons) {
+    const colours = await icons.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).color));
+    expect(colours.length, `${what}: shows its icon`).toBeGreaterThan(0);
+    for (const [index, colour] of colours.entries()) {
+      expect(systemColours.has(colour), `${what}: its icon is ${colour}, not a system colour`).toBe(true);
+      const contrast = await glyphContrast(icons.nth(index));
+      expect(contrast, `${what}: its icon stands out from what is painted behind it`).toBeGreaterThanOrEqual(MIN_NON_TEXT_CONTRAST);
+    }
+  }
+
+  // Its focus ring stays a system colour. Focus leaves it first (opening the menu sheet focuses
+  // its current row already), then a key press makes the programmatic focus keyboard focus.
+  await other.focus();
+  await page.keyboard.press('Shift');
+  await selected.focus();
+  await settle(selected);
+  const ring = await selected.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { focusVisible: element.matches(':focus-visible'), style: style.outlineStyle, color: style.outlineColor };
+  });
+  expect(ring, `${what}: the focus ring`).toEqual({ focusVisible: true, style: 'solid', color: palette.CanvasText });
+}
+
+/** The primary nav: in the docked rail at 1280px and wider, else in the menu sheet (opened here). */
+async function primaryNav(page: Page): Promise<Locator> {
+  if (isDesktopShell(page)) return page.getByRole('complementary').getByRole('navigation', { name: 'Primary' });
+  await page.getByRole('banner').getByRole('button', { name: 'Menu' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Menu' });
+  await expect(sheet).toBeVisible();
+  return sheet.getByRole('navigation', { name: 'Primary' });
+}
+
+for (const scheme of SCHEMES) {
+  test.describe(`forced colours, ${scheme} palette: current and pressed states`, () => {
+    test.beforeEach(async ({ page }) => {
+      // As above: forced colours before the first paint, and glimpses held on their posters.
+      await page.emulateMedia({ forcedColors: 'active', colorScheme: scheme, reducedMotion: 'reduce' });
+    });
+
+    test("the shell: the nav's current row (the rail at 1280px and wider, the menu sheet below)", async ({ page }) => {
+      await page.goto(aboutHref(), { waitUntil: 'load' });
+      await hydrated(page);
+      const nav = await primaryNav(page);
+      const current = nav.getByRole('link', { name: 'About', exact: true });
+      await expect(current).toHaveAttribute('aria-current', 'page');
+      const state = {
+        selected: current,
+        // Not Home: focusing a link to a page with phones starts its prefetch (link-prefetch.ts).
+        other: nav.getByRole('link', { name: 'Services', exact: true }),
+        text: current.locator(':scope > span'),
+        icons: current.locator(':scope > svg'),
+      };
+      await expectSelectedStandsOut(page, state, `${isDesktopShell(page) ? 'The rail' : 'The menu sheet'}: the current row`);
+    });
+
+    test('/projects/defensys-citizen: the pressed Brands "Preview" button', async ({ page }) => {
+      await page.goto(caseStudyHref('defensys-citizen'), { waitUntil: 'load' });
+      await hydrated(page);
+      const brands = page.locator('#brands');
+      const pressed = brands.locator('button[aria-pressed="true"]');
+      await expect(pressed).toHaveCount(1);
+      const other = brands.locator('button[aria-pressed="false"]').first();
+      await withBareLabel(pressed, (label) => expectSelectedStandsOut(page, { selected: pressed, other, text: label }, 'The pressed Preview button'));
+    });
+
+    test("/projects/defensys-citizen: the hero glimpse's current step dot", async ({ page }) => {
+      await page.goto(caseStudyHref('defensys-citizen'), { waitUntil: 'load' });
+      await hydrated(page);
+      const dots = page.locator('[data-cs-hero]').getByRole('group', { name: 'Defensys Citizen steps', exact: true });
+      const current = dots.locator('button[aria-current="step"]');
+      await expect(current).toHaveCount(1);
+      await expect(current).toBeVisible();
+      await settle(dots);
+
+      // Its mark is painted apart from another step's: at the centre, a filled pill against a hollow ring.
+      const other = dots.locator('button:not([aria-current])').first();
+      const marks = [await paintedAtCentre(page, current), await paintedAtCentre(page, other)] as const;
+      expect(contrastBetween(...marks), `the current step's mark is painted like another step's (${marks.join(' vs ')})`).toBeGreaterThanOrEqual(
+        MIN_NON_TEXT_CONTRAST,
+      );
+
+      // In the user's palette.
+      const palette = Object.values(await systemPalette(page));
+      const mark = await current.evaluate((dot) => {
+        const style = getComputedStyle(dot, '::before');
+        return { fill: style.backgroundColor, border: style.borderTopColor };
+      });
+      for (const [part, colour] of Object.entries(mark)) {
+        expect(palette, `the current step's mark: its ${part} is ${colour}, not a system colour`).toContain(colour);
+      }
+    });
+  });
+}
