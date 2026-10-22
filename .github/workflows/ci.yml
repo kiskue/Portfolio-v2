@@ -18,16 +18,21 @@ concurrency:
 env:
   # Telemetry has no next.config key (measurements.md): switch it off for every Next command.
   NEXT_TELEMETRY_DISABLED: '1'
-  # One origin for the build and the servers: site.url (metadataBase, canonical URLs) falls back
-  # to localhost:$PORT, and Playwright and Lighthouse CI serve on 3100.
+  # One origin for the build and the servers: site.url (metadataBase, canonical URLs, the sitemap)
+  # falls back to localhost:$PORT, and Playwright and Lighthouse CI serve on 3100.
   PORT: '3100'
+  # Set for the build, not only the server: /contact is static and decides at build time whether
+  # to show the form (unset means resend in production, which needs RESEND_API_KEY). The e2e
+  # step reuses the build from `npm run check`.
   CONTACT_TRANSPORT: log
 
 jobs:
   check:
     name: Check, e2e and Lighthouse
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The full e2e run is about 800 tests, whose times added up to 32 minutes in the local
+    # baseline, and a 2-vCPU runner gets one Playwright worker.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -56,6 +61,7 @@ jobs:
           E2E_SKIP_BUILD: '1'
 
       - name: Lighthouse CI (mobile and desktop)
+        # Label mode is noindex, so SEO is a warning here; the hide-mode job asserts it.
         run: npm run lhci
 
       - name: Keep the reports
@@ -71,13 +77,13 @@ jobs:
           if-no-files-found: ignore
 
   seo-hide-mode:
-    # PLAN: "SEO 1.0 in hide mode (label mode is noindex)". A hide-mode build needs
-    # src/content/site.ts to honour NEXT_PUBLIC_PLACEHOLDERS=hide (requested from the integrator);
-    # until then this job reports without failing the workflow.
+    # PLAN: "SEO 1.0 in hide mode (label mode is noindex)". NEXT_PUBLIC_PLACEHOLDERS=hide builds
+    # the public site for this job (src/content/site.ts), and the e2e specs read it too. The
+    # workflow's PORT already makes the build's canonical URLs and sitemap point at the
+    # Lighthouse CI origin. The check job's label-mode run records SEO as a warning only.
     name: SEO in hide mode
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
     env:
       NEXT_PUBLIC_PLACEHOLDERS: hide
     steps:
@@ -94,14 +100,29 @@ jobs:
       - name: Build in hide mode
         run: npm run build
 
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke and SEO end-to-end in hide mode
+        # seo.spec.ts takes its hide-mode branch: indexable pages, robots.txt naming the sitemap,
+        # and a sitemap of every nav route and case study.
+        run: npx playwright test tests/e2e/smoke.spec.ts tests/e2e/seo.spec.ts --project=mobile --project=tablet --project=desktop
+        env:
+          E2E_SKIP_BUILD: '1'
+
       - name: Lighthouse CI with SEO 1.0 as an error
-        run: npm run lhci -- --form-factor=desktop --seo-strict --runs=1
+        # --seo-only: SEO and its audits decide the exit code. The other assertions print as
+        # warnings, because the check job asserts them over three runs.
+        run: npm run lhci -- --form-factor=desktop --seo-only --runs=1
 
       - name: Keep the reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: reports-hide-mode
-          path: .lighthouseci/reports/
+          path: |
+            playwright-report/
+            test-results/
+            .lighthouseci/reports/
           retention-days: 14
           if-no-files-found: ignore
