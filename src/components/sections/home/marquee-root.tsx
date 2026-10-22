@@ -12,7 +12,9 @@ import { cn } from '@/lib/cn';
  *   strip is still (WCAG 2.2.2) and the controls, which need JavaScript, stay hidden;
  * - data-running from the one autoplay policy (useAutoplay): off while less than half of the
  *   strip is on screen, in a hidden tab, after a user pause, and under reduced motion (where the
- *   CSS swaps the marquee for wrapped chips anyway). Hover and focus-within pause it in CSS;
+ *   CSS swaps the marquee for wrapped chips anyway). Hovering the track and focus within the
+ *   strip pause it in CSS, as a bonus; data-user-play (the user pressed Play) turns the focus
+ *   bonus off, so the Play button, which keeps focus, never leaves the strip looking paused;
  * - data-expanded for "Show all", which narrow screens get in the static, wrapped layout.
  * The list renders twice for the seamless loop; the second copy is aria-hidden.
  */
@@ -60,6 +62,13 @@ export function MarqueeRoot({ titleId, head, items, labels, icons, className }: 
   const ready = useHydrated();
   const { running, userPaused, pause, play } = useAutoplay(ref);
   const [expanded, setExpanded] = useState(false);
+  /** The user's last choice was Play: the focus-within bonus pause stands down. */
+  const [chosePlay, setChosePlay] = useState(false);
+  const toggle = (): void => {
+    if (userPaused) play();
+    else pause();
+    setChosePlay(userPaused);
+  };
 
   return (
     <section
@@ -69,6 +78,7 @@ export function MarqueeRoot({ titleId, head, items, labels, icons, className }: 
       data-section="tools"
       data-ready={ready ? '' : undefined}
       data-running={running ? '' : undefined}
+      data-user-play={chosePlay ? '' : undefined}
       data-expanded={expanded ? '' : undefined}
     >
       <div className="ts-head">
@@ -78,7 +88,7 @@ export function MarqueeRoot({ titleId, head, items, labels, icons, className }: 
           className={cn(buttonVariants({ variant: 'icon', size: 'sm', shape: 'circle' }), 'ts-pause')}
           aria-label={userPaused ? labels.play : labels.pause}
           data-marquee-control={userPaused ? 'play' : 'pause'}
-          onClick={userPaused ? play : pause}
+          onClick={toggle}
         >
           {userPaused ? icons.play : icons.pause}
         </button>

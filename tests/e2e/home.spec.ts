@@ -174,11 +174,17 @@ test.describe('Tools marquee', () => {
     await page.locator('h1').click();
     expect(await marqueeState(page)).toMatchObject({ running: false, playState: 'paused' });
 
-    // Keyboard: the same button, by Enter.
+    // Keyboard: the same button, by Enter. Pressing Play resumes the strip at once, although the
+    // button keeps focus (an explicit Play outranks the focus-within bonus pause).
     await strip(page).getByRole('button', { name: 'Play animation' }).focus();
     await page.keyboard.press('Enter');
     await expect(strip(page).getByRole('button', { name: 'Pause animation' })).toBeFocused();
-    await page.locator('h1').click();
+    await expect.poll(async () => marqueeState(page)).toMatchObject({ running: true, playState: 'running' });
+
+    // Mouse: Pause, then Play, with the pointer still on the button.
+    await strip(page).getByRole('button', { name: 'Pause animation' }).click();
+    await expect.poll(async () => (await marqueeState(page)).playState).toBe('paused');
+    await strip(page).getByRole('button', { name: 'Play animation' }).click();
     await expect.poll(async () => marqueeState(page)).toMatchObject({ running: true, playState: 'running' });
   });
 

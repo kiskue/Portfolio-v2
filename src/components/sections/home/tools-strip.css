@@ -137,12 +137,15 @@
     animation-play-state: running;
   }
 
-  .ts[data-ready][data-running]:focus-within .ts-track {
+  /* Bonus pauses (the button is the real control): keyboard focus in the strip, unless the
+     user's last choice was Play (the button keeps focus after it is pressed), and the pointer
+     resting on the moving track itself. */
+  .ts[data-ready][data-running]:not([data-user-play]):focus-within .ts-track {
     animation-play-state: paused;
   }
 
   @media (hover: hover) {
-    .ts[data-ready][data-running]:hover .ts-track {
+    .ts[data-ready][data-running] .ts-viewport:hover .ts-track {
       animation-play-state: paused;
     }
   }

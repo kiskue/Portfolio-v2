@@ -49,8 +49,14 @@ describe('ToolsStrip CSS contract', () => {
   it('animates only once hydrated, and only while running and not hovered or focused', () => {
     expect(css).toMatch(/\.ts\[data-ready\] \.ts-track \{\s*animation: ts-marquee var\(--dur-marquee\) linear infinite;\s*animation-play-state: paused;/);
     expect(css).toMatch(/\.ts\[data-ready\]\[data-running\] \.ts-track \{\s*animation-play-state: running;/);
-    expect(css).toMatch(/\.ts\[data-ready\]\[data-running\]:focus-within \.ts-track \{\s*animation-play-state: paused;/);
-    expect(css).toMatch(/@media \(hover: hover\) \{\s*\.ts\[data-ready\]\[data-running\]:hover \.ts-track \{\s*animation-play-state: paused;/);
+    // Focus in the strip pauses it, unless the user's last choice was Play.
+    expect(css).toMatch(
+      /\.ts\[data-ready\]\[data-running\]:not\(\[data-user-play\]\):focus-within \.ts-track \{\s*animation-play-state: paused;/,
+    );
+    // The pointer resting on the moving track pauses it (hover-capable pointers only).
+    expect(css).toMatch(
+      /@media \(hover: hover\) \{\s*\.ts\[data-ready\]\[data-running\] \.ts-viewport:hover \.ts-track \{\s*animation-play-state: paused;/,
+    );
   });
 
   it('turns into still, wrapped chips under both forms of reduced motion', () => {
