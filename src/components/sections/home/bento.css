@@ -1,0 +1,362 @@
+/*
+ * The Home bento (PLAN "Home"; design §3.3, §4.3, §9). Imported once, from bento-grid.tsx.
+ * Colours are tokens (the container gradient mixes them), so both themes follow.
+ *
+ * Grid: container queries on <main> (the nearest size container). DOM order is the reading
+ * order at every width: proj, about, ai, live, cred, serv, testi.
+ *   1 column   all cards stacked
+ *   ≥36rem     "proj proj" "about ai" "live live" "cred serv" "testi testi"
+ *   ≥56rem     "proj proj about ai" "proj proj live live" "cred serv testi testi"
+ *              (the template's row order restored: Credentials before Services)
+ * Each grid item is a [data-bento] cell wrapping its BentoCard, which fills it.
+ */
+
+@layer properties, theme, base, components, utilities;
+
+@layer components {
+  /* ─── Container: the periwinkle glow from 768px; below it one soft glow behind Projects ─── */
+
+  .bento {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .bento::before {
+    content: "";
+    position: absolute;
+    inset: -24px -12px auto;
+    z-index: -1;
+    height: 34rem;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(var(--glow) / var(--glow-alpha)), transparent);
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  @media (min-width: 48rem) {
+    .bento {
+      --bento-highlight: rgb(255 255 255 / 0.8);
+      --bento-shine: rgb(255 255 255 / 0.9);
+      padding: 12px;
+      border: 1px solid rgb(var(--glow) / var(--glow-line-alpha));
+      border-radius: var(--radius-bento);
+      background: linear-gradient(
+        105deg,
+        color-mix(in srgb, var(--c-raised) 60%, var(--c-surface)) 0%,
+        color-mix(in srgb, var(--c-raised), rgb(var(--glow)) 6%) 55%,
+        color-mix(in srgb, var(--c-raised), rgb(var(--glow)) 20%) 100%
+      );
+      box-shadow:
+        inset 0 1px 0 var(--bento-highlight),
+        18px 24px 64px -16px rgb(var(--glow) / var(--glow-alpha)),
+        -12px -12px 48px -28px var(--bento-shine);
+    }
+
+    .dark .bento {
+      --bento-highlight: rgb(255 255 255 / 0.06);
+      --bento-shine: transparent;
+      background: linear-gradient(
+        105deg,
+        color-mix(in srgb, var(--c-surface) 70%, var(--c-bg)) 0%,
+        var(--c-surface) 60%,
+        color-mix(in srgb, var(--c-raised), rgb(var(--glow)) 8%) 100%
+      );
+    }
+
+    .bento::before {
+      content: none;
+    }
+  }
+
+  /* ─── Grid ─────────────────────────────────────────────────────────────────────────── */
+
+  .bento-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "proj" "about" "ai" "live" "cred" "serv" "testi";
+    gap: 12px;
+  }
+
+  /* A cell is the grid item; its card fills it. Flex, not grid: the card carries its own
+     grid-area class, which a grid cell would turn into stray implicit tracks. */
+  .bento-cell {
+    display: flex;
+    min-width: 0;
+  }
+
+  .bento-cell > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* Mobile minimum heights (design §4.3). */
+  .bento-cell[data-bento="proj"] > * {
+    min-height: 520px;
+  }
+  .bento-cell[data-bento="about"] > * {
+    min-height: 280px;
+  }
+  .bento-cell[data-bento="ai"] > * {
+    min-height: 240px;
+  }
+  .bento-cell[data-bento="live"] > * {
+    min-height: 300px;
+  }
+  .bento-cell[data-bento="serv"] > * {
+    min-height: 320px;
+  }
+  .bento-cell[data-bento="cred"] > * {
+    min-height: 260px;
+  }
+  .bento-cell[data-bento="testi"] > * {
+    min-height: 380px;
+  }
+
+  @container (min-width: 36rem) {
+    .bento-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-areas: "proj proj" "about ai" "live live" "cred serv" "testi testi";
+      gap: 14px;
+    }
+
+    .bento-cell > * {
+      min-height: 0;
+    }
+
+    .bento-cell[data-bento="testi"] > * {
+      min-height: 18.75rem;
+    }
+  }
+
+  @container (min-width: 56rem) {
+    .bento-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: minmax(16.5rem, auto) minmax(12.5rem, auto) minmax(18.75rem, auto);
+      grid-template-areas: "proj proj about ai" "proj proj live live" "cred serv testi testi";
+      gap: 16px;
+    }
+
+    .bento-cell[data-bento="testi"] > * {
+      min-height: 0;
+    }
+  }
+
+  /* ─── About: a fan of three polaroids (design §4.3) ───────────────────────────────────── */
+
+  .fan {
+    --fan-paper: var(--c-raised);
+    --fan-ink: var(--c-ink);
+    --fan-panel: var(--c-sunken);
+    position: relative;
+    width: 12rem;
+    height: 8.75rem;
+    margin-inline: auto;
+  }
+
+  /* Polaroids stay paper-light in dark mode (design: #F4F3EE), with dark ink on them. */
+  .dark .fan {
+    --fan-paper: var(--c-ink);
+    --fan-ink: var(--c-bg);
+    --fan-panel: color-mix(in srgb, var(--c-ink) 88%, var(--c-bg));
+  }
+
+  .fan-card {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    width: 112px;
+    height: 136px;
+    margin-left: -56px;
+    padding: 6px 6px 30px;
+    border-radius: 10px;
+    background: var(--fan-paper);
+    color: var(--fan-ink);
+    box-shadow: var(--sh-md);
+    transform-origin: 50% 100%;
+    rotate: var(--fan-rest);
+    transition: rotate var(--dur-3) var(--ease-out);
+  }
+
+  .dark .fan-card {
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.35);
+  }
+
+  /* Resting angles, and the spread on hover or keyboard focus (design §4.3). */
+  .fan-card--back {
+    --fan-rest: -14deg;
+    --fan-spread: -20deg;
+  }
+
+  .fan-card--middle {
+    --fan-rest: -7deg;
+    --fan-spread: -9deg;
+  }
+
+  .fan-card--front {
+    --fan-rest: 2deg;
+    --fan-spread: 4deg;
+  }
+
+  :is([data-bento="about"]:hover, [data-bento="about"]:focus-within) .fan-card {
+    rotate: var(--fan-spread);
+  }
+
+  /* Reduced motion: the fan stays at rest (motion.css: static transform states switch off). */
+  :root[data-motion="reduce"] :is([data-bento="about"]:hover, [data-bento="about"]:focus-within) .fan-card {
+    rotate: var(--fan-rest);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion]) :is([data-bento="about"]:hover, [data-bento="about"]:focus-within) .fan-card {
+      rotate: var(--fan-rest);
+    }
+  }
+
+  .fan-photo,
+  .fan-fact {
+    flex: 1 1 auto;
+    min-height: 0;
+    border-radius: 6px;
+  }
+
+  .fan-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 32%;
+    background: var(--fan-panel);
+  }
+
+  .fan-fact {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 2px;
+    padding: 8px;
+    background: var(--fan-panel);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .fan-fact svg {
+    margin-bottom: auto;
+  }
+
+  /* ─── Testimonials: quotes fading out at the bottom; a 40/60 split when wide ──────────── */
+
+  /* The quote stack fills the room the card's row leaves and adds no height of its own
+     (contain: size), so it never stretches the row; what does not fit fades out. */
+  .testi-quotes {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    contain: size;
+    mask-image: linear-gradient(to bottom, black 62%, transparent);
+  }
+
+  .testi-mark {
+    display: none;
+  }
+
+  @container (min-width: 36rem) {
+    .testi-mark {
+      position: absolute;
+      bottom: -0.32em;
+      left: 16px;
+      display: block;
+      color: var(--c-accent-soft);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 8rem;
+      line-height: 1;
+      pointer-events: none;
+    }
+  }
+
+  /* ─── Projects: the trio fills a two-row card ──────────────────────────────────────────
+     At four columns the card spans two bento rows, which About, AI builds and Live make taller
+     than the design's minimums, so the Home trio uses bigger phones and a taller stage than the
+     player's defaults (the player's own variables: --ps per track, --gl-overlap, --gl-stage-h;
+     its links still clip at the stage). The phones peek up from the card's bottom edge. Tiers
+     follow the player's own width (its "glimpse" container). */
+  .proj-player {
+    margin-inline: -12px;
+  }
+
+  .proj-player .gl-head {
+    padding-inline: 12px;
+  }
+
+  @container glimpse (width >= 25rem) {
+    [data-bento="proj"] .gl[data-layout="trio"] .gl-inner {
+      /* md centre, sm sides, overlapping just enough to fit. */
+      --gl-overlap: max(48px, calc(264px - 50cqi));
+      --gl-stage-h: 26.5rem;
+    }
+
+    [data-bento="proj"] .gl-ps-auto-centre {
+      --ps: 0.5024;
+    }
+
+    [data-bento="proj"] .gl-ps-auto-side {
+      --ps: 0.3768;
+    }
+  }
+
+  @container glimpse (width >= 29rem) {
+    [data-bento="proj"] .gl[data-layout="trio"] .gl-inner {
+      /* lg centre, md sides. */
+      --gl-overlap: max(56px, calc(344px - 50cqi));
+      --gl-stage-h: 31rem;
+    }
+
+    [data-bento="proj"] .gl-ps-auto-centre {
+      --ps: 0.6377;
+    }
+
+    [data-bento="proj"] .gl-ps-auto-side {
+      --ps: 0.5024;
+    }
+  }
+}
+
+/* Overrides of BentoCard's own utility classes: they sit in the utilities layer, so these do
+   too, with a more specific selector. */
+@layer utilities {
+  /* A card's header wraps its link label onto a second line when the column is narrow. */
+  .bento-cell > section > div:first-child {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  /* Testimonials, wide (the card spans the grid or two columns): title and description on the
+     left (40%) over a large decorative quote mark, the quotes on the right (60%). BentoCard
+     renders its header, its description and its body, in that order. */
+  @container (min-width: 36rem) {
+    [data-bento="testi"] > .bento-testi {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      grid-template-rows: auto 1fr;
+      column-gap: 20px;
+    }
+
+    [data-bento="testi"] > .bento-testi > :nth-child(1) {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    [data-bento="testi"] > .bento-testi > :nth-child(2) {
+      grid-column: 1;
+      grid-row: 2;
+      align-self: start;
+    }
+
+    [data-bento="testi"] > .bento-testi > :nth-child(3) {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      margin-top: 0;
+    }
+  }
+}

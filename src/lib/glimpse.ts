@@ -11,6 +11,13 @@ import type { FigureId, Glimpse, GlimpseStep } from '@/content/types';
  * starts. A rotation is one pass through every track. After `maxRotations` (2) rotations the
  * player ends and offers Replay. A track that is not current shows its poster step.
  *
+ * Posters (PLAN: "each step has a posterState for reduced motion and no-JS"): a step whose
+ * posterState differs from the state it plays gets a second, still frame drawn at its
+ * posterState. Without JavaScript only each track's poster step shows, so only that step's poster
+ * frame is in the server HTML. Under reduced motion every step shows its poster frame (its final
+ * coherent state, design §5.3); those of the other steps are mounted only while the player needs
+ * them (shown or fading out), so they cost no DOM until then (frameStatus).
+ *
  * The pause rules follow the site's one autoplay policy (src/hooks/autoplay-state.ts, reuse
  * rule 7) exactly; tests/unit/glimpse.test.ts proves the parity:
  * - intent 'auto' plays while visible, except under reduced motion, where it holds at the poster
@@ -26,15 +33,17 @@ import type { FigureId, Glimpse, GlimpseStep } from '@/content/types';
 export interface PlaylistStep {
   /** How long the step shows, in ms. */
   readonly holdMs: number;
+  /** The step has a separate poster frame (its posterState differs from its played state). */
+  readonly posterFrame?: boolean;
 }
 
 export interface PlaylistTrack {
   readonly steps: readonly PlaylistStep[];
-  /** The step shown for reduced motion, before playback starts, after the end, and while another track plays. */
+  /** The step shown before playback starts, after the end, and while another track plays. */
   readonly posterStep: number;
   /** Brand skins the track cycles through, one per rotation (Home Citizen: 2). Default 1. */
   readonly rotations?: number;
-  /** The poster step has a separate poster frame (its posterState differs from its played state). */
+  /** The poster step has a separate poster frame: the one the server HTML shows. */
   readonly posterFrame?: boolean;
 }
 
@@ -54,10 +63,16 @@ export function stepStates(step: GlimpseStep, defaultState: string): { readonly 
   return { play, poster: step.posterState ?? play };
 }
 
+/** Whether a step needs a separate poster frame: its posterState differs from the state it plays. */
+function needsPosterFrame(step: GlimpseStep, defaultState: (figure: FigureId) => string): boolean {
+  const states = stepStates(step, defaultState(step.figure));
+  return states.poster !== states.play;
+}
+
 /**
  * The playlist for a player: one track per glimpse. `defaultState` gives a figure's default
- * state (figures.ts states[0]) for steps that name none. A poster step whose posterState differs
- * from its played state gets a separate poster frame.
+ * state (figures.ts states[0]) for steps that name none. Every step whose posterState differs
+ * from its played state is marked as having a separate poster frame.
  */
 export function glimpsePlaylist(
   glimpses: readonly Glimpse[],
@@ -67,18 +82,47 @@ export function glimpsePlaylist(
   return {
     tracks: glimpses.map((glimpse): PlaylistTrack => {
       const poster = glimpse.steps[glimpse.posterStep];
-      const states = poster ? stepStates(poster, defaultState(poster.figure)) : null;
       const skins = glimpse.brandRotation?.length ?? 0;
       return {
-        steps: glimpse.steps.map((step) => ({ holdMs: step.holdMs })),
+        steps: glimpse.steps.map((step) => ({
+          holdMs: step.holdMs,
+          ...(needsPosterFrame(step, defaultState) ? { posterFrame: true } : {}),
+        })),
         posterStep: glimpse.posterStep,
         ...(skins > 1 ? { rotations: skins } : {}),
-        ...(states && states.poster !== states.play ? { posterFrame: true } : {}),
+        ...(poster && needsPosterFrame(poster, defaultState) ? { posterFrame: true } : {}),
       };
     }),
     maxRotations,
     reducedMotion: false,
   };
+}
+
+/** One server-rendered phone of a track: a step drawn at the state it plays, or at its posterState. */
+export interface FrameSpec {
+  readonly step: number;
+  readonly kind: FrameKind;
+  /** The figure state the phone is drawn at. */
+  readonly state: string;
+  /**
+   * Mounted only while the player needs it (shown or fading out): the poster frames of steps
+   * other than the poster step, which only reduced motion ever shows.
+   */
+  readonly lazy: boolean;
+}
+
+/**
+ * The phones a track renders, in DOM order: every step's played frame, plus a poster frame
+ * (before it) for each step whose posterState differs. Only the poster step's poster frame is
+ * in the server HTML; the others are lazy.
+ */
+export function trackFrames(glimpse: Glimpse, defaultState: (figure: FigureId) => string): readonly FrameSpec[] {
+  return glimpse.steps.flatMap((step, index): FrameSpec[] => {
+    const states = stepStates(step, defaultState(step.figure));
+    const play: FrameSpec = { step: index, kind: 'play', state: states.play, lazy: false };
+    if (states.poster === states.play) return [play];
+    return [{ step: index, kind: 'poster', state: states.poster, lazy: index !== glimpse.posterStep }, play];
+  });
 }
 
 // ─── State and events ─────────────────────────────────────────────────────────────────────
@@ -343,19 +387,27 @@ export function sameFrame(a: FrameRef | null, b: FrameRef | null): boolean {
   return a === b || (a !== null && b !== null && a.step === b.step && a.kind === b.kind);
 }
 
+/** Whether a step of a track has a separate poster frame (per step, or the track's poster step). */
+export function hasPosterFrame(playlist: Playlist, track: number, step: number): boolean {
+  const entry = trackAt(playlist, track);
+  if (!entry) return false;
+  return entry.steps[step]?.posterFrame === true || (entry.posterFrame === true && step === posterStepOf(playlist, track));
+}
+
 function posterRef(playlist: Playlist, track: number): FrameRef {
-  return { step: posterStepOf(playlist, track), kind: trackAt(playlist, track)?.posterFrame ? 'poster' : 'play' };
+  const step = posterStepOf(playlist, track);
+  return { step, kind: hasPosterFrame(playlist, track, step) ? 'poster' : 'play' };
 }
 
 /**
  * The frame a track shows. Tracks other than the current one, the player before it starts and
  * after it ends show the poster step (its poster frame when it has one). Under reduced motion
- * the current track also prefers the poster frame on its poster step.
+ * the current track shows every step at its posterState: the step's poster frame when it has
+ * one (S2.30), else its played frame, which then stays still (the motion contract's rule 4).
  */
 export function shownFrame(playlist: Playlist, state: GlimpseState, track: number): FrameRef {
   if (track !== state.track || !state.started || state.status === 'ended') return posterRef(playlist, track);
-  const poster = posterRef(playlist, track);
-  if (state.reducedMotion && state.step === poster.step && poster.kind === 'poster') return poster;
+  if (state.reducedMotion && hasPosterFrame(playlist, track, state.step)) return { step: state.step, kind: 'poster' };
   return { step: state.step, kind: 'play' };
 }
 
@@ -390,6 +442,38 @@ export interface PlayerState {
 
 /** Glimpse events, plus SETTLE once a track's crossfade has finished. */
 export type PlayerEvent = GlimpseEvent | { readonly type: 'SETTLE'; readonly track: number };
+
+/** How one frame of a track stands right now: the attributes the client sets on it. */
+export interface FrameStatus {
+  /** On screen (data-shown). */
+  readonly shown: boolean;
+  /** Fading out under the newly shown frame (data-leaving). */
+  readonly leaving: boolean;
+  /** Shows after the next step change (data-next): rendered, invisible, ready. */
+  readonly next: boolean;
+  /** Playing its in-screen animation (data-active). */
+  readonly active: boolean;
+  /** A live frame fading out keeps its last frame (data-paused). */
+  readonly frozen: boolean;
+  /**
+   * In the DOM: always, except a lazy frame that is neither shown nor fading out. A lazy frame
+   * is not mounted early as `next`: it is a still poster, so it needs no warm-up, and Home keeps
+   * at most one extra phone tree in its DOM (two while one fades out).
+   */
+  readonly mounted: boolean;
+}
+
+/** A frame's status for the player's current state. A lazy frame is mounted only while shown or leaving. */
+export function frameStatus(playlist: Playlist, player: PlayerState, track: number, frame: FrameRef, lazy = false): FrameStatus {
+  const state = player.glimpse;
+  const shown = sameFrame(shownFrame(playlist, state, track), frame);
+  const leavingFrame = player.leaving[track] ?? null;
+  const leaving = !shown && leavingFrame !== null && sameFrame(leavingFrame.frame, frame);
+  const next = !shown && !leaving && sameFrame(upcomingFrame(playlist, state, track), frame);
+  const frozen = leaving && leavingFrame.live;
+  const active = (shown && isLive(playlist, state, track)) || frozen;
+  return { shown, leaving, next, active, frozen, mounted: !lazy || shown || leaving };
+}
 
 export function initPlayer(playlist: Playlist, options?: { readonly visible?: boolean }): PlayerState {
   return { glimpse: initGlimpse(playlist, options), leaving: playlist.tracks.map(() => null) };
