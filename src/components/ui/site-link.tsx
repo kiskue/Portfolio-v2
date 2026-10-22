@@ -23,12 +23,13 @@ export type SiteLinkProps = Omit<ComponentProps<'a'>, 'href'> & {
 const HOME_ROUTE = /^\/(?:[?#]|$)/;
 
 /*
- * Home prefetches on intent too, like the heavy routes in link-prefetch.ts (PLAN.md:309; ruling F2
- * in the wave 2b ledger). Its prefetch is the site's largest (about 63 KB brotli: the glimpse trio,
- * the bento and the marquee), and it carries stylesheet hints for Home's own CSS. React preloads
- * each hinted stylesheet as soon as the prefetch arrives, so a viewport prefetch of Home from the
- * top bar or the rail left preloads that page never used, and Chrome warns about each one a few
- * seconds after load. On intent, the visitor is about to open Home and use them.
+ * Home prefetches on intent too, like the heavy routes in link-prefetch.ts (PLAN → Performance
+ * budgets → Prefetch; ruling F2 in the wave 2b ledger). Its prefetch is the site's largest (about
+ * 63 KB brotli: the glimpse trio, the bento and the marquee), and it carries stylesheet hints for
+ * Home's own CSS. React preloads each hinted stylesheet as soon as the prefetch arrives, so a
+ * viewport prefetch of Home from the top bar or the rail left preloads the current page never
+ * used, and Chrome warns about each one about 3 s later. On intent, the visitor is about to open
+ * Home, which applies them.
  */
 function defaultPrefetch(href: SiteRoute): LinkPrefetch | undefined {
   return HOME_ROUTE.test(href) ? 'intent' : undefined;

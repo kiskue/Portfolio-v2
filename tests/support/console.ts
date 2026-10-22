@@ -1,10 +1,10 @@
 import type { ConsoleMessage, Page } from '@playwright/test';
 
 /*
- * Console problems (PLAN.md:402: "no console errors or warnings"): every console error or warning
- * and every uncaught page error, as text. Shared by smoke.spec.ts and console.spec.ts. Nothing is
- * tolerated here: a message that has to be allowed would be matched in this file, exactly, with
- * the ruling that allows it.
+ * Console problems (PLAN → Verification → Smoke: "no console errors or warnings"): every console
+ * error or warning and every uncaught page error, as text. Shared by smoke.spec.ts and
+ * console.spec.ts. Nothing is tolerated here: a message that has to be allowed would be matched in
+ * this file, exactly, with the ruling that allows it.
  */
 
 /** Messages that must never appear, named so a failure says what went wrong. */

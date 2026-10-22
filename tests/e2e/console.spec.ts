@@ -5,15 +5,15 @@ import { hydrated } from '../support/page';
 import { CASE_STUDY_ROUTES, NAV_ROUTES } from '../support/routes';
 
 /*
- * An idle page logs nothing (PLAN.md:402, "no console errors or warnings"), against the production
- * build. Chrome reports a preloaded stylesheet that nothing applies about 3 s after the preload was
- * added, which is later than the smoke test looks (it stops at network idle), so each route here
- * stays open for 6 s after its load event.
+ * An idle page logs nothing (PLAN → Verification → Smoke: "no console errors or warnings"), against
+ * the production build. Chrome reports a preloaded stylesheet that nothing applies about 3 s after
+ * the preload was added, which is later than the smoke test looks (it stops at network idle), so
+ * each route here stays open for 6 s after its load event.
  *
  * Two things used to leave such preloads (ruling F2, wave 2b ledger):
  * - a viewport prefetch of Home from the top bar or the rail: React preloads every stylesheet hint
  *   in a prefetched route, and Home has CSS of its own. Links to Home now prefetch on intent
- *   (PLAN.md:309), which the second block checks;
+ *   (PLAN → Performance budgets → Prefetch), which the second block checks;
  * - the root not-found boundary: Next serializes it, with its stylesheets, into every page, so
  *   every page preloads the 404's CSS whether or not it applies that CSS.
  *
