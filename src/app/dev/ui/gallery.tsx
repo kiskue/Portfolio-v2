@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import type { BentoArea } from '@/content/types';
 import { cn } from '@/lib/cn';
 import { DemoSection } from './demo-section';
-import { LinksDemo, OverlaysDemo, PlaceholdersDemo, ProjectCardsDemo, QuoteCardsDemo } from './gallery-content';
+import { EmptyStatesDemo, LinksDemo, OverlaysDemo, PlaceholdersDemo, ProjectCardsDemo, QuoteCardsDemo } from './gallery-content';
 import { ButtonsDemo, ChipsDemo, SegmentedDemo } from './gallery-controls';
 import { BentoDemo, CardsDemo, HeadersDemo } from './gallery-surfaces';
 import { GlyphsDemo, IconsDemo, StatusDemo } from './gallery-visuals';
@@ -48,6 +48,7 @@ export function GalleryPanel({ theme }: { readonly theme: PanelTheme }) {
       <OverlaysDemo id={id} dark={dark} />
       <ProjectCardsDemo />
       <QuoteCardsDemo />
+      <EmptyStatesDemo id={id} />
       <DemoSection title="Hooks" note="useInView, useAutoplay (pauses below 50% visible or in a hidden tab), useReducedMotion, useSearchParam.">
         <HooksDemo id={id} />
       </DemoSection>

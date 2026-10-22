@@ -2,13 +2,11 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import NotFound, { metadata } from '@/app/not-found';
-import { LOST_SCREEN } from '@/components/sections/not-found/not-found-content';
-import { getFigure } from '@/content/derived';
 import { pages } from '@/content/home';
 
 /*
  * W10b-P: the 404 inside the shell (design §8). One h1, the way back (Home, Projects and the
- * Get in touch pill), and a static map phone rendered through ScreenFigure / ScreenView.
+ * Get in touch pill), and a static map phone: MapPhone with the map's 'lost' scene (I3, S4.45).
  */
 
 const markup = renderToStaticMarkup(createElement(NotFound));
@@ -29,12 +27,15 @@ describe('404 page', () => {
     expect([...hrefs].sort()).toEqual(['/', '/contact', '/projects']);
   });
 
-  it('shows a static map phone from the registry, captioned, with no view-transition name', () => {
-    const figure = getFigure(LOST_SCREEN.figure);
-    expect(markup).toContain('data-screen-figure=""');
-    expect(markup).toContain(`role="img" aria-label="${escapeAttribute(figure.summary)}"`);
+  it('shows a static map phone with the lost scene ("You are here"), captioned, with no view-transition name', () => {
+    const label =
+      'Map of a fictional town: a blue You are here dot at the edge of town, where the map runs out into the bay. Fictional data.';
+    expect(markup).toContain('data-map-phone="lost"');
+    expect(markup).toContain(`role="img" aria-label="${escapeAttribute(label)}"`);
     expect(markup).toContain('data-size="md"');
-    expect(markup).toContain(`FIG ${figure.id}`);
+    expect(markup).toMatch(/<figcaption[^>]*><span[^>]*>FIG 404<\/span>/);
+    expect(markup).toContain('>You are here<');
+    expect(markup).not.toContain('data-screen-figure');
     expect(markup).not.toMatch(/view-transition|phone-defensys|phone-sme/);
   });
 

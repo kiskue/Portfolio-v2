@@ -146,8 +146,10 @@ test.describe('404', () => {
       await expect(main.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/');
       await expect(main.getByRole('link', { name: 'Projects', exact: true })).toHaveAttribute('href', '/projects');
       await expect(main.getByRole('link', { name: 'Get in touch' })).toHaveAttribute('href', '/contact');
-      await expect(main.locator('[data-screen-figure] [role="img"]')).toBeVisible();
-      await expect(main.locator('figcaption')).toContainText('FIG 2.5');
+      const phone = main.locator('[data-map-phone="lost"] [role="img"]');
+      await expect(phone).toBeVisible();
+      await expect(phone).toHaveAttribute('aria-label', /a blue You are here dot at the edge of town/);
+      await expect(main.locator('figcaption')).toContainText('FIG 404');
       await expectNoHorizontalScroll(page);
       await page.waitForLoadState('networkidle');
       expect(problems).toEqual([]);

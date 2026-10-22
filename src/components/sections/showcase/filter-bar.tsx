@@ -5,9 +5,7 @@ import { useShowcaseView } from '@/components/sections/showcase/showcase-provide
 import { BrandScope, BrandSwitcher, type BrandScopeProps } from '@/components/showcase/brand-scope';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Copy } from '@/components/ui/copy';
 import { SegmentedControl, type SegmentedOption } from '@/components/ui/segmented-control';
-import type { EmptyState } from '@/content/types';
 import {
   REPLICA_LABEL,
   REPLICA_ONLY_LABEL,
@@ -110,22 +108,27 @@ export function FilterBar({ apps, scopes, className }: FilterBarProps): ReactNod
 }
 
 export interface ShowcaseEmptyProps {
-  /** The copy from src/content/home.ts (emptyStates.showcase). */
-  readonly copy: EmptyState;
-  readonly className?: string;
+  /** The server-rendered empty state (components/content EmptyState, with ShowcaseClear as its action). */
+  readonly children: ReactNode;
 }
 
-/** "Nothing matches these filters." with Clear filters, shown only when no tile matches. */
-export function ShowcaseEmpty({ copy, className }: ShowcaseEmptyProps): ReactNode {
+/** Shows "Nothing matches these filters." only when no tile matches. */
+export function ShowcaseEmpty({ children }: ShowcaseEmptyProps): ReactNode {
   const view = useShowcaseView();
-  if (view.shown > 0) return null;
+  return view.shown > 0 ? null : children;
+}
+
+export interface ShowcaseClearProps {
+  readonly label: string;
+}
+
+/** The empty state's action: Clear filters, which resets every param and refocuses the App choice. */
+export function ShowcaseClear({ label }: ShowcaseClearProps): ReactNode {
+  const view = useShowcaseView();
+  if (!view.filtered) return null;
   return (
-    <Card as="section" aria-label="No matching screens" surface="sunken" className={className} data-showcase-empty="">
-      <p className="text-h3-hero text-ink">{copy.title}</p>
-      <Copy as="p" text={copy.body} className="mt-1 text-body-sm text-ink-2" />
-      <Button variant="secondary" size="sm" icon="rotate-ccw" className="mt-4" onClick={view.clear}>
-        {copy.cta?.label ?? 'Clear filters'}
-      </Button>
-    </Card>
+    <Button variant="secondary" size="sm" icon="rotate-ccw" onClick={view.clear}>
+      {label}
+    </Button>
   );
 }

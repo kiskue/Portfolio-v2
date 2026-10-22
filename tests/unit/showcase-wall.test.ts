@@ -149,7 +149,7 @@ describe('counts, links and brands', () => {
     has(markup, '<span class="sr-only">SME Panindio</span>');
     has(markup, 'role="status"');
     lacks(markup, 'Clear filters');
-    lacks(markup, 'data-showcase-empty');
+    lacks(markup, 'data-empty-state');
     // Without JavaScript the filters cannot work; a note says so (the wall stays whole).
     has(markup, '<noscript><p class="text-meta text-ink-3">The filters need JavaScript; the whole wall is shown below.</p></noscript>');
   });

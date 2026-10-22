@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
+import { CtaBand } from '@/components/content/cta-band';
 import { PageHeader } from '@/components/layout/page-header';
-import { CtaBand } from '@/components/sections/services/cta-band';
 import { EngagementCards } from '@/components/sections/services/engagement-cards';
 import { ProcessSteps } from '@/components/sections/services/process-steps';
 import { ServiceBlocks } from '@/components/sections/services/service-blocks';

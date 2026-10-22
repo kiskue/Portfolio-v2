@@ -1,6 +1,9 @@
+import { CtaBand } from '@/components/content/cta-band';
+import { EmptyState } from '@/components/content/empty-state';
 import { ProjectCard } from '@/components/content/project-card';
 import { QuoteCard } from '@/components/content/quote-card';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Copy, MetaLine } from '@/components/ui/copy';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Dialog } from '@/components/ui/dialog';
@@ -9,6 +12,7 @@ import { CvLink, Years } from '@/components/ui/placeholder-facts';
 import { Popover } from '@/components/ui/popover';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { StoreLink } from '@/components/ui/store-link';
+import { callsToAction, emptyStates } from '@/content/home';
 import { ph } from '@/lib/placeholder';
 import { DemoSection, Row } from './demo-section';
 import {
@@ -148,6 +152,40 @@ export function ProjectCardsDemo() {
         <ProjectCard project={companyProject} look="adjacent" direction="previous" />
         <ProjectCard project={caseStudyProject} look="adjacent" direction="next" />
       </div>
+    </DemoSection>
+  );
+}
+
+/** The two panels render this once each, so the band's heading id carries the panel's id. */
+export function EmptyStatesDemo({ id }: { readonly id: string }) {
+  return (
+    <DemoSection
+      title="EmptyState · CtaBand"
+      note="What a list shows when nothing is left (hide mode, or filters that match nothing), and the closing call to action. EmptyState: an h2 for a page section, a compact h3 inside a card; an action slot replaces its link."
+    >
+      <Row label="EmptyState · section (h2) · icon · the state's link">
+        <EmptyState state={emptyStates.testimonials} icon="message-square-quote" className="w-full" />
+      </Row>
+      <Row label="EmptyState · section · action slot (a filter island's Clear filters)">
+        <EmptyState
+          state={emptyStates.projects}
+          icon="folder-open"
+          className="w-full"
+          action={
+            <Button variant="secondary" size="sm" icon="rotate-ccw">
+              {emptyStates.projects.cta?.label ?? 'Clear filters'}
+            </Button>
+          }
+        />
+      </Row>
+      <Row label="EmptyState · card (h3) inside a card">
+        <Card className="flex min-h-56 w-full flex-col">
+          <EmptyState state={emptyStates.testimonials} as="h3" size="card" className="flex-1 justify-center" />
+        </Card>
+      </Row>
+      <Row label="CtaBand (raised section, primary pill)">
+        <CtaBand cta={callsToAction.services} headingId={`${id}-cta-title`} className="w-full" />
+      </Row>
     </DemoSection>
   );
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { FilterBar, ShowcaseEmpty } from '@/components/sections/showcase/filter-bar';
+import { EmptyState } from '@/components/content/empty-state';
+import { FilterBar, ShowcaseClear, ShowcaseEmpty } from '@/components/sections/showcase/filter-bar';
 import { ShowcaseGroup } from '@/components/sections/showcase/showcase-group';
 import { ShowcaseProvider, type BrandParam } from '@/components/sections/showcase/showcase-provider';
 import { brandScopeProps } from '@/components/showcase/brand-options';
@@ -39,6 +40,7 @@ export function ShowcaseWall({ className }: { readonly className?: string }): Re
     { value: 'all', label: 'All', srLabel: 'All apps' },
     ...apps.map((app): SegmentedOption<AppFilter> => ({ value: app.id, label: app.short, srLabel: app.name })),
   ];
+  const empty = emptyStates.showcase;
 
   return (
     <ShowcaseProvider
@@ -48,7 +50,14 @@ export function ShowcaseWall({ className }: { readonly className?: string }): Re
     >
       <div className={cn('flex flex-col gap-12', className)} data-showcase="">
         <FilterBar apps={appOptions} scopes={scopes} />
-        <ShowcaseEmpty copy={emptyStates.showcase} />
+        <ShowcaseEmpty>
+          <EmptyState
+            state={empty}
+            icon="smartphone"
+            name="showcase"
+            action={<ShowcaseClear label={empty.cta?.label ?? 'Clear filters'} />}
+          />
+        </ShowcaseEmpty>
         {apps.map((app) => {
           const entries = showcaseEntries.filter((entry) => entry.app === app.id);
           if (app.id === 'sme') return <ShowcaseGroup key={app.id} app={app} entries={entries} />;

@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
+import { EmptyState } from '@/components/content/empty-state';
 import { CaseStudyCards } from '@/components/sections/projects/case-study-cards';
-import { FacetBar, FacetEmpty, FacetScope } from '@/components/sections/projects/facet-filter';
+import { FacetBar, FacetClear, FacetEmpty, FacetScope } from '@/components/sections/projects/facet-filter';
 import { MoreWorkGrid } from '@/components/sections/projects/more-work-grid';
-import { IconTile } from '@/components/ui/icon-tile';
-import { SectionHeader } from '@/components/ui/section-header';
 import { facetCounts, projectFacetCounts } from '@/content/derived';
 import { emptyStates } from '@/content/home';
 import { projects as allProjects } from '@/content/projects';
@@ -43,9 +42,13 @@ export function ProjectsIndex({ mode = site.placeholders, projects = allProjects
         <div className="flex flex-col gap-12 md:gap-16">
           <CaseStudyCards projects={shown.filter((project) => project.caseStudy !== undefined)} mode={mode} />
           <MoreWorkGrid projects={shown.filter((project) => project.caseStudy === undefined)} mode={mode} />
-          <FacetEmpty clearLabel={empty.cta?.label ?? 'Clear filters'}>
-            <IconTile icon="folder-open" tone="soft" size={32} />
-            <SectionHeader as="h2" size="card" title={empty.title} intro={empty.body} />
+          <FacetEmpty>
+            <EmptyState
+              state={empty}
+              icon="folder-open"
+              name="projects"
+              action={<FacetClear label={empty.cta?.label ?? 'Clear filters'} />}
+            />
           </FacetEmpty>
         </div>
       </div>
