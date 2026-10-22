@@ -18,9 +18,12 @@ concurrency:
 env:
   # Telemetry has no next.config key (measurements.md): switch it off for every Next command.
   NEXT_TELEMETRY_DISABLED: '1'
-  # One origin for the build and the servers: site.url (metadataBase, canonical URLs) falls back
-  # to localhost:$PORT, and Playwright and Lighthouse CI serve on 3100.
+  # One origin for the build and the servers: site.url (metadataBase, canonical URLs, the sitemap)
+  # falls back to localhost:$PORT, and Playwright and Lighthouse CI serve on 3100.
   PORT: '3100'
+  # Set for the build, not only the server: /contact is static and decides at build time whether
+  # to show the form (unset means resend in production, which needs RESEND_API_KEY). The e2e
+  # step reuses the build from `npm run check`.
   CONTACT_TRANSPORT: log
 
 jobs:
@@ -71,13 +74,13 @@ jobs:
           if-no-files-found: ignore
 
   seo-hide-mode:
-    # PLAN: "SEO 1.0 in hide mode (label mode is noindex)". A hide-mode build needs
-    # src/content/site.ts to honour NEXT_PUBLIC_PLACEHOLDERS=hide (requested from the integrator);
-    # until then this job reports without failing the workflow.
+    # PLAN: "SEO 1.0 in hide mode (label mode is noindex)". NEXT_PUBLIC_PLACEHOLDERS=hide builds
+    # the public site for this job (src/content/site.ts). The workflow's PORT already makes its
+    # canonical URLs and sitemap point at the Lighthouse CI origin. The check job's label-mode
+    # run records SEO as a warning only; this job asserts it.
     name: SEO in hide mode
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
     env:
       NEXT_PUBLIC_PLACEHOLDERS: hide
     steps:
