@@ -18,8 +18,8 @@ import { MIN_INSTALLS, MIN_RATINGS } from '@/lib/store-rules';
  * BrandScope, beside a phone that shows the selection.
  */
 
-const CELL = 'py-3 pe-3 align-top';
-const HEAD = 'py-2 pe-3 text-start text-eyebrow text-ink-3 uppercase';
+const CELL = 'py-3 pe-2.5 align-top';
+const HEAD = 'py-2 pe-2.5 text-start text-eyebrow text-ink-3 uppercase';
 
 function CitizenTable(): ReactNode {
   return (
@@ -27,9 +27,9 @@ function CitizenTable(): ReactNode {
       <table className="w-full table-fixed border-collapse text-start">
         <caption className="sr-only">The public Defensys Citizen apps and their store listings</caption>
         <colgroup>
-          <col className="w-[46%]" />
+          <col className="w-[40%]" />
           <col />
-          <col className="w-24" />
+          <col className="w-[5.5rem]" />
         </colgroup>
         <thead>
           <tr className="border-b border-line">
@@ -80,9 +80,9 @@ function ResponderTable(): ReactNode {
     <table className="w-full table-fixed border-collapse text-start">
       <caption className="sr-only">The Defensys Responder brands and their status</caption>
       <colgroup>
-        <col className="w-[46%]" />
+        <col className="w-[40%]" />
         <col />
-        <col className="w-24" />
+        <col className="w-[5.5rem]" />
       </colgroup>
       <thead>
         <tr className="border-b border-line">

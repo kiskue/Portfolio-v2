@@ -22,6 +22,17 @@ html:has([data-case-study]) {
 }
 
 @layer components {
+  /*
+   * Sections below the hero skip style, layout and paint until they come near the viewport: a
+   * case study server-renders about twenty phones, and most of them start off screen. The content
+   * stays in the DOM, the accessibility tree and find-in-page; `auto` remembers each section's
+   * real height once it has rendered.
+   */
+  [data-cs-section] {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 75rem;
+  }
+
   /* ─── FlowDiagram (flow-diagram.tsx) ──────────────────────────────────────────────── */
 
   /* Stacked: lanes in one column, each connector a row with a down arrow beside its label. */

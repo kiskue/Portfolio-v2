@@ -69,7 +69,8 @@ export function ListingLines({ facts, className }: { readonly facts: BrandStoreF
     <ul className={cn('flex flex-col gap-1', className)}>
       {facts.listings.map((entry) => (
         <li key={entry.listing.id} className="flex flex-wrap items-baseline gap-x-2 text-body-sm">
-          <StoreLink listing={entry.listing} />
+          {/* "Google Play ↗" never splits; the figures wrap to their own line when there is no room. */}
+          <StoreLink listing={entry.listing} className="whitespace-nowrap" />
           <ListingFactsText facts={entry} />
         </li>
       ))}
