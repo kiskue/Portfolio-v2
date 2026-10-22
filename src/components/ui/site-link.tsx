@@ -41,7 +41,8 @@ function defaultPrefetch(href: SiteRoute): LinkPrefetch | undefined {
  * Components alike. External URLs use ExternalLink instead.
  */
 export function SiteLink({ href, prefetch, transitionTypes, ...rest }: SiteLinkProps) {
-  const mode = resolvePrefetch(href, prefetch ?? defaultPrefetch(href));
+  // An explicit value always wins, null (Next's default) included.
+  const mode = resolvePrefetch(href, prefetch === undefined ? defaultPrefetch(href) : prefetch);
   const types = transitionTypes ? [...transitionTypes] : undefined;
   if (mode === 'intent') return <IntentLink href={href} transitionTypes={types} {...rest} />;
   return <Link href={href} prefetch={mode} transitionTypes={types} {...rest} />;
