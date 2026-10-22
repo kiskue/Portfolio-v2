@@ -260,9 +260,34 @@ test.describe('with JavaScript', () => {
 test.describe('accessibility (axe, WCAG 2.2 AA)', () => {
   const TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
+  /**
+   * Waits for the page to stop scrolling. Moving focus scrolls smoothly unless motion is reduced,
+   * and mid-scroll a link can pass under the sticky top bar, which axe reports as an obscured
+   * target. Scans run on the settled page.
+   */
+  async function scrollSettled(page: Page): Promise<void> {
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              new Promise<boolean>((resolve) => {
+                const before = window.scrollY;
+                setTimeout(() => resolve(window.scrollY === before), 150);
+              }),
+          ),
+        { message: 'the page stops scrolling' },
+      )
+      .toBe(true);
+  }
+
   async function violations(page: Page): Promise<string[]> {
+    await scrollSettled(page);
     const { violations: found } = await new AxeBuilder({ page }).withTags(TAGS).include('main').analyze();
-    return found.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`);
+    return found.map(
+      (violation) =>
+        `${violation.id}: ${violation.nodes.map((node) => `${node.target.join(' ')} (${node.failureSummary?.replace(/\s+/g, ' ')})`).join(' | ')}`,
+    );
   }
 
   for (const theme of ['light', 'dark'] as const) {
