@@ -13,12 +13,12 @@ export type IntentLinkProps = Omit<ComponentProps<'a'>, 'href'> & {
 
 /**
  * A next/link that prefetches only once the user shows intent (first hover, keyboard focus or
- * touch), for heavy routes such as the case studies and the Showcase wall.
+ * touch), for Home and the heavy routes: the case studies and the Showcase wall.
  *
  * It starts with `prefetch={false}` (no viewport prefetch) and switches to `null` (Next's
  * default) on intent. The switch re-mounts Next's link instance, and its IntersectionObserver
  * prefetches the (visible) link straight away. Prefetching only runs in production builds.
- * Use it through SiteLink / ButtonLink, which pick it for heavy routes automatically.
+ * Use it through SiteLink / ButtonLink, which pick it for these routes automatically.
  */
 export function IntentLink({ onMouseEnter, onFocus, onTouchStart, ...props }: IntentLinkProps) {
   const [armed, setArmed] = useState(false);
