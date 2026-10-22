@@ -18,8 +18,9 @@ const css = readFileSync(fileURLToPath(new URL('../../src/components/sections/ho
 describe('ToolsStrip markup', () => {
   it('is a section named by its h2 under the Daily drivers eyebrow, with the selectors QA relies on', () => {
     expect(html).toMatch(/^<section aria-labelledby="tools-title" class="ts" data-section="tools">/);
-    expect(html).toContain(`<p class="text-eyebrow text-accent-ink uppercase">${home.tools.eyebrow}</p>`);
-    expect(html).toContain(`<h2 id="tools-title" class="text-card-title text-ink">${home.tools.title}</h2>`);
+    // The one heading block (SectionHeader, reuse rule 5) at card size.
+    expect(html).toMatch(new RegExp(`<p class="[^"]*text-eyebrow text-accent-ink uppercase">${home.tools.eyebrow}</p>`));
+    expect(html).toMatch(new RegExp(`<h2 id="tools-title" class="[^"]*text-card-title[^"]*">${home.tools.title}</h2>`));
     expect(html.match(/data-marquee=""/g)).toHaveLength(1);
   });
 

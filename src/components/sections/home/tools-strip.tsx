@@ -2,6 +2,7 @@ import './tools-strip.css';
 import type { ReactNode } from 'react';
 import { BrandGlyph } from '@/components/ui/brand-glyph';
 import { Icon } from '@/components/ui/icon';
+import { SectionHeader } from '@/components/ui/section-header';
 import { home } from '@/content/home';
 import { site } from '@/content/site';
 import { tools } from '@/content/tools';
@@ -27,14 +28,7 @@ export function ToolsStrip({ className, mode = site.placeholders }: ToolsStripPr
     <MarqueeRoot
       titleId={titleId}
       className={className}
-      head={
-        <>
-          <p className="text-eyebrow text-accent-ink uppercase">{home.tools.eyebrow}</p>
-          <h2 id={titleId} className="text-card-title text-ink">
-            {home.tools.title}
-          </h2>
-        </>
-      }
+      head={<SectionHeader as="h2" size="card" title={home.tools.title} eyebrow={home.tools.eyebrow} id={titleId} />}
       items={shown.map((tool) => (
         <li key={tool.id} className="ts-item">
           <BrandGlyph glyph={tool.glyph} size={18} />
