@@ -51,7 +51,13 @@ export function FilterBar({ apps, scopes, className }: FilterBarProps): ReactNod
   ];
 
   return (
-    <Card as="section" aria-label="Filter the screens" className={className} data-showcase-filters="">
+    <Card
+      as="section"
+      aria-label="Filter the screens"
+      className={className}
+      data-showcase-filters=""
+      data-ready={view.ready ? '' : undefined}
+    >
       <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
         <div id={view.appFieldId}>
           <SegmentedControl

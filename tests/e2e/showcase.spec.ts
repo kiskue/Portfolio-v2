@@ -17,12 +17,9 @@ test.describe.configure({ mode: 'default' });
 
 const TOTAL = 56;
 
-/** Waits until React has hydrated the filters (its fiber is on the radios). */
+/** Waits until the filters follow the URL (the provider marks them data-ready once its reader runs). */
 async function hydrated(page: Page): Promise<void> {
-  await page.waitForFunction(() => {
-    const input = document.querySelector('#showcase-app-filter input');
-    return !!input && Object.keys(input).some((key) => key.startsWith('__reactFiber'));
-  });
+  await page.locator('[data-showcase-filters][data-ready]').waitFor();
 }
 
 async function open(page: Page, path = '/showcase'): Promise<void> {
