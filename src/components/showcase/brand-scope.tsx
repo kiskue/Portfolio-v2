@@ -193,7 +193,7 @@ function BrandMark({ option }: { readonly option: BrandOption }): ReactNode {
   return (
     <span
       aria-hidden="true"
-      className="inline-grid size-6 shrink-0 place-items-center rounded-[6px] border border-line bg-sunken text-[0.75rem] leading-none font-bold text-ink"
+      className="inline-grid size-6 shrink-0 place-items-center rounded-[6px] border border-line bg-sunken text-[0.75rem] leading-none font-bold text-ink forced-colors:forced-color-adjust-auto"
     >
       {option.monogram ?? option.name.slice(0, 2).toUpperCase()}
     </span>

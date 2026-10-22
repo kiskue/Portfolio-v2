@@ -139,7 +139,7 @@ export function SegmentedDemo({ id }: { readonly id: string }) {
     {
       value: 'two',
       label: 'Another Sample Brand',
-      media: <StatusDot status="building" />,
+      media: <StatusDot status="building" className="forced-colors:text-inherit" />,
     },
   ];
 
