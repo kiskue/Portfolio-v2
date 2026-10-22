@@ -104,15 +104,16 @@ test.describe('Open Graph cards', () => {
     expect((await request.get('/projects/nope/opengraph-image')).status()).toBe(404);
   });
 
-  test('every page’s og:image and twitter:image resolve to a card', async ({ request }) => {
+  test('every page’s og:image and twitter:image load, and case studies show their own card', async ({ request }) => {
     for (const route of ROUTES) {
       const head = headOf(await html(request, route));
       for (const [attribute, key] of [['property', 'og:image'], ['name', 'twitter:image']] as const) {
         const content = metaContent(head, attribute, key);
         expect(content, `${route} ${key}`).not.toBeNull();
         const url = new URL(content ?? '');
-        expect(OG_IMAGES, `${route} ${key}`).toContain(url.pathname);
+        if (route.startsWith('/projects/')) expect(url.pathname, `${route} ${key}`).toBe(`${route}/opengraph-image`);
         const image = await request.get(`${url.pathname}${url.search}`);
+        expect(image.status(), `${route} ${key}`).toBe(200);
         expect(image.headers()['content-type'], `${route} ${key}`).toBe('image/png');
       }
     }
