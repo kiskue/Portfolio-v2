@@ -1,7 +1,9 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type ConsoleMessage, type Locator, type Page } from '@playwright/test';
 import { profile } from '@/content/profile';
 import { CONTACT_TOPIC_LABELS, MIN_FILL_MS } from '@/lib/contact/fields';
 import { CONTACT_ERRORS } from '@/lib/contact/schema';
+import { DISPLAY_KEY } from '@/lib/display-settings';
 
 /*
  * /contact (PLAN → Contact and Verification: "without JS, errors and success both work, and the
@@ -227,6 +229,17 @@ test.describe('with JavaScript', () => {
     for (const radio of await radios.all()) await expect(radio).not.toBeChecked();
   });
 
+  test('the topic radios are one group: arrow keys move the choice', async ({ page }) => {
+    await page.goto('/contact?topic=project');
+    await hydrated(page);
+    const project = form(page).getByRole('radio', { name: CONTACT_TOPIC_LABELS.project });
+    await expect(project).toBeChecked();
+    await project.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(form(page).getByRole('radio', { name: CONTACT_TOPIC_LABELS.testimonial })).toBeChecked();
+    await expect(form(page).getByRole('radio', { name: CONTACT_TOPIC_LABELS.testimonial })).toBeFocused();
+  });
+
   test('the preset topic is sent with the message', async ({ page }) => {
     await page.goto('/contact?topic=hiring');
     await hydrated(page);
@@ -238,4 +251,54 @@ test.describe('with JavaScript', () => {
     await expect(summary(page).getByRole('link')).toHaveText([CONTACT_ERRORS.nameMissing]);
     await expect(form(page).getByRole('radio', { name: CONTACT_TOPIC_LABELS.hiring })).toBeChecked();
   });
+});
+
+/*
+ * axe on the page's own content in each state the form can be in (the shell has its own axe
+ * test in shell.spec.ts, and W13's suite covers every route at rest).
+ */
+test.describe('accessibility (axe, WCAG 2.2 AA)', () => {
+  const TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+
+  async function violations(page: Page): Promise<string[]> {
+    const { violations: found } = await new AxeBuilder({ page }).withTags(TAGS).include('main').analyze();
+    return found.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`);
+  }
+
+  for (const theme of ['light', 'dark'] as const) {
+    test(`idle, errors, rejected and sent states have no violations in ${theme}`, async ({ page }) => {
+      await page.addInitScript(
+        ({ key, value }) => {
+          try {
+            localStorage.setItem(key, value);
+          } catch {
+            // The page must work without storage.
+          }
+        },
+        { key: DISPLAY_KEY, value: JSON.stringify({ theme }) },
+      );
+      await page.goto('/contact');
+      await hydrated(page);
+      if (theme === 'dark') await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+      else await expect(page.locator('html')).not.toHaveClass(/\bdark\b/);
+      expect(await violations(page), 'at rest').toEqual([]);
+
+      await page.getByRole('region', { name: 'FAQs' }).locator('summary').first().click();
+      await send(page);
+      await expect(summary(page)).toBeFocused();
+      expect(await violations(page), 'errors and an open FAQ').toEqual([]);
+
+      await fill(page, VALID);
+      await fillHoneypot(page);
+      await fillTimeElapsed(page);
+      await send(page);
+      await expect(alert(page)).toBeFocused();
+      expect(await violations(page), 'rejected').toEqual([]);
+
+      await page.locator('input[name="website"]').fill('', { force: true });
+      await send(page);
+      await expect(thanks(page)).toBeFocused();
+      expect(await violations(page), 'sent').toEqual([]);
+    });
+  }
 });

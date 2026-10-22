@@ -95,7 +95,6 @@ export function TextField({
           {hint}
         </p>
       ) : null}
-      {error && errorId ? <FieldError id={errorId} message={error} /> : null}
       {multiline ? (
         <textarea {...shared} rows={6} className={cn(controlClass, 'min-h-36 resize-y py-2.5')} />
       ) : (
@@ -107,6 +106,8 @@ export function TextField({
           className={cn(controlClass, 'h-11')}
         />
       )}
+      {/* Below the control, so side-by-side fields stay aligned however long a message runs. */}
+      {error && errorId ? <FieldError id={errorId} message={error} /> : null}
     </div>
   );
 }
