@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import { padding, px, rStyle } from './tokens';
 import type { RBoxProps, RColor, RPad } from './types';
 
@@ -124,7 +124,7 @@ export function RToast({ text, icon, iconColor, top, className, style }: RToastP
     <div className={cn('rx-toast', className)} style={rStyle({}, { top: top === undefined ? undefined : px(top), ...style })}>
       {icon ? (
         <span className="rx-toast__icon" style={rStyle({}, { color: iconColor })}>
-          <RGlyph icon={icon} size={24} />
+          <KitGlyph icon={icon} size={24} />
         </span>
       ) : null}
       <span>{text}</span>

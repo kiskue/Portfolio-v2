@@ -1,7 +1,7 @@
 import { ChevronDown, CircleAlert, Minus, Plus, Search, Trash2, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import { px, rStyle } from './tokens';
 import type { RBoxProps, RColor } from './types';
 
@@ -64,7 +64,7 @@ export function RField({
       <span className="rx-field__box" style={rStyle({}, { minHeight: minHeight === undefined ? undefined : px(minHeight) })}>
         {icon ? (
           <span className="rx-field__icon">
-            <RGlyph icon={icon} size={20} />
+            <KitGlyph icon={icon} size={20} />
           </span>
         ) : null}
         <span className="rx-field__value" data-placeholder={value === undefined ? '' : undefined}>
@@ -72,13 +72,13 @@ export function RField({
         </span>
         {kind === 'select' ? (
           <span className="rx-field__chev">
-            <RGlyph icon={ChevronDown} size={22} />
+            <KitGlyph icon={ChevronDown} size={22} />
           </span>
         ) : null}
       </span>
       {error ? (
         <span className="rx-field__error">
-          <RGlyph icon={CircleAlert} size={16} />
+          <KitGlyph icon={CircleAlert} size={16} />
           {error}
         </span>
       ) : null}
@@ -116,7 +116,7 @@ export function RSearchField({ placeholder, value, h, radius, bg, border, iconSi
         },
       )}
     >
-      <RGlyph icon={Search} size={iconSize} />
+      <KitGlyph icon={Search} size={iconSize} />
       <span className="rx-search__text" data-value={value === undefined ? undefined : ''}>
         {value ?? placeholder}
       </span>
@@ -145,11 +145,11 @@ export function RStepper({ value, color, size, look = 'pill', trashAtOne, classN
       style={rStyle({ '--rx-stepper-c': color, '--rx-stepper-size': size === undefined ? undefined : px(size) }, style)}
     >
       <span className="rx-stepper__btn">
-        {trashAtOne && value <= 1 ? <RGlyph icon={Trash2} size={glyph} /> : <RGlyph icon={Minus} size={glyph} strokeWidth={2.5} />}
+        {trashAtOne && value <= 1 ? <KitGlyph icon={Trash2} size={glyph} /> : <KitGlyph icon={Minus} size={glyph} strokeWidth={2.5} />}
       </span>
       <span className="rx-stepper__value">{value}</span>
       <span className="rx-stepper__btn" data-solid="">
-        <RGlyph icon={Plus} size={glyph} strokeWidth={2.5} />
+        <KitGlyph icon={Plus} size={glyph} strokeWidth={2.5} />
       </span>
     </div>
   );

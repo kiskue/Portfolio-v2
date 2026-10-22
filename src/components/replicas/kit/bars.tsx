@@ -2,7 +2,7 @@ import { Bell, ChevronLeft, Menu, ShieldCheck, X, type LucideIcon } from 'lucide
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { RCountBadge } from './controls';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import { px, rStyle } from './tokens';
 import type { RBoxProps, RColor } from './types';
 
@@ -50,7 +50,7 @@ function DefaultMark({ look }: { readonly look: RAppBarProps['look'] }): ReactNo
   }
   return (
     <span className="rx-appbar__logo">
-      <RGlyph icon={ShieldCheck} size={18} />
+      <KitGlyph icon={ShieldCheck} size={18} />
     </span>
   );
 }
@@ -93,7 +93,7 @@ export function RAppBar({
       )}
     >
       <div className="rx-appbar__row">
-        <span className="rx-appbar__lead">{LeadingIcon ? <RGlyph icon={LeadingIcon} size={leading === 'back' ? 26 : 24} /> : null}</span>
+        <span className="rx-appbar__lead">{LeadingIcon ? <KitGlyph icon={LeadingIcon} size={leading === 'back' ? 26 : 24} /> : null}</span>
         <span className="rx-appbar__titles">
           {centredMark ? mark : null}
           {!centredMark && title ? <span className="rx-appbar__title">{title}</span> : null}
@@ -103,7 +103,7 @@ export function RAppBar({
           {trailing}
           {badge === undefined ? null : (
             <span className="rx-appbar__bell">
-              <RGlyph icon={Bell} size={24} />
+              <KitGlyph icon={Bell} size={24} />
               <RCountBadge count={badge} ring={look === 'sme' ? '#1e4d8c' : undefined} />
             </span>
           )}
@@ -148,7 +148,7 @@ export function RTabBar({ look, items, center, bottom, className, style }: RTabB
         data-on={item.active ? '' : undefined}
         style={rStyle({ '--rx-tab-c': item.color })}
       >
-        <RGlyph icon={item.icon} size={iconSize} />
+        <KitGlyph icon={item.icon} size={iconSize} />
         <span className="rx-tabbar__label">{item.label}</span>
       </span>
     );

@@ -1,7 +1,7 @@
 import { Check, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import { RRipple, RSpinner, type RRippleProps } from './motion';
 import { px, rStyle } from './tokens';
 import type { RBoxProps, RColor } from './types';
@@ -63,9 +63,9 @@ export function RButton({
     state === 'loading' ? (
       <RSpinner size={iconSize - 2} />
     ) : state === 'success' ? (
-      <RGlyph icon={Check} size={iconSize} strokeWidth={2.5} />
+      <KitGlyph icon={Check} size={iconSize} strokeWidth={2.5} />
     ) : icon ? (
-      <RGlyph icon={icon} size={iconSize} />
+      <KitGlyph icon={icon} size={iconSize} />
     ) : null;
   return (
     <div
@@ -86,13 +86,14 @@ export function RButton({
       )}
     >
       {glyph}
+      {/* A lone label is a bare text node: the button is a flex box, so it lays out as a span would. */}
       {sublabel ? (
         <span className="rx-btn__text">
           <span>{label}</span>
           <span className="rx-btn__sub">{sublabel}</span>
         </span>
       ) : (
-        <span>{label}</span>
+        label
       )}
     </div>
   );
@@ -135,7 +136,7 @@ export function RGlassButton({
     >
       <span className="rx-gbtn__circle">
         {ripple ? <RRipple size={size} {...ripple} /> : null}
-        <RGlyph icon={icon} size={iconSize ?? Math.round(size * 0.42)} />
+        <KitGlyph icon={icon} size={iconSize ?? Math.round(size * 0.42)} />
       </span>
       {caption ? <span className="rx-gbtn__caption">{caption}</span> : null}
     </div>
@@ -204,8 +205,8 @@ export function RPill({
       )}
     >
       {dot ? <span className="rx-pill__dot" data-pulse={dot === 'pulse' ? '' : undefined} /> : null}
-      {icon ? <RGlyph icon={icon} size={glyphSize} /> : null}
-      <span>{label}</span>
+      {icon ? <KitGlyph icon={icon} size={glyphSize} /> : null}
+      {label}
     </span>
   );
 }
@@ -256,7 +257,7 @@ export function RIconChip({
         },
       )}
     >
-      <RGlyph icon={icon} size={iconSize ?? Math.round(size * 0.57)} />
+      <KitGlyph icon={icon} size={iconSize ?? Math.round(size * 0.57)} />
     </span>
   );
 }

@@ -2,7 +2,7 @@ import { ChevronRight, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { RIconChip } from './controls';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import { padding, px, rStyle } from './tokens';
 import type { RBoxProps, RColor, RPad } from './types';
 
@@ -100,7 +100,7 @@ export function RListRow({ leading, title, subtitle, meta, trailing, gap, pad, c
         {meta ? <span className="rx-row__meta">{meta}</span> : null}
       </span>
       {trailing === undefined || trailing === null ? null : (
-        <span className="rx-row__trail">{trailing === 'chevron' ? <RGlyph icon={ChevronRight} size={16} /> : trailing}</span>
+        <span className="rx-row__trail">{trailing === 'chevron' ? <KitGlyph icon={ChevronRight} size={16} /> : trailing}</span>
       )}
     </div>
   );

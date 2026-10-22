@@ -117,15 +117,18 @@
     color: var(--c-ink);
   }
 
-  .gl-dot__mark {
+  /* The mark is the button's ::before, centred by the grid (one element per dot). */
+  .gl-dot::before {
+    content: "";
     width: 8px;
     height: 8px;
+    box-sizing: border-box;
     border: 1.5px solid currentColor;
     border-radius: 9999px;
     transition: width var(--dur-2) var(--ease-out);
   }
 
-  .gl-dot[aria-current="step"] .gl-dot__mark {
+  .gl-dot[aria-current="step"]::before {
     width: 16px;
     background: currentColor;
   }
@@ -146,7 +149,9 @@
     background: color-mix(in srgb, currentColor 25%, transparent);
   }
 
-  .gl-bars__fill {
+  /* The fill is the bar's ::before (one element per bar). */
+  .gl-bars__bar::before {
+    content: "";
     position: absolute;
     inset: 0;
     background: currentColor;
@@ -154,16 +159,16 @@
     scale: 0 1;
   }
 
-  .gl-bars__bar[data-position="done"] .gl-bars__fill {
+  .gl-bars__bar[data-position="done"]::before {
     scale: 1 1;
   }
 
-  .gl-bars__bar[data-position="current"] .gl-bars__fill {
+  .gl-bars__bar[data-position="current"]::before {
     animation: gl-fill var(--gl-hold) linear forwards;
     animation-play-state: paused;
   }
 
-  .gl[data-status="playing"] .gl-bars__bar[data-position="current"] .gl-bars__fill {
+  .gl[data-status="playing"] .gl-bars__bar[data-position="current"]::before {
     animation-play-state: running;
   }
 

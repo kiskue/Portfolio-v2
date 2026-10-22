@@ -2,7 +2,7 @@ import { CircleAlert, Languages, Play, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { RPill } from './controls';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import { px, rStyle } from './tokens';
 import type { RBoxProps, RColor } from './types';
 
@@ -134,7 +134,7 @@ export function RBubble({
         {voice ? (
           <span className="rx-voice">
             <span className="rx-voice__play">
-              <RGlyph icon={Play} size={18} fill="currentColor" />
+              <KitGlyph icon={Play} size={18} fill="currentColor" />
             </span>
             <RWaveform seed={voice.seed ?? Math.round(voice.seconds * 97)} played={playedShare} />
             <span className="rx-voice__time">{clock(voice.seconds)}</span>
@@ -142,7 +142,7 @@ export function RBubble({
         ) : null}
         {icon ? (
           <span className="rx-bubble__status">
-            <RGlyph icon={icon} size={16} />
+            <KitGlyph icon={icon} size={16} />
             <span>{children}</span>
           </span>
         ) : (
@@ -151,7 +151,7 @@ export function RBubble({
         {transcript ? <span>{transcript}</span> : null}
         {lang ? (
           <span className="rx-bubble__lang">
-            <RGlyph icon={Languages} size={12} />
+            <KitGlyph icon={Languages} size={12} />
             {lang}
           </span>
         ) : null}

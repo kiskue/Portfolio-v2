@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import { px, rStyle } from './tokens';
 import type { RBoxProps, RColor } from './types';
 
@@ -106,7 +106,7 @@ export function RVTimeline({ steps, colors, className, style }: RVTimelineProps)
         <div key={`${index}-${step.label}`} className="rx-tl__step" data-state={step.state}>
           <span className="rx-tl__rail">
             <span className="rx-tl__dot">
-              {step.state === 'done' ? <RGlyph icon={Check} size={13} strokeWidth={3} /> : null}
+              {step.state === 'done' ? <KitGlyph icon={Check} size={13} strokeWidth={3} /> : null}
               {step.state === 'active' ? <span className="rx-tl__core" /> : null}
             </span>
             {index < steps.length - 1 ? <span className="rx-tl__line" /> : null}

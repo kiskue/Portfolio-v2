@@ -1,8 +1,8 @@
 import './map.css';
 import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { boundsOf, fmt, growRect, type MapPoint, type MapRect, negate, pathData, samplePolyline, slicePolyline } from './map-geometry';
-import { type MapCull, type MapDetail, type MapGlideVars, MapPlaceLabels, MapRouteLayer, MapTownLayer } from './map-layers';
+import { boundsOf, fmt, growRect, type MapPoint, type MapRect, negate, overlapsAny, pathData, samplePolyline, slicePolyline } from './map-geometry';
+import { type MapCull, type MapDetail, type MapGlideVars, MapPlaceLabels, MapRouteLayer, type MapShows, MapTownLayer } from './map-layers';
 import { MAP_PUCK_BOX, MapPinMark, MapPuckArt } from './map-markers';
 import {
   MAP_SCENES,
@@ -183,6 +183,64 @@ function mapCull({ view, zoom, boxHeight, tilt, follow, cameras }: CullInput): M
   };
 }
 
+/** Room around the box that still counts as showing (a sliver of a name's halo at the edge). */
+const SHOW_MARGIN = 4;
+
+/** map.css: the tilted map's perspective origin (50% 30% of the box) and where its fog is opaque. */
+const TILT_ORIGIN_Y = 0.3;
+const TILT_FOG_OPAQUE = 780;
+
+/**
+ * Whether a town box shows on a tilted map whose camera point `at` sits at `anchor` in the box:
+ * its corners projected like the CSS (rotateX about the camera, perspective from 50% 30%) land in
+ * the box, and it is not wholly beyond the fog. Behind the eye counts as showing (never happens
+ * in the scenes; generous by design).
+ */
+function tiltShows(rect: MapRect, at: MapPoint, anchor: MapPoint, height: number, zoom: number): boolean {
+  if ((rect.y1 - at.y) * zoom < -TILT_FOG_OPAQUE) return false;
+  const angle = (MAP_TILT.angle * Math.PI) / 180;
+  const depth = MAP_TILT.perspective;
+  const origin = { x: R_CANVAS.width / 2, y: height * TILT_ORIGIN_Y };
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const x of [rect.x0, rect.x1]) {
+    for (const y of [rect.y0, rect.y1]) {
+      const dx = (x - at.x) * zoom;
+      const dy = (y - at.y) * zoom;
+      const z = dy * Math.sin(angle);
+      if (z >= depth - 1) return true;
+      const scale = depth / (depth - z);
+      xs.push(origin.x + (anchor.x + dx - origin.x) * scale);
+      ys.push(origin.y + (anchor.y + dy * Math.cos(angle) - origin.y) * scale);
+    }
+  }
+  return (
+    Math.max(...xs) > -SHOW_MARGIN &&
+    Math.min(...xs) < R_CANVAS.width + SHOW_MARGIN &&
+    Math.max(...ys) > -SHOW_MARGIN &&
+    Math.min(...ys) < height + SHOW_MARGIN
+  );
+}
+
+/**
+ * Where names and points of interest show: the box around the camera (the view centre, or each
+ * point of a follow camera's drive) after zoom, or, tilted, the projected ground and its fog.
+ * Like the cull, it assumes the widest box, the 390 px canvas, so a narrower map keeps a little
+ * more than it shows and never less.
+ */
+function mapShows({ view, zoom, boxHeight, tilt, follow, cameras }: CullInput): MapShows {
+  const anchor = { x: R_CANVAS.width * (follow ? follow.x : 0.5), y: boxHeight * (follow ? follow.y : 0.5) };
+  const points: readonly MapPoint[] = follow && cameras.length > 0 ? cameras : [{ x: view.cx, y: view.cy }];
+  if (tilt) return (rect) => points.some((at) => tiltShows(rect, at, anchor, boxHeight, zoom));
+  const windows = points.map((at) => ({
+    x0: at.x - (anchor.x + SHOW_MARGIN) / zoom,
+    y0: at.y - (anchor.y + SHOW_MARGIN) / zoom,
+    x1: at.x + (R_CANVAS.width - anchor.x + SHOW_MARGIN) / zoom,
+    y1: at.y + (boxHeight - anchor.y + SHOW_MARGIN) / zoom,
+  }));
+  return (rect) => overlapsAny(rect, windows);
+}
+
 /** The props, falling back to the scene's layers. */
 function resolveLayers(props: RMapCanvasProps): MapSceneLayers & { readonly pins: readonly MapPin[] } {
   const scene = props.scene ? MAP_SCENES[props.scene] : undefined;
@@ -223,14 +281,16 @@ export function RMapCanvas(props: RMapCanvasProps): ReactNode {
 
   const ats = plan?.stops.map((stop) => stop.at) ?? [];
   const drive = routePoints && ats.length > 0 ? samplePolyline(slicePolyline(routePoints, Math.min(...ats), Math.max(...ats)), 110) : [];
-  const cull = mapCull({
+  const cullInput: CullInput = {
     view,
     zoom,
     boxHeight: height === 'full' ? R_CANVAS.height : height,
     tilt: tilt === true,
     follow,
     cameras: puck ? [puck, ...drive] : [],
-  });
+  };
+  const cull = mapCull(cullInput);
+  const shows = mapShows(cullInput);
 
   // One glide timing drives the puck, a trimmed route and the follow camera.
   const glide = plan && routePoints ? { segments: plan.segments, vars: glideTiming(plan) } : undefined;
@@ -269,7 +329,7 @@ export function RMapCanvas(props: RMapCanvasProps): ReactNode {
       >
         <div className="rx-map__world" data-glide={follow && glide ? String(glide.segments) : undefined} style={worldStyle}>
           <MapTownLayer cull={cull} detail={detail} traffic={traffic === true} />
-          <MapPlaceLabels cull={cull} detail={detail} unzoom={unzoom} />
+          <MapPlaceLabels cull={cull} detail={detail} unzoom={unzoom} shows={shows} />
           {route && routePoints ? <MapRouteLayer route={route} points={routePoints} trimFrom={trimFrom} glide={glide} /> : null}
           {orderedPins.map((pin, index) => (
             <MapPinMark

@@ -11,6 +11,7 @@ import {
   GlimpseFrame,
   GlimpsePicker,
   GlimpseRoot,
+  GlimpseSkinName,
   GlimpseTrack,
 } from '@/components/showcase/glimpse.client';
 import { PHONE_SIZES, type PhoneSize } from '@/components/showcase/phone-frame';
@@ -20,11 +21,13 @@ import { Chip } from '@/components/ui/chip';
 import { Copy, MetaLine } from '@/components/ui/copy';
 import { Icon } from '@/components/ui/icon';
 import { SiteLink } from '@/components/ui/site-link';
+import { site } from '@/content/site';
 import { appById, brandById, getFigure, glimpseById } from '@/content/derived';
-import type { AppInfo, Glimpse as GlimpseData, GlimpseId, GlimpseStep } from '@/content/types';
+import type { AppInfo, Glimpse as GlimpseData, GlimpseId, GlimpseStep, Segments } from '@/content/types';
 import { brandVars } from '@/lib/brand-vars';
 import { cn } from '@/lib/cn';
 import { glimpsePlaylist, GLIMPSE_ROTATIONS, stepStates } from '@/lib/glimpse';
+import { hasToken, isPlaceholder, placeholderText, segments } from '@/lib/placeholder';
 import { caseStudyHref } from '@/lib/routes';
 
 /**
@@ -42,6 +45,7 @@ export const Glimpse = {
   Caption: GlimpseCaption,
   CaptionItem: GlimpseCaptionItem,
   BrandName: GlimpseBrandName,
+  SkinName: GlimpseSkinName,
   Current: GlimpseCurrent,
   Column: GlimpseColumn,
   Picker: GlimpsePicker,
@@ -98,6 +102,19 @@ function playerLabel(glimpses: readonly GlimpseData[], apps: readonly AppInfo[])
   const names = apps.map((app) => app.name);
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names.join('');
   return `Previews of ${list}. Fictional data.`;
+}
+
+/**
+ * A stage label as the words a MetaLine gives a screen reader ("SME Panindio, Personal, private
+ * beta": its " · " separators are aria-hidden and its sr-only ones read ", "; a placeholder mark
+ * reads "<text> (placeholder)"), as one text node for the link's aria-labelledby target instead
+ * of a MetaLine's span per separator. Null when a segment embeds a token mid-text (content tests
+ * forbid it): MetaLine then renders it.
+ */
+export function spokenLabel(stageLabel: Segments): string | null {
+  const shown = segments(stageLabel, site.placeholders);
+  if (shown.some((field) => !isPlaceholder(field) && hasToken(field))) return null;
+  return shown.map((field) => (isPlaceholder(field) ? `${placeholderText(field)} (placeholder)` : field)).join(', ');
 }
 
 /** The FIG line for a step: "FIG 2.3" in mono, its caption, and an honest rollout note. */
@@ -168,25 +185,24 @@ export function GlimpsePlayer({ glimpses: ids, layout, size, morph = true, rotat
         ) : null}
 
         <div className="gl-head">
+          {/* One label line per app and one FIG line per step (not a label copy in every step's
+              caption): the caption is aria-atomic, so what it announces is unchanged. */}
           <GlimpseCaption className="gl-caption text-meta text-ink-3" id={`${prefix}-caption`}>
+            {linked
+              ? apps.map((app, track) => (
+                  <GlimpseCurrent key={`label-${app.id}`} track={track} as="span" className="font-semibold text-ink-2">
+                    <MetaLine as="span" segments={app.stageLabel} />
+                    <span className="sr-only">. </span>
+                  </GlimpseCurrent>
+                ))
+              : null}
             {glimpses.map((glimpse, track) =>
               glimpse.steps.map((step, index) => (
                 <GlimpseCaptionItem key={`${track}-${index}`} track={track} step={index}>
-                  {linked ? (
-                    <>
-                      <MetaLine as="span" segments={apps[track]?.stageLabel ?? []} className="block font-semibold text-ink-2" />
-                      <span className="sr-only">. </span>
-                    </>
-                  ) : null}
                   <StepCaption step={step} />
-                  {glimpse.brandRotation && glimpse.brandRotation.length > 1
-                    ? glimpse.brandRotation.map((brand, skin, all) => (
-                        <GlimpseBrandName key={brand} track={track} index={skin} count={all.length}>
-                          {' · '}
-                          {brandById(brand).name}
-                        </GlimpseBrandName>
-                      ))
-                    : null}
+                  {glimpse.brandRotation && glimpse.brandRotation.length > 1 ? (
+                    <GlimpseSkinName track={track} names={glimpse.brandRotation.map((brand) => brandById(brand).name)} />
+                  ) : null}
                 </GlimpseCaptionItem>
               )),
             )}
@@ -243,7 +259,7 @@ export function GlimpsePlayer({ glimpses: ids, layout, size, morph = true, rotat
                         <Chip size="sm" className="gl-chip">
                           <span aria-hidden="true">{app.short}</span>
                           <span className="sr-only" id={chipId}>
-                            <MetaLine as="span" segments={app.stageLabel} />
+                            {spokenLabel(app.stageLabel) ?? <MetaLine as="span" segments={app.stageLabel} />}
                           </span>
                           <GlimpseDots look="bars" track={track} />
                         </Chip>

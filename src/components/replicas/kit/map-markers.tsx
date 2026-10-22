@@ -1,6 +1,6 @@
 import { House, type LucideIcon, Store, TriangleAlert } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
-import { RGlyph } from './glyph';
+import { KitGlyph } from './kit-glyph';
 import type { MapLabelSide, MapPin, MapPinKind, MapPinLook, RMapPuck } from './map-scenes';
 
 /*
@@ -146,7 +146,7 @@ export function MapPinMark({ pin, side, transform }: MapPinMarkProps): ReactNode
         {pulse ? <span className="rx-map-pin__pulse" /> : null}
         <PinArt look={look} icon={icon} />
         {icon && look !== 'dot' ? (
-          <RGlyph icon={icon} size={look === 'pin' ? 13 : 18} strokeWidth={2.4} color="#ffffff" className="rx-map-pin__glyph" />
+          <KitGlyph icon={icon} size={look === 'pin' ? 13 : 18} strokeWidth={2.4} color="#ffffff" className="rx-map-pin__glyph" />
         ) : null}
         {pin.label ? (
           <span className="rx-map-pin__label" data-side={side}>
