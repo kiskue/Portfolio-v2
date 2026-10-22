@@ -37,6 +37,17 @@ export interface BrandPreviewButtonProps {
   readonly name: string;
 }
 
+/*
+ * Forced colours turn the pressed button's ink fill into Canvas and outline the other buttons, so
+ * the pressed one would read as the weaker. It takes a checked SegmentedControl option's treatment
+ * instead: a Highlight fill and border with HighlightText, opted out of forcing (a forced Canvas
+ * backplate would hide its HighlightText), with no shadow and a system-colour focus ring (CanvasText).
+ */
+const PRESSED_IN_FORCED_COLOURS = [
+  'forced-colors:aria-pressed:forced-color-adjust-none forced-colors:aria-pressed:border-[Highlight] forced-colors:aria-pressed:bg-[Highlight] forced-colors:aria-pressed:text-[HighlightText]',
+  'forced-colors:aria-pressed:[box-shadow:none] forced-colors:aria-pressed:outline-[CanvasText]',
+].join(' ');
+
 /** The #brands table's "Preview" button: it selects the brand for every phone in the scope. */
 export function BrandPreviewButton({ brand, name }: BrandPreviewButtonProps): ReactNode {
   const { brand: selected, setBrand } = useBrand();
@@ -46,7 +57,7 @@ export function BrandPreviewButton({ brand, name }: BrandPreviewButtonProps): Re
       type="button"
       aria-pressed={pressed}
       onClick={() => setBrand(brand)}
-      className={buttonVariants({ variant: pressed ? 'primary' : 'secondary', size: 'sm' })}
+      className={buttonVariants({ variant: pressed ? 'primary' : 'secondary', size: 'sm', className: PRESSED_IN_FORCED_COLOURS })}
       data-brand-preview={brand}
     >
       Preview<span className="sr-only"> {name}</span>
