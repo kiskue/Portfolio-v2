@@ -56,8 +56,14 @@ async function shownFrame(page: Page): Promise<string> {
  */
 async function expectNoSidewaysOverflow(page: Page): Promise<void> {
   const width = page.viewportSize()?.width ?? 0;
-  const measured = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, inner: window.innerWidth }));
-  expect(measured).toEqual({ scroll: width, inner: width });
+  const measured = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    client: document.documentElement.clientWidth,
+    inner: window.innerWidth,
+  }));
+  // clientWidth leaves out the (stable) scrollbar gutter on desktop.
+  expect(measured.scroll).toBeLessThanOrEqual(measured.client);
+  expect(measured.inner).toBe(width);
 }
 
 async function marqueeState(page: Page): Promise<{ running: boolean; playState: string; name: string }> {
