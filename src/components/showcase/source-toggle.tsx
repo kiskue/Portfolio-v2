@@ -5,6 +5,7 @@ import { useOptionalBrand } from '@/components/showcase/brand-scope';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import type { BrandId } from '@/content/types';
 import { cn } from '@/lib/cn';
+import { REPLICA_LABEL, REPLICA_ONLY_LABEL, realScreenshotsLabel } from '@/lib/showcase-filters';
 
 /*
  * "Coded replica | Real screenshots (n)" (PLAN "Source toggle", which wins over design §5.4's
@@ -18,21 +19,11 @@ import { cn } from '@/lib/cn';
  * (caption and device baked in): their pane renders them frameless, as ScreenCards, never inside
  * a phone (StorePanes in store-panes.tsx).
  *
- * The labels are exported so the Showcase source filter reads the same words.
+ * The labels come from src/lib/showcase-filters.ts, so the Showcase source filter reads the same
+ * words (a plain module: Server Components can import its strings, unlike this client module's).
  */
 
 export type SourceKind = 'replica' | 'store';
-
-/** The replica side's label. */
-export const REPLICA_LABEL = 'Coded replica';
-
-/** The real side's label, with the count of kept screenshots it shows. */
-export function realScreenshotsLabel(count: number): string {
-  return `Real screenshots (${count})`;
-}
-
-/** The fixed label where no store screenshots exist (design §5.4). */
-export const REPLICA_ONLY_LABEL = 'Coded replica · fictional data';
 
 interface SourceContextValue {
   readonly source: SourceKind;
