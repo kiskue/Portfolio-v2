@@ -1,7 +1,7 @@
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { site } from '@/content/site';
 import { DISPLAY_KEY } from '@/lib/display-settings';
+import { axeViolations } from '../support/axe';
 
 /*
  * The site shell (design §4.1, §9, §10; PLAN "Shell" and "Motion"), against the production build.
@@ -27,7 +27,6 @@ test.describe.configure({ mode: 'default' });
  */
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 const NAV_LABELS = site.nav.map((item) => item.label);
 
 const isDesktop = (page: Page): boolean => (page.viewportSize()?.width ?? 0) >= 1280;
@@ -395,19 +394,19 @@ test.describe('accessibility (axe, WCAG 2.2 AA)', () => {
       await hydrated(page);
       expect((await htmlDisplay(page)).dark).toBe(theme === 'dark');
 
-      const axe = () => new AxeBuilder({ page }).withTags(TAGS).exclude('[data-replica-canvas]');
-      expect((await axe().analyze()).violations, 'page at rest').toEqual([]);
+      // WCAG 2.2 AA; color-contrast alone skips replica canvases (tests/support/axe.ts, audit S6.33).
+      expect(await axeViolations(page), 'page at rest').toEqual([]);
 
       // The open overlay: the Display settings popover on desktop, the menu sheet below 1280px
       // (axe scans the dialog; Radix hides the rest of the page from assistive tech meanwhile).
       if (isDesktop(page)) {
         await page.getByRole('complementary').getByRole('button', { name: 'Display settings' }).click();
         await expect(page.getByRole('dialog', { name: 'Display settings' })).toBeVisible();
-        expect((await axe().include('[role="dialog"]').analyze()).violations, 'Display settings popover').toEqual([]);
+        expect(await axeViolations(page, { include: '[role="dialog"]' }), 'Display settings popover').toEqual([]);
       } else {
         const dialog = await openSheet(page);
         await dialog.getByRole('button', { name: 'Display settings' }).click();
-        expect((await axe().include('[role="dialog"]').analyze()).violations, 'menu sheet with Display settings').toEqual([]);
+        expect(await axeViolations(page, { include: '[role="dialog"]' }), 'menu sheet with Display settings').toEqual([]);
       }
     });
   }

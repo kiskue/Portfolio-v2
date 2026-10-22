@@ -281,6 +281,12 @@ const ALLOWLIST: readonly AllowEntry[] = [
     reason: 'The e2e suite runs next start on a local port; never part of the built site.',
   },
   {
+    rule: 'host-port',
+    file: 'lighthouserc.json',
+    match: 'http://localhost:3100',
+    reason: 'Lighthouse CI audits next start on a local port (PLAN, Verification); never part of the built site.',
+  },
+  {
     rule: 'foreign-email',
     file: '.env.example',
     // Assembled, so this file holds no address of its own.
