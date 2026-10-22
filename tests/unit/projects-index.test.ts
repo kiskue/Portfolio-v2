@@ -4,11 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import ProjectsPage, { metadata } from '@/app/projects/page';
 import { ProjectsIndex } from '@/components/sections/projects/projects-index';
 import { projectFacetCounts } from '@/content/derived';
+import { pages } from '@/content/home';
 import { projects } from '@/content/projects';
 import type { PlaceholderMode, Project } from '@/content/types';
 import { visible } from '@/lib/placeholder';
 import { projectCount } from '@/lib/project-filters';
 import { caseStudyHref } from '@/lib/routes';
+import { breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
 
 /*
  * The /projects index as the server renders it (design §8): every visible project, case studies
@@ -171,19 +173,18 @@ describe('/projects page', () => {
     expect(markup).toContain('Get in touch');
   });
 
+  // Compared with the SEO helpers' own output, so W11 can change their bodies freely.
   it('renders the Home → Projects BreadcrumbList', () => {
-    const json = /<script type="application\/ld\+json">(.*?)<\/script>/.exec(markup)?.[1];
-    expect(JSON.parse(json ?? '{}')).toMatchObject({
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { position: 1, name: 'Home', item: '/' },
-        { position: 2, name: 'Projects', item: '/projects' },
-      ],
-    });
+    const json = /<script[^>]*type="application\/ld\+json"[^>]*>(.*?)<\/script>/.exec(markup)?.[1];
+    expect(JSON.parse(json ?? '{}')).toEqual(
+      breadcrumbJsonLd([
+        { name: 'Home', path: '/' },
+        { name: 'Projects', path: '/projects' },
+      ]),
+    );
   });
 
   it('exports its metadata through pageMetadata', () => {
-    expect(metadata).toMatchObject({ title: 'Projects', alternates: { canonical: '/projects' } });
-    expect(typeof metadata.description).toBe('string');
+    expect(metadata).toEqual(pageMetadata({ title: 'Projects', description: pages.projects.intro, path: '/projects' }));
   });
 });
