@@ -124,15 +124,59 @@ test('the hero fills the first screen', async ({ page }, testInfo) => {
 test('the pill scrolls to the projects and services', async ({ page }) => {
   await page.goto('/', { waitUntil: 'load' });
   await hydrated(page);
-  const pill = page.getByRole('link', { name: 'Projects, services and more' });
+  const pill = page.getByRole('link', { name: 'Projects, services and more', exact: true });
   await expect(pill).toHaveAttribute('href', '#home-more');
   await pill.click();
-  await expect
-    .poll(async () => page.locator('#home-more').evaluate((element) => Math.round(element.getBoundingClientRect().top)))
-    .toBeGreaterThanOrEqual(0);
-  await expect
-    .poll(async () => page.locator('#home-more').evaluate((element) => Math.round(element.getBoundingClientRect().top)))
-    .toBeLessThanOrEqual(80);
+  // Smooth scrolling may be on: wait until two reads 100 ms apart agree, then judge that value.
+  const settled = await page.locator('#home-more').evaluate(async (element) => {
+    let last = Number.NaN;
+    for (let tries = 0; tries < 100; tries += 1) {
+      const top = Math.round(element.getBoundingClientRect().top);
+      if (top === last) return top;
+      last = top;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return last;
+  });
+  expect(settled, '#home-more top after the scroll settled').toBeGreaterThanOrEqual(0);
+  expect(settled, '#home-more top after the scroll settled').toBeLessThanOrEqual(80);
+});
+
+test('on short screens the hero grows to fit its text: nothing overlaps', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'sizes are set here; one project is enough');
+  for (const size of [
+    { width: 320, height: 568 },
+    { width: 844, height: 390 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto('/', { waitUntil: 'load' });
+    await fontsReady(page);
+    const label = `${size.width}×${size.height}`;
+    const rects = await page.evaluate(() => {
+      const rect = (selector: string) => {
+        const found = document.querySelector(selector)?.getBoundingClientRect();
+        if (!found) throw new Error(`${selector} is not rendered`);
+        return { top: found.top, bottom: found.bottom, left: found.left, right: found.right, height: found.height, width: found.width };
+      };
+      const main = document.querySelector('main#content');
+      const gutter = main ? Number.parseFloat(getComputedStyle(main).paddingLeft) : 0;
+      return {
+        hero: rect('[data-section="hero"]'),
+        header: rect('[data-section="hero"] header'),
+        foot: rect('.hero-foot'),
+        tools: rect('[data-section="tools"]'),
+        main: main ? { width: main.getBoundingClientRect().width, gutter } : { width: 0, gutter },      };
+    });
+    const { hero, header, foot, tools, main } = rects;
+    const wide = size.width >= 1280;
+    const heroWidth = main.width + 2 * main.gutter;
+    const formula = size.width < 768 ? size.height - 60 : wide ? Math.min(size.height, heroWidth * 0.75) : Math.min(size.height - 64, heroWidth * 0.75);
+    expect(hero.height, `${label}: hero height ${hero.height} is at least ${formula}`).toBeGreaterThanOrEqual(formula - 1);
+    expect(header.bottom, `${label}: the header ends inside the hero`).toBeLessThanOrEqual(hero.bottom + 0.5);
+    const apart = foot.bottom <= header.top || header.bottom <= foot.top || foot.right <= header.left || header.right <= foot.left;
+    expect(apart, `${label}: the foot ${JSON.stringify(foot)} overlaps the header ${JSON.stringify(header)}`).toBe(true);
+    expect(tools.top, `${label}: the tools strip starts below the hero`).toBeGreaterThanOrEqual(hero.bottom - 1);
+  }
 });
 
 test('the credit is on the painting with its two links', async ({ page }) => {
