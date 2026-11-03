@@ -17,9 +17,10 @@ import { fontsReady, hydrated, isDesktopShell } from '../support/page';
  * - Home HTML at most 150 KB brotli; Home first-load JS at most 153,515 B brotli (the framework
  *   floor + 40 KB) and 180,000 B gzip, measured from the chunks the HTML requests;
  * - Home DOM at most 3,000 nodes;
- * - at 1447×722 the first screen shows the H1, the tools strip and the top bento row;
- * - Core Web Vitals in the lab: the H1 is the LCP element within 2.5 s (below 768px the Home
- *   header's subline may be it instead: the ledger's LCP ruling, at the test), CLS at most 0.05
+ * - at 1447×722 the first screen is the hero: the painting, the H1, the subline and "Get in touch"
+ *   (the tools strip and the bento start below it);
+ * - Core Web Vitals in the lab: the hero painting or the H1 is the LCP element within 2.5 s (below
+ *   768px the Home header's subline may be it too: the ledger's LCP ruling, at the test), CLS at most 0.05
  *   and interactions within 200 ms (INP). These wall-clock tests are tagged @vitals and run in a
  *   pass of their own (scripts/e2e.mjs). Lighthouse CI (lighthouserc.json) measures them throttled.
  * Measured values are printed and attached to each test, for the report.
@@ -158,35 +159,58 @@ test.describe('the first screen at 1447×722 (the template viewport)', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
-  test('shows the H1, the tools strip and the top bento row', async ({ page }, testInfo) => {
+  test('shows the hero: the painting, the H1, the subline and Get in touch', async ({ page }, testInfo) => {
     await page.goto('/', { waitUntil: 'load' });
     await hydrated(page);
     await fontsReady(page);
+    const hero = await box(page, '[data-section="hero"]', 'the hero');
+    const painting = await page.evaluate(() => {
+      const shown = [...document.querySelectorAll<HTMLElement>('[data-section="hero"] [data-hero-painting]')].find(
+        (image) => getComputedStyle(image.parentElement ?? image).opacity === '1',
+      );
+      const rect = shown?.getBoundingClientRect();
+      return rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null;
+    });
+    expect(painting, 'one painting is visible').not.toBeNull();
+    const shown = painting as NonNullable<typeof painting>;
     const h1 = await box(page, 'main h1', 'the H1');
+    const subline = await box(page, 'main header h1 + p', "the header's subline");
+    const touch = await box(page, 'main header a:has-text("Get in touch")', 'the Get in touch link');
     const tools = await box(page, '[data-section="tools"]', 'the tools strip');
-    const proj = await box(page, '[data-bento="proj"]', 'the Projects card');
-    const about = await box(page, '[data-bento="about"]', 'the About card');
-    const ai = await box(page, '[data-bento="ai"]', 'the AI builds card');
-    record(testInfo, `1447×722: H1 bottom ${Math.round(h1.y + h1.height)}, tools bottom ${Math.round(tools.y + tools.height)}, top bento row bottom ${Math.round(Math.max(about.y + about.height, ai.y + ai.height))}`);
+    record(testInfo, `1447×722: hero ${JSON.stringify(hero)}, H1 bottom ${Math.round(h1.y + h1.height)}, tools top ${Math.round(tools.y)}`);
+    // The hero spans <main>'s border box: x and width are <main>'s (264 and 1183 with hidden
+    // scrollbars; a classic scrollbar narrows both), y and height are the first screen's.
+    const main = await box(page, 'main#content', 'main');
+    for (const [name, got, want] of [
+      ['x', hero.x, main.x],
+      ['y', hero.y, 0],
+      ['width', hero.width, main.width],
+      ['height', hero.height, 722],
+    ] as const) {
+      expect(Math.abs(got - want), `hero ${name} ${got}`).toBeLessThanOrEqual(1);
+    }
+    expect(shown.x, 'the painting covers the hero (left)').toBeLessThanOrEqual(hero.x + 1);
+    expect(shown.y, 'the painting covers the hero (top)').toBeLessThanOrEqual(hero.y + 1);
+    expect(shown.x + shown.width, 'the painting covers the hero (right)').toBeGreaterThanOrEqual(hero.x + hero.width - 1);
+    expect(shown.y + shown.height, 'the painting covers the hero (bottom)').toBeGreaterThanOrEqual(hero.y + hero.height - 1);
     expectInView('H1', h1);
-    expectInView('tools strip', tools);
-    // The top row of the 4-column bento: Projects (2×2) starts it, About and AI sit beside it.
-    expect(Math.abs(about.y - proj.y), 'About is on the top row').toBeLessThanOrEqual(1);
-    expect(Math.abs(ai.y - proj.y), 'AI builds is on the top row').toBeLessThanOrEqual(1);
-    expectInView('About card', about);
-    expectInView('AI builds card', ai);
+    expectInView('subline', subline);
+    expectInView('Get in touch', touch);
+    expect(tools.y, 'the tools strip starts below the first screen').toBeGreaterThanOrEqual(721);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });
 
 /**
- * The Home LCP element. PLAN "Performance budgets" names the H1; the ledger's LCP ruling
- * ("Rulings (integration)", 2026-10-23) keeps the H1 from 768px up and also accepts the Home
- * header's subline below 768px, where design §3's type scale (a 32px display H1 over an 18px
- * lead subline of about five lines at 390px) makes the subline the larger text block, painted in
- * the same frame as the H1. No other element counts, at any width.
+ * The Home LCP element. PLAN "Performance budgets" (line 310) now names the hero painting or the
+ * H1, at every width. The ledger's LCP ruling ("Rulings (integration)", 2026-10-23) is unchanged
+ * for the subline: below 768px it is also accepted, because design §3's type scale (a 32px
+ * display H1 over an 18px lead subline of about five lines at 390px) makes the subline the larger
+ * text block, painted in the same frame as the H1. No other element counts, at any width.
  */
 const SUBLINE_ACCEPTED_BELOW = 768;
+/** The hero painting: either theme's image (src/components/sections/home/home-hero.tsx). */
+const HOME_PAINTING = '[data-section="hero"] [data-hero-painting]';
 /** The Home H1 (a line inside it counts as the H1). */
 const HOME_H1 = 'main h1';
 /**
@@ -195,10 +219,11 @@ const HOME_H1 = 'main h1';
  */
 const HOME_SUBLINE = 'main header h1 + p';
 
-/** What an LCP entry painted: the Home H1, the Home header's subline, or another element. */
-type LcpTarget = 'h1' | 'subline' | 'other';
+/** What an LCP entry painted: the hero painting, the Home H1, the Home header's subline, or another element. */
+type LcpTarget = 'painting' | 'h1' | 'subline' | 'other';
 
 const LCP_TARGET_NAMES: Readonly<Record<LcpTarget, string>> = {
+  painting: 'the hero painting',
   h1: 'the H1 (or a line inside it)',
   subline: "the Home header's subline",
   other: 'another element',
@@ -221,7 +246,7 @@ declare global {
 
 /** Starts the Web Vitals observers before any page script runs. */
 async function observeVitals(page: Page): Promise<void> {
-  await page.addInitScript(({ h1, subline }) => {
+  await page.addInitScript(({ h1, subline, painting }) => {
     const vitals: Vitals = { lcp: [], cls: 0, shifts: [], interactions: [], firstInput: null };
     window.__qaVitals = vitals;
     const describe = (node: Node | null | undefined): string => {
@@ -230,6 +255,7 @@ async function observeVitals(page: Page): Promise<void> {
       return `${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ''}${classes ? `.${classes}` : ''}`;
     };
     const lcpTarget = (element: Element | null | undefined): LcpTarget => {
+      if (element?.closest(painting)) return 'painting';
       if (element?.closest(h1)) return 'h1';
       if (element?.closest(subline)) return 'subline';
       return 'other';
@@ -265,7 +291,7 @@ async function observeVitals(page: Page): Promise<void> {
     observe('first-input', (entries) => {
       for (const entry of entries) vitals.firstInput = entry.duration;
     });
-  }, { h1: HOME_H1, subline: HOME_SUBLINE });
+  }, { h1: HOME_H1, subline: HOME_SUBLINE, painting: HOME_PAINTING });
 }
 
 async function vitals(page: Page): Promise<Vitals> {
@@ -289,12 +315,12 @@ function inp(value: Vitals): number {
  */
 test.describe('Core Web Vitals in the lab', { tag: '@vitals' }, () => {
   /**
-   * LCP within 2.5 s on the Home H1 (PLAN "Performance budgets"), under the ledger's LCP ruling
-   * ("Rulings (integration)", 2026-10-23): from 768px up the LCP element must be the H1; below
-   * 768px it may be the H1 or the Home header's subline paragraph (HOME_SUBLINE); never any other
-   * element.
+   * LCP within 2.5 s (PLAN "Performance budgets", line 310): from 768px up the LCP element must
+   * be the hero painting or the H1; below 768px it may also be the Home header's subline
+   * paragraph (HOME_SUBLINE), under the ledger's LCP ruling ("Rulings (integration)",
+   * 2026-10-23); never any other element.
    */
-  test('the H1 is the LCP element on Home, within 2.5 s', async ({ page }, testInfo) => {
+  test('the hero painting or the H1 is the LCP element on Home, within 2.5 s', async ({ page }, testInfo) => {
     await observeVitals(page);
     await page.goto('/', { waitUntil: 'load' });
     await fontsReady(page);
@@ -302,7 +328,7 @@ test.describe('Core Web Vitals in the lab', { tag: '@vitals' }, () => {
     const { lcp } = await vitals(page);
     const last = lcp.at(-1);
     const width = page.viewportSize()?.width;
-    const allowed: readonly LcpTarget[] = width !== undefined && width < SUBLINE_ACCEPTED_BELOW ? ['h1', 'subline'] : ['h1'];
+    const allowed: readonly LcpTarget[] = width !== undefined && width < SUBLINE_ACCEPTED_BELOW ? ['painting', 'h1', 'subline'] : ['painting', 'h1'];
     record(testInfo, `Home LCP: ${last ? `${Math.round(last.time)} ms on ${last.element}, ${LCP_TARGET_NAMES[last.target]}` : 'none'}`);
     expect(last, 'an LCP entry was recorded').toBeDefined();
     expect(

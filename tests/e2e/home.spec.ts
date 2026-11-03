@@ -203,6 +203,8 @@ test.describe('Tools marquee', () => {
     await strip(page).getByRole('button', { name: 'Pause animation' }).focus();
     expect((await marqueeState(page)).playState).toBe('paused');
     await page.locator('h1').click();
+    // The strip is below the hero now: the click scrolled up to the H1, so bring the strip back.
+    await strip(page).scrollIntoViewIfNeeded();
     await page.mouse.move(0, 0);
     await expect.poll(async () => (await marqueeState(page)).playState).toBe('running');
 
