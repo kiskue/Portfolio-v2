@@ -14,6 +14,7 @@
     "lhci": "node scripts/measure-lighthouse.mjs",
     "check:static": "node scripts/check-static.mjs",
     "assets:prepare": "node scripts/prepare-assets.mjs",
+    "scene:prepare": "node scripts/prepare-scene.mjs",
     "content:todo": "node scripts/content-todo.mjs",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run check:static"
   },
