@@ -12,6 +12,7 @@ import {
   catmullRom,
   FLIGHT_DESKTOP,
   FLIGHT_MS,
+  FLIGHT_PHONE,
   flightAt,
   flightOpacity,
   haze,
@@ -77,6 +78,20 @@ describe('paths', () => {
       expect(c.x).toBeCloseTo(want?.x ?? NaN, 6);
       expect(c.y).toBeCloseTo(want?.y ?? NaN, 6);
       expect(c.s).toBeCloseTo(want?.s ?? NaN, 6);
+    }
+  });
+
+  // The e2e restart check (hero-dragon.spec.ts) relies on this: a rising data-scale means a new flight.
+  it('only ever shrinks the dragon, on both paths', () => {
+    for (const [name, path] of [
+      ['desktop', FLIGHT_DESKTOP],
+      ['phone', FLIGHT_PHONE],
+    ] as const) {
+      const scales = Array.from({ length: 1401 }, (_, step) => catmullRom(path, step / 1400).s);
+      const rises = scales.filter((s, step) => step > 0 && s > (scales[step - 1] ?? s));
+      expect(rises, name).toEqual([]);
+      expect(scales[0], name).toBe(2.4);
+      expect(scales.at(-1), name).toBeCloseTo(0.15, 9);
     }
   });
 });

@@ -1,6 +1,6 @@
-import { expect, test, type Page, type Request } from '@playwright/test';
+import { expect, test, type Request } from '@playwright/test';
 import { home } from '@/content/home';
-import { collectConsoleProblems, describeConsoleProblems, unusedStylePreloads } from '../support/console';
+import { collectConsoleProblems, describeConsoleProblems, idleAfterLoad, unusedStylePreloads } from '../support/console';
 import { hydrated } from '../support/page';
 import { CASE_STUDY_ROUTES, NAV_ROUTES } from '../support/routes';
 
@@ -27,18 +27,6 @@ test.describe.configure({ mode: 'default' });
 
 /** How long each page stays open after its load event: twice Chrome's unused-preload delay. */
 const IDLE_MS = 6_000;
-
-/** Resolves once the page has been loaded for `ms` milliseconds (the navigation entry's loadEventEnd). */
-async function idleAfterLoad(page: Page, ms: number): Promise<void> {
-  await page.waitForFunction(
-    (idle) => {
-      const [navigation] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-      return navigation !== undefined && navigation.loadEventEnd > 0 && performance.now() - navigation.loadEventEnd >= idle;
-    },
-    ms,
-    { polling: 250, timeout: ms + 15_000 },
-  );
-}
 
 test.describe('an idle page logs no console errors or warnings', () => {
   for (const route of [...NAV_ROUTES, ...CASE_STUDY_ROUTES]) {

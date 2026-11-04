@@ -19,7 +19,7 @@ export const JS_GZIP_BUDGET = 180_000;
 export const SCENE_CHUNK_MARKER = 'gm-scene-dragon';
 /**
  * The scene chunk's brotli cap (PLAN "Performance budgets"; measurements.md "Painted hero: scene
- * chunk"): ceil(M * 1.25 / 1024) * 1024 from the measured brotli size M = 5,089 B (2026-11-04),
+ * chunk"): ceil(M * 1.25 / 1024) * 1024 from the measured brotli size M = 5,168 B (2026-11-04),
  * i.e. 25% headroom rounded up to a whole KB. 16,384 B stays the hard ceiling for any new cap.
  */
 export const SCENE_CHUNK_BROTLI_BUDGET = 7_168;

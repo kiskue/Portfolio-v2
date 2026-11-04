@@ -27,13 +27,15 @@ export function HeroScene(): ReactNode {
   useEffect(() => {
     const element = host.current;
     if (reduceMotion || !element) return;
+    // When Home mounted: after a client-side visit, first paint belongs to an earlier page.
+    const mountedAt = performance.now();
     let cancelled = false;
     let handle: SceneHandle | undefined;
     const load = (): void => {
       // Only a failed chunk load is swallowed; an error thrown by startScene must surface.
       import('@/components/sections/home/dragon/scene').then(
         (scene) => {
-          if (!cancelled) handle = scene.startScene(element);
+          if (!cancelled) handle = scene.startScene(element, mountedAt);
         },
         () => {},
       );

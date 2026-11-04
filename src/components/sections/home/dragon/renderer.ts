@@ -4,9 +4,10 @@ import { bendTail, rigTail, TAIL } from '@/components/sections/home/dragon/tail'
 /*
  * The dragon's two renderers (design §3.3, §5, §7). WebGL blends the three wing frames of the
  * tail-less body in a fragment shader and draws the tail under it as a textured triangle strip
- * along its bent centre line. Without WebGL, the three full frames (tail included, not bending)
- * are stacked images whose opacities are the weights. Neither ever logs: a failure returns null
- * and the caller falls back.
+ * along its bent centre line: createWebGLContext asks for a hardware context first, then
+ * createWebGLRenderer builds the programs and textures on it. Without WebGL, the three full frames
+ * (tail included, not bending) are stacked images whose opacities are the weights. Nothing here
+ * ever logs: a failure returns null and the caller falls back.
  */
 
 export interface DragonRenderer {
@@ -92,25 +93,34 @@ function link(gl: WebGLRenderingContext, vertex: string, fragment: string, attri
   return gl.getProgramParameter(program, gl.LINK_STATUS) ? program : null;
 }
 
+/** Frees the context's GPU memory now. Once only: a second loseContext() logs "INVALID_OPERATION: … context already lost". */
+export function loseContext(gl: WebGLRenderingContext): void {
+  if (!gl.isContextLost()) gl.getExtension('WEBGL_lose_context')?.loseContext();
+}
+
 /**
- * The WebGL renderer on `canvas` (1000×906 backing store), or null without a usable context or when
- * a program fails to build. Call it while the canvas is not in the document yet: a context that is
- * refused then never reaches the screen.
+ * A WebGL context on `canvas` (its 1000×906 backing store), or null: no context, or a software
+ * renderer (lost first). Ask for it while the canvas is not in the document yet, so a context that
+ * is refused never reaches the screen, and before downloading anything only WebGL uses.
  */
-export function createWebGLRenderer(canvas: HTMLCanvasElement, images: DragonImages): DragonRenderer | null {
+export function createWebGLContext(canvas: HTMLCanvasElement): WebGLRenderingContext | null {
   const gl = canvas.getContext('webgl', CONTEXT);
   if (!gl) return null;
-  const lose = (): void => gl.getExtension('WEBGL_lose_context')?.loseContext();
   if (softwareRendered(gl)) {
-    lose();
+    loseContext(gl);
     return null;
   }
+  return gl;
+}
+
+/** The WebGL renderer on `gl`, or null when a program fails to build (the context is lost first). */
+export function createWebGLRenderer(gl: WebGLRenderingContext, images: DragonImages): DragonRenderer | null {
   const tailProgram = link(gl, TAIL_VS, TAIL_FS, ['p', 'uv']);
   const bodyProgram = link(gl, BODY_VS, BODY_FS, ['p']);
   const quad = gl.createBuffer();
   const strip = gl.createBuffer();
   if (!tailProgram || !bodyProgram || !quad || !strip) {
-    lose();
+    loseContext(gl);
     return null;
   }
 
@@ -165,7 +175,9 @@ export function createWebGLRenderer(canvas: HTMLCanvasElement, images: DragonIma
       gl.viewport(pad, pad, width - 2 * pad, height - 2 * pad);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },
-    dispose: lose,
+    dispose() {
+      loseContext(gl);
+    },
   };
 }
 

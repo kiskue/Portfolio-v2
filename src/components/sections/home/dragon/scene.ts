@@ -1,6 +1,6 @@
 import { coverMap, PAINTING, paintingToScreen, parseObjectPosition, pxPerUnit, unitsToPainting, type CoverMap } from '@/components/sections/home/dragon/cover';
 import { DRAGON_UNITS, FLIGHT_DESKTOP, FLIGHT_PHONE, flightAt, headingTurnDeg, nextRoll, PHONE_SCALE, tiltDeg } from '@/components/sections/home/dragon/flight';
-import { createImageRenderer, createWebGLRenderer, type DragonRenderer } from '@/components/sections/home/dragon/renderer';
+import { createImageRenderer, createWebGLContext, createWebGLRenderer, loseContext, type DragonRenderer } from '@/components/sections/home/dragon/renderer';
 import { markFlown, onThemeSwitch, openingFlightDue, openingStartAt, type FlightPlan } from '@/components/sections/home/dragon/schedule';
 import { TAIL } from '@/components/sections/home/dragon/tail';
 import { bobUnits, WING_LOOP_S, wingWeights } from '@/components/sections/home/dragon/wings';
@@ -12,11 +12,13 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  * its own size-capped chunk (tests/e2e/budgets.spec.ts). Nothing statically imports it at runtime.
  *
  * startScene adds the dragon to the hero's host and flies it out to sea: once per session about
- * 1.2 s after first paint, and 1.6 s after each theme switch (schedule.ts). A flight stops when the
- * tab hides, the hero leaves the screen or motion is reduced. Each frame writes the element's
- * transform, opacity, --haze and data-scale and draws once; the cover map that turns design units
- * into screen pixels is measured only when the host resizes. Nothing here throws or logs for an
- * expected failure (no WebGL, an image that does not decode): the dragon falls back or stays away.
+ * 1.2 s after Home has painted (first paint, or the island's mount on a client-side visit), and
+ * 1.6 s after each theme switch (schedule.ts). A flight stops when the tab hides, the hero leaves
+ * the screen or motion is reduced. Each frame writes the element's transform, opacity, --haze and
+ * data-scale and draws once; the cover map that turns design units into screen pixels is measured
+ * only when the host resizes. The expected failures stay quiet: without a hardware WebGL context, or
+ * when its frames fail, the dragon flies as stacked frames; when those fail to load, it stays away.
+ * Anything else is a bug and is reported (reportError), never swallowed.
  */
 
 /** Written to the dragon element at runtime, so the speed gate can tell this chunk from any other (a duplicate lives in tests/support/budgets.ts). */
@@ -40,6 +42,14 @@ function decoded(src: string): Promise<HTMLImageElement> {
   return image.decode().then(() => image);
 }
 
+/** The decoded images, or null when one does not load or decode: the only failure the start expects. */
+function decodedOrNull<T extends readonly HTMLImageElement[]>(images: Promise<T>): Promise<T | null> {
+  return images.then(
+    (all) => all,
+    () => null,
+  );
+}
+
 /** sessionStorage, or null where reading it throws (blocked site data). */
 function session(): Storage | null {
   try {
@@ -54,8 +64,11 @@ function firstPaint(): number {
   return performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? 0;
 }
 
-/** Starts the dragon in `host` (the hero's [data-dragon-host]). */
-export function startScene(host: HTMLElement): SceneHandle {
+/**
+ * Starts the dragon in `host` (the hero's [data-dragon-host]). `mountedAt` (performance.now()) is when
+ * Home's island mounted: after a client-side visit, first paint belongs to an earlier page.
+ */
+export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   const dragon = document.createElement('div');
   dragon.className = 'hero-dragon';
   dragon.dataset.chunk = SCENE_CHUNK_MARKER;
@@ -67,6 +80,8 @@ export function startScene(host: HTMLElement): SceneHandle {
   const painting = host.parentElement?.querySelector('img[data-hero-painting="day"]') ?? null;
 
   let disposed = false;
+  /** A WebGL context held before a renderer owns it; lost on dispose. */
+  let context: WebGLRenderingContext | null = null;
   let renderer: DragonRenderer | null = null;
   let plan: FlightPlan = { kind: 'idle' };
   /** The scheduled flight is the session's opening flight. */
@@ -177,7 +192,8 @@ export function startScene(host: HTMLElement): SceneHandle {
     dragon.append(...nodes);
     dragon.dataset.renderer = kind;
     if (plan.kind === 'idle' && openingFlightDue(session())) {
-      const at = openingStartAt(firstPaint(), performance.now());
+      // Home painted at first paint, or when the island mounted after a client-side visit.
+      const at = openingStartAt(Math.max(firstPaint(), mountedAt), performance.now());
       if (at !== null) {
         plan = { kind: 'scheduled', at };
         opening = true;
@@ -186,33 +202,38 @@ export function startScene(host: HTMLElement): SceneHandle {
     arm();
   };
 
-  // The tail-less body frames and the tail for WebGL; without it, the three full frames.
-  const load = async (): Promise<void> => {
-    const [up, level, down, tail] = await Promise.all([
-      decoded('/scene/dragon-up.webp'),
-      decoded('/scene/dragon-level.webp'),
-      decoded('/scene/dragon-down.webp'),
-      decoded('/scene/dragon-tail.webp'),
-    ]);
-    if (disposed) return;
+  // WebGL first: a hardware context on the still-detached canvas, then its frames (the tail-less
+  // body and the tail). Without the context, or when its frames or programs fail, the three full
+  // frames fly as stacked images. Only a frame that does not load or decode is expected to fail.
+  const start = async (): Promise<void> => {
     const canvas = document.createElement('canvas');
     canvas.width = TAIL.canvasWidth;
     canvas.height = TAIL.canvasHeight;
-    const webgl = createWebGLRenderer(canvas, { up, level, down, tail });
-    if (webgl) {
-      ready(webgl, 'webgl', [canvas]);
-      return;
+    context = createWebGLContext(canvas);
+    if (context) {
+      const body = Promise.all([
+        decoded('/scene/dragon-up.webp'),
+        decoded('/scene/dragon-level.webp'),
+        decoded('/scene/dragon-down.webp'),
+        decoded('/scene/dragon-tail.webp'),
+      ]);
+      const set = await decodedOrNull(body);
+      // Disposed meanwhile: dispose has lost the context.
+      if (disposed) return;
+      const gl = context;
+      context = null;
+      const webgl = set && createWebGLRenderer(gl, { up: set[0], level: set[1], down: set[2], tail: set[3] });
+      if (webgl) {
+        ready(webgl, 'webgl', [canvas]);
+        return;
+      }
+      loseContext(gl);
     }
-    const frames = await Promise.all([
-      decoded('/scene/dragon-full-up.webp'),
-      decoded('/scene/dragon-full-level.webp'),
-      decoded('/scene/dragon-full-down.webp'),
-    ]);
-    if (!disposed) ready(createImageRenderer(frames), 'images', frames);
+    const full = Promise.all([decoded('/scene/dragon-full-up.webp'), decoded('/scene/dragon-full-level.webp'), decoded('/scene/dragon-full-down.webp')]);
+    const frames = await decodedOrNull(full);
+    if (frames && !disposed) ready(createImageRenderer(frames), 'images', frames);
   };
-  load().catch(() => {
-    // A frame that does not load or decode: no dragon this time.
-  });
+  start().catch((error: unknown) => reportError(error));
 
   const unsubscribe = subscribeDisplay(() => {
     const { dark: next, reduceMotion } = getDisplaySnapshot().resolved;
@@ -260,6 +281,8 @@ export function startScene(host: HTMLElement): SceneHandle {
       document.removeEventListener('visibilitychange', onVisibility);
       watch.disconnect();
       resize.disconnect();
+      if (context) loseContext(context);
+      context = null;
       renderer?.dispose();
       renderer = null;
       dragon.remove();

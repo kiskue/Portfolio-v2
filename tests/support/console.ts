@@ -66,6 +66,18 @@ export function describeConsoleProblems(messages: readonly string[]): string[] {
   });
 }
 
+/** Resolves once the page has been loaded for `ms` milliseconds (the navigation entry's loadEventEnd). */
+export async function idleAfterLoad(page: Page, ms: number): Promise<void> {
+  await page.waitForFunction(
+    (idle) => {
+      const [navigation] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+      return navigation !== undefined && navigation.loadEventEnd > 0 && performance.now() - navigation.loadEventEnd >= idle;
+    },
+    ms,
+    { polling: 250, timeout: ms + 15_000 },
+  );
+}
+
 /**
  * The stylesheets the page preloads (`<link rel="preload" as="style">`) but does not apply. React
  * adds such a preload for every stylesheet hint in a prefetched route, and Next adds one for each
