@@ -21,6 +21,7 @@ export function HeroScene(): ReactNode {
     let dark = getDisplaySnapshot().resolved.dark;
     let current: Animation[] = [];
     let frame = 0;
+    let timer = 0;
     let pinned: HTMLElement[] = [];
 
     const unpin = (): void => {
@@ -41,6 +42,8 @@ export function HeroScene(): ReactNode {
     const reset = (): void => {
       if (frame) cancelAnimationFrame(frame);
       frame = 0;
+      if (timer) window.clearTimeout(timer);
+      timer = 0;
       cancelCurrent();
       unpin();
     };
@@ -62,8 +65,9 @@ export function HeroScene(): ReactNode {
         if (typeof start.filter === 'string') element.style.filter = start.filter;
         if (!pinned.includes(element)) pinned.push(element);
       }
-      frame = requestAnimationFrame(() => {
-        frame = 0;
+      // Not in the click's own frame (that is inside INP's interval): after it has been presented.
+      const run = (): void => {
+        timer = 0;
         const set: Animation[] = [];
         for (const { layer, keyframes, timing } of change) {
           const element = root.querySelector(`[data-hero-layer="${layer}"]`);
@@ -82,6 +86,10 @@ export function HeroScene(): ReactNode {
             if (current === set) cancelCurrent();
           })
           .catch(() => {});
+      };
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        timer = window.setTimeout(run, 0);
       });
     });
 
