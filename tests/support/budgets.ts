@@ -18,8 +18,9 @@ export const JS_GZIP_BUDGET = 180_000;
 /** The marker the scene chunk's code carries at runtime (a duplicate of `SCENE_CHUNK_MARKER` in dragon/scene.ts; tests/unit/scene-chunk.test.ts keeps the two equal). */
 export const SCENE_CHUNK_MARKER = 'gm-scene-dragon';
 /**
- * The scene chunk's brotli cap. PROVISIONAL: Task 8 sets it from the measured size plus 25%,
- * rounded up to 1 KiB and capped at 16 KiB.
+ * The scene chunk's brotli cap. PROVISIONAL, and 16,384 B is a hard ceiling, not a clamp: Task 8
+ * sets the cap to ceil(M * 1.25 / 1024) * 1024 from the measured brotli size M, and stops and
+ * reports if M is above 13,107 B.
  */
 export const SCENE_CHUNK_BROTLI_BUDGET = 16_384;
 

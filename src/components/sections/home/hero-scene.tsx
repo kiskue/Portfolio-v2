@@ -21,27 +21,31 @@ export function HeroScene(): ReactNode {
   // The server snapshot is true, so rendering and hydration never load the dragon's chunk.
   const reduceMotion = useSyncExternalStore(subscribeDisplay, () => getDisplaySnapshot().resolved.reduceMotion, () => true);
 
-  // The dragon's code is its own chunk, loaded once the page has loaded (and so hydrated) and only
-  // when motion is allowed (design §6.3). It is a separate effect: the sky change below is untouched.
+  // The dragon's code is its own chunk, loaded once the page has loaded and only when motion is
+  // allowed (design §6.3); this effect running means the island has hydrated. It is a separate
+  // effect: the sky change below is untouched.
   useEffect(() => {
     const element = host.current;
     if (reduceMotion || !element) return;
     let cancelled = false;
     let handle: SceneHandle | undefined;
     const load = (): void => {
-      import('@/components/sections/home/dragon/scene')
-        .then((scene) => {
+      // Only a failed chunk load is swallowed; an error thrown by startScene must surface.
+      import('@/components/sections/home/dragon/scene').then(
+        (scene) => {
           if (!cancelled) handle = scene.startScene(element);
-        })
-        .catch(() => {});
+        },
+        () => {},
+      );
     };
     let timer = 0;
-    // The import starts in a task after the load event's handlers, so the request is after the load event ends.
+    // The import always starts in a task of its own after the load event's handlers (loadEventEnd is
+    // stamped after the last one returns), so the request is after the load event ends.
     const afterLoad = (): void => {
       timer = window.setTimeout(load, 0);
     };
     const ready = document.readyState === 'complete';
-    if (ready) load();
+    if (ready) afterLoad();
     else window.addEventListener('load', afterLoad, { once: true });
     return () => {
       cancelled = true;
