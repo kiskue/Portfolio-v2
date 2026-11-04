@@ -159,4 +159,55 @@ test.describe('Hero text contrast', () => {
       });
     }
   }
+
+  for (const theme of THEMES) {
+    test(`the painting outside the text stays unveiled (${theme})`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'desktop', 'Pixel sampling runs in the desktop project only.');
+
+      await page.setViewportSize({ width: 1447, height: 722 });
+      await storeDisplay(page, { theme, motion: 'reduce' });
+      await page.goto('/');
+      await page.evaluate(async () => {
+        const images = Array.from(document.querySelectorAll<HTMLImageElement>('[data-section="hero"] img[data-hero-painting]'));
+        await Promise.all(images.map((image) => image.decode()));
+      });
+      await fontsReady(page);
+
+      const box = await page.locator('[data-section="hero"]').boundingBox();
+      if (!box) throw new Error('No hero box');
+      // The castle: the hero's right 18% by its middle third, away from all text.
+      const clip = {
+        x: Math.round(box.x + box.width * 0.82),
+        y: Math.round(box.y + box.height * 0.33),
+        width: Math.round(box.width * 0.18),
+        height: Math.round(box.height * 0.33),
+      };
+      const decode = async (png: Buffer) => (await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true })).data;
+      const veiled = await decode(await page.screenshot({ clip }));
+      await page.addStyleTag({
+        content: [
+          "[data-hero-layer^='scrim'], .hero-fade { display: none !important; }",
+          '.hero-content header > div:first-child::before, .hero-content header > p::before, .hero-credit::before { display: none !important; }',
+        ].join('\n'),
+      });
+      await page.waitForTimeout(300);
+      const bare = await decode(await page.screenshot({ clip }));
+      expect(veiled.length).toBe(bare.length);
+
+      let diff = 0;
+      let sumVeiled = 0;
+      let sumBare = 0;
+      for (let i = 0; i < veiled.length; i += 1) {
+        diff += Math.abs((veiled[i] ?? 0) - (bare[i] ?? 0));
+        sumVeiled += veiled[i] ?? 0;
+        sumBare += bare[i] ?? 0;
+      }
+      const mean = diff / veiled.length;
+      record(
+        testInfo,
+        `${theme} castle region: mean ${(sumVeiled / veiled.length).toFixed(1)} as is, ${(sumBare / bare.length).toFixed(1)} without scrims and plates, mean abs diff ${mean.toFixed(2)} per channel (max 6)`,
+      );
+      expect(mean).toBeLessThanOrEqual(6);
+    });
+  }
 });
