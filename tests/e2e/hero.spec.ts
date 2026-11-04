@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { music } from '@/content/music';
-import { fontsReady, hydrated, storeDisplay } from '../support/page';
+import { fontsReady, hydrated, isDesktopShell, storeDisplay } from '../support/page';
 
 /*
  * The painted hero's static first screen (design §3.1, §3.5, §3.6), against the production build:
@@ -213,4 +213,109 @@ test('other pages have no hero and request no scene files', async ({ page }) => 
     await expect(page.locator('[data-section="hero"]'), path).toHaveCount(0);
   }
   expect(scene).toEqual([]);
+});
+
+/*
+ * The sky change (design §3.2): the sunset or sunrise runs from a Web Animations island on the
+ * theme change. The click tests use the docked rail's theme button, so they run on the desktop project.
+ */
+const LAYERS = ['day', 'night', 'tint', 'scrim-day', 'scrim-night', 'stars'] as const;
+
+interface Running {
+  readonly layer: string;
+  readonly duration: number;
+  readonly delay: number;
+}
+
+/** Every Web Animation on the hero's layers themselves (the stars' CSS animation runs on the lines inside). */
+async function heroAnimations(page: Page): Promise<Running[]> {
+  return page.evaluate((layers) => {
+    const found: { layer: string; duration: number; delay: number }[] = [];
+    for (const layer of layers) {
+      const element = document.querySelector(`[data-section="hero"] [data-hero-layer="${layer}"]`);
+      if (!element) continue;
+      for (const animation of element.getAnimations()) {
+        const timing = animation.effect?.getComputedTiming();
+        found.push({ layer, duration: Number(timing?.duration), delay: Number(timing?.delay) });
+      }
+    }
+    return found;
+  }, LAYERS);
+}
+
+function themeButton(page: Page) {
+  return page.getByRole('complementary').getByRole('button', { name: /Switch to (dark|light) theme/ });
+}
+
+type Timing = readonly [string, number, number];
+
+const SUNSET_TIMINGS: readonly Timing[] = [
+  ['day', 900, 0],
+  ['day', 1300, 600],
+  ['night', 1500, 550],
+  ['tint', 2600, 0],
+  ['scrim-day', 1200, 350],
+  ['scrim-night', 1200, 350],
+  ['stars', 600, 2200],
+];
+
+function sorted(list: readonly Timing[]): Timing[] {
+  return [...list].sort((a, b) => a[0].localeCompare(b[0]) || a[1] - b[1]);
+}
+
+function timings(found: readonly Running[]): Timing[] {
+  return sorted(found.map((entry): Timing => [entry.layer, entry.duration, entry.delay]));
+}
+
+test('switching to dark plays the sunset', async ({ page }) => {
+  test.skip(!isDesktopShell(page), 'the rail’s theme button is the desktop shell');
+  await storeDisplay(page, { theme: 'light' });
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  await page.getByRole('complementary').getByRole('button', { name: 'Switch to dark theme' }).click();
+  await page.waitForTimeout(100);
+  expect(timings(await heroAnimations(page))).toEqual(sorted(SUNSET_TIMINGS));
+  await page.waitForTimeout(3_200);
+  expect(await heroAnimations(page), 'nothing runs after the sunset').toEqual([]);
+  expect(await opacity(page, DAY), 'day layer').toBe('0');
+  expect(await page.locator(DAY).evaluate((element) => getComputedStyle(element).filter)).toBe('none');
+  expect(await opacity(page, NIGHT), 'night layer').toBe('1');
+});
+
+test('an OS change while on System plays it too', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  expect(await heroAnimations(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect.poll(async () => timings(await heroAnimations(page))).toEqual(sorted(SUNSET_TIMINGS));
+});
+
+test('reduced motion swaps the paintings at once, with no stars', async ({ page }) => {
+  test.skip(!isDesktopShell(page), 'the rail’s theme button is the desktop shell');
+  await storeDisplay(page, { theme: 'light', motion: 'reduce' });
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  await page.getByRole('complementary').getByRole('button', { name: 'Switch to dark theme' }).click();
+  await page.waitForTimeout(100);
+  expect(await heroAnimations(page)).toEqual([]);
+  expect(await opacity(page, DAY), 'day layer').toBe('0');
+  expect(await opacity(page, NIGHT), 'night layer').toBe('1');
+  expect(await page.locator('[data-hero-layer="stars"]').evaluate((element) => getComputedStyle(element).display)).toBe('none');
+});
+
+test('rapid toggling settles on the final theme', async ({ page }) => {
+  test.skip(!isDesktopShell(page), 'the rail’s theme button is the desktop shell');
+  await storeDisplay(page, { theme: 'light' });
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  const button = themeButton(page);
+  await button.click();
+  await button.click();
+  await button.click();
+  await page.waitForTimeout(3_200);
+  expect(await heroAnimations(page), 'nothing runs once settled').toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true);
+  expect(await opacity(page, DAY), 'day layer').toBe('0');
+  expect(await page.locator(DAY).evaluate((element) => getComputedStyle(element).filter)).toBe('none');
 });

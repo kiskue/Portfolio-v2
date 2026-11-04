@@ -348,6 +348,23 @@ test.describe('Core Web Vitals in the lab', { tag: '@vitals' }, () => {
     expect(value.cls, JSON.stringify(value.shifts)).toBeLessThanOrEqual(0.05);
   });
 
+  test('a theme switch on Home shifts nothing: CLS ≤ 0.05 through the sunset', async ({ page }, testInfo) => {
+    await observeVitals(page);
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    await fontsReady(page);
+    if (isDesktopShell(page)) {
+      await page.getByRole('complementary').getByRole('button', { name: /Switch to (dark|light) theme/ }).click();
+    } else {
+      await page.getByRole('banner').getByRole('button', { name: 'Menu' }).click();
+      await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: /Switch to (dark|light) theme/ }).click();
+    }
+    await page.waitForTimeout(3_000);
+    const value = await vitals(page);
+    record(testInfo, `theme switch CLS: ${value.cls.toFixed(4)} over ${value.shifts.length} shift(s)`);
+    expect(value.cls, JSON.stringify(value.shifts)).toBeLessThanOrEqual(0.05);
+  });
+
   test('shell interactions respond within 200 ms (INP)', async ({ page }, testInfo) => {
     await observeVitals(page);
     await page.goto('/', { waitUntil: 'load' });

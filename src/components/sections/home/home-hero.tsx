@@ -5,6 +5,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { ExternalLink } from '@/components/ui/external-link';
 import { Icon } from '@/components/ui/icon';
 import { music } from '@/content/music';
+import { HeroScene } from '@/components/sections/home/hero-scene';
 
 /** Shooting stars (night only): where each starts, its angle and its timing. */
 const STARS = [
@@ -53,6 +54,7 @@ export function HomeHero({ children }: { readonly children: ReactNode }): ReactN
             />
           ))}
         </svg>
+        <HeroScene />
         <div data-hero-layer="scrim-day" />
         <div data-hero-layer="scrim-night" />
         <div className="hero-fade" />

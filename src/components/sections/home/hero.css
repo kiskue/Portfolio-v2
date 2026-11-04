@@ -211,8 +211,17 @@
     inset-inline: 0;
     bottom: 0;
     height: 20%;
-    z-index: 1;
+    z-index: 3;
     background: linear-gradient(to bottom, transparent, var(--c-bg));
+  }
+
+  /* The dragon's stage (a later task fills it): over the scrims, under the fade. */
+  .hero-dragon-host {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
   }
 
   /* ─── Shooting stars: night only, never under reduced motion ─── */
