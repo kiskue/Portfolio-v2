@@ -20,6 +20,7 @@ test('without WebGL it flies as stacked frames, quietly', async ({ page }) => {
   await flying(page);
   expect((await dragonState(page)).renderer).toBe('images');
   await expect(page.locator(`${DRAGON} img`)).toHaveCount(3);
+  await expect(page.locator(`${DRAGON} img[alt=""]`), 'the frames are marked decorative').toHaveCount(3);
   await expect(page.locator(`${DRAGON} canvas`)).toHaveCount(0);
   await idleAfterLoad(page, 6_000);
   expect(describeConsoleProblems(problems)).toEqual([]);

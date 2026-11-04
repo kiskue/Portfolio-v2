@@ -5,11 +5,12 @@ import { fontsReady, hydrated, storeDisplay } from '../support/page';
 
 /*
  * The dragon (design §3.3), against the production build: the scene chunk flies it once per session,
- * about 1.2 s after Home has painted, and again 1.6 s after each theme switch; a flight stops when
- * the tab hides or the hero leaves the screen; leaving Home leaves nothing behind. The default
- * headless browser renders WebGL in software, where the dragon flies as stacked frames on purpose
- * (renderer.ts); hero-webgl.spec.ts runs the WebGL renderer on the GPU, and hero-no-webgl.spec.ts
- * the fallback without WebGL. Both need browsers of their own.
+ * about 1.2 s after Home has painted (a hidden page has not been seen: the opening waits until it is
+ * shown), and again 1.6 s after each theme switch; a flight stops when the tab hides or the hero
+ * leaves the screen; leaving Home leaves nothing behind. The default headless browser renders WebGL
+ * in software, where the dragon flies as stacked frames on purpose (renderer.ts); hero-webgl.spec.ts
+ * runs the WebGL renderer on the GPU, and hero-no-webgl.spec.ts the fallback without WebGL. Both
+ * need browsers of their own.
  */
 
 // One worker per file, tests in order (see smoke.spec.ts for why).
@@ -225,5 +226,25 @@ test.describe('the dragon', () => {
     await navigate(page, 'Home');
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(DRAGON)).toHaveAttribute('data-flight', 'flying', { timeout: 6_000 });
+  });
+
+  test('a Home tab opened in the background flies once it is shown', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'one project is enough');
+    // The page reports itself hidden (a background tab, a prerender) until window.__show().
+    await page.addInitScript(() => {
+      let hidden = true;
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (hidden ? 'hidden' : 'visible') });
+      (window as unknown as { __show: () => void }).__show = () => {
+        hidden = false;
+        document.dispatchEvent(new Event('visibilitychange'));
+      };
+    });
+    await page.goto('/', { waitUntil: 'load' });
+    await sceneReady(page);
+    const unseen = await sampleDragon(page, 'flight', 200, 4_000);
+    expect(new Set(unseen), 'idle while the page is hidden').toEqual(new Set(['idle']));
+    await page.evaluate(() => (window as unknown as { __show: () => void }).__show());
+    await expect(page.locator(DRAGON), 'flying within 3 s of being shown').toHaveAttribute('data-flight', 'flying', { timeout: 3_000 });
   });
 });

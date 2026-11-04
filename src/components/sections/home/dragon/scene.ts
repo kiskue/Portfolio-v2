@@ -13,10 +13,12 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  *
  * startScene adds the dragon to the hero's host and flies it out to sea: once per session about
  * 1.2 s after Home has painted (first paint, or the island's mount on a client-side visit), and
- * 1.6 s after each theme switch (schedule.ts). A flight stops when the tab hides, the hero leaves
- * the screen or motion is reduced. Each frame writes the element's transform, opacity, --haze and
- * data-scale and draws once; the cover map that turns design units into screen pixels is measured
- * only when the host resizes. The expected failures stay quiet: without a hardware WebGL context, or
+ * 1.6 s after each theme switch (schedule.ts). A hidden page (a background tab, a prerender) has not
+ * been seen, so an opening flight that has not started waits for it: it starts 1.2 s after the page
+ * is first shown. A flight stops when the tab hides, the hero leaves the screen or motion is
+ * reduced. Each frame writes the element's transform, opacity, --haze and data-scale and draws
+ * once; the cover map that turns design units into screen pixels is measured only when the host
+ * resizes. The expected failures stay quiet: without a hardware WebGL context, or
  * when its frames fail, the dragon flies as stacked frames; when those fail to load, it stays away.
  * Anything else is a bug and is reported (reportError), never swallowed.
  */
@@ -38,6 +40,8 @@ const RATIO_EPSILON = 0.001;
 /** An image, decoded off the main thread; rejects when it does not load or decode. */
 function decoded(src: string): Promise<HTMLImageElement> {
   const image = new Image();
+  // Decorative, like the whole (aria-hidden) sky: the frames shown without WebGL and the WebGL set alike.
+  image.alt = '';
   image.src = src;
   return image.decode().then(() => image);
 }
@@ -86,6 +90,8 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   let plan: FlightPlan = { kind: 'idle' };
   /** The scheduled flight is the session's opening flight. */
   let opening = false;
+  /** The opening flight waits for the hidden page to be shown; the plan stays idle meanwhile. */
+  let openingPending = false;
   let timer = 0;
   let frame = 0;
   let startedAt = 0;
@@ -121,12 +127,22 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     dragon.dataset.flight = 'idle';
   };
 
-  /** Stops a flight and drops a scheduled one. */
+  /** Stops a flight and drops a scheduled or pending one. */
   const abort = (): void => {
     window.clearTimeout(timer);
     timer = 0;
     opening = false;
+    openingPending = false;
     land();
+  };
+
+  /** Keeps the opening flight, unstarted, until the page is shown (onVisibility schedules it then). */
+  const holdOpening = (): void => {
+    window.clearTimeout(timer);
+    timer = 0;
+    plan = { kind: 'idle' };
+    opening = false;
+    openingPending = true;
   };
 
   const tick = (now: number): void => {
@@ -164,9 +180,15 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
 
   const fly = (): void => {
     timer = 0;
-    // A start that comes due while the tab is hidden, the hero is off screen or motion is reduced is dropped.
-    if (document.hidden || !inView || getDisplaySnapshot().resolved.reduceMotion) {
+    // A start that comes due while the hero is off screen or motion is reduced is dropped.
+    if (!inView || getDisplaySnapshot().resolved.reduceMotion) {
       abort();
+      return;
+    }
+    // So is one that comes due while the tab is hidden, except the opening flight: it waits to be seen.
+    if (document.hidden) {
+      if (opening) holdOpening();
+      else abort();
       return;
     }
     if (opening) {
@@ -192,11 +214,16 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     dragon.append(...nodes);
     dragon.dataset.renderer = kind;
     if (plan.kind === 'idle' && openingFlightDue(session())) {
-      // Home painted at first paint, or when the island mounted after a client-side visit.
-      const at = openingStartAt(Math.max(firstPaint(), mountedAt), performance.now());
-      if (at !== null) {
-        plan = { kind: 'scheduled', at };
-        opening = true;
+      if (document.hidden) {
+        // A background tab or a prerender has not been seen yet: the opening flight waits for it.
+        openingPending = true;
+      } else {
+        // Home painted at first paint, or when the island mounted after a client-side visit.
+        const at = openingStartAt(Math.max(firstPaint(), mountedAt), performance.now());
+        if (at !== null) {
+          plan = { kind: 'scheduled', at };
+          opening = true;
+        }
       }
     }
     arm();
@@ -245,13 +272,30 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     }
     if (!changed) return;
     plan = onThemeSwitch(plan, performance.now());
-    // A switch before the opening flight replaces it.
-    if (plan.kind === 'scheduled') opening = false;
+    // A switch before the opening flight (scheduled, or waiting for the page to be shown) replaces it.
+    if (plan.kind === 'scheduled') {
+      opening = false;
+      openingPending = false;
+    }
     arm();
   });
 
   const onVisibility = (): void => {
-    if (document.hidden) abort();
+    if (document.hidden) {
+      // A flight in progress stops and a switch's scheduled flight is dropped. The opening flight is
+      // kept: if it comes due while the page is still hidden, fly() holds it until the page returns.
+      if (!opening && !openingPending) abort();
+      return;
+    }
+    if (!openingPending) return;
+    // Shown at last: Home has just been seen, so the opening flight starts 1.2 s from now.
+    openingPending = false;
+    const now = performance.now();
+    const at = openingStartAt(now, now);
+    if (at === null) return;
+    plan = { kind: 'scheduled', at };
+    opening = true;
+    arm();
   };
   document.addEventListener('visibilitychange', onVisibility);
 
