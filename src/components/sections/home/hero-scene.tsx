@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
 import { skyChange } from '@/components/sections/home/sky';
+import type { SceneHandle } from '@/components/sections/home/dragon/scene';
 
 /**
  * The Home hero's client island (design §3.2, §6.2). On a theme change it plays the sunset or the
@@ -17,6 +18,38 @@ import { skyChange } from '@/components/sections/home/sky';
  */
 export function HeroScene(): ReactNode {
   const host = useRef<HTMLDivElement>(null);
+  // The server snapshot is true, so rendering and hydration never load the dragon's chunk.
+  const reduceMotion = useSyncExternalStore(subscribeDisplay, () => getDisplaySnapshot().resolved.reduceMotion, () => true);
+
+  // The dragon's code is its own chunk, loaded once the page has loaded (and so hydrated) and only
+  // when motion is allowed (design §6.3). It is a separate effect: the sky change below is untouched.
+  useEffect(() => {
+    const element = host.current;
+    if (reduceMotion || !element) return;
+    let cancelled = false;
+    let handle: SceneHandle | undefined;
+    const load = (): void => {
+      import('@/components/sections/home/dragon/scene')
+        .then((scene) => {
+          if (!cancelled) handle = scene.startScene(element);
+        })
+        .catch(() => {});
+    };
+    let timer = 0;
+    // The import starts in a task after the load event's handlers, so the request is after the load event ends.
+    const afterLoad = (): void => {
+      timer = window.setTimeout(load, 0);
+    };
+    const ready = document.readyState === 'complete';
+    if (ready) load();
+    else window.addEventListener('load', afterLoad, { once: true });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (!ready) window.removeEventListener('load', afterLoad);
+      handle?.dispose();
+    };
+  }, [reduceMotion]);
 
   useEffect(() => {
     const root = host.current?.closest('[data-section="hero"]');

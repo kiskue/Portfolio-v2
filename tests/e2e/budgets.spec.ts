@@ -1,9 +1,11 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page, type TestInfo } from '@playwright/test';
 import {
   DOM_BUDGET,
   HTML_BROTLI_BUDGET,
   JS_BROTLI_BUDGET,
   JS_GZIP_BUDGET,
+  SCENE_CHUNK_BROTLI_BUDGET,
+  SCENE_CHUNK_MARKER,
   bytes,
   compressedSizes,
   htmlScriptChunks,
@@ -83,8 +85,15 @@ test.describe('Home weight', () => {
    * request counts, whatever started it: a prefetch that comes another way (a <link
    * rel=prefetch>, or a prefetch={true} of a dynamic route, which carries no such header) fails
    * here. Home has none.
+   *
+   * One exception (ruling H1, and the owner's 2026-11-03 decision for one separately capped scene
+   * chunk; design §6.3): the painted dragon's code is a single chunk that the Home island imports
+   * after the load event, only when motion is allowed. It is identified by the marker its code
+   * writes at runtime (SCENE_CHUNK_MARKER), must be exactly one, within its brotli cap, and
+   * requested after loadEventEnd. Any other unlisted script still fails, and under reduced motion
+   * nothing unlisted loads at all.
    */
-  test('the browser loads no first-party script the HTML does not list (router prefetches stopped)', async ({ page, request, baseURL }, testInfo) => {
+  async function loadHome(page: Page, request: APIRequestContext, baseURL: string | undefined, reducedMotion: 'reduce' | 'no-preference') {
     if (!baseURL) throw new Error('playwright.config.ts sets the baseURL this check compares origins with');
     const origin = new URL(baseURL).origin;
     const listed = new Set(htmlScriptChunks(await (await request.get('/')).text()).map((path) => new URL(path, origin).pathname));
@@ -105,6 +114,7 @@ test.describe('Home weight', () => {
       loaded.add(url.pathname);
       lastScriptAt = Date.now();
     });
+    await page.emulateMedia({ reducedMotion });
     await page.goto('/', { waitUntil: 'load' });
     await hydrated(page);
     await page.waitForLoadState('networkidle');
@@ -117,13 +127,44 @@ test.describe('Home weight', () => {
       .toBeGreaterThanOrEqual(1_000);
     const unlisted = [...loaded].filter((path) => !listed.has(path));
     const unfetched = [...listed].filter((path) => !loaded.has(path));
+    return { loaded, unlisted, unfetched, prefetches };
+  }
+
+  function describeLoad(result: Awaited<ReturnType<typeof loadHome>>): string {
+    const { loaded, unlisted, unfetched, prefetches } = result;
+    return `Home scripts fetched at load: ${loaded.size}; not in the HTML: ${JSON.stringify(unlisted)}; in the HTML but not fetched: ${JSON.stringify(unfetched)}; router prefetches stopped: ${prefetches.length} ${JSON.stringify(prefetches)}`;
+  }
+
+  test('the browser loads no first-party script the HTML does not list, except the one capped scene chunk after load (router prefetches stopped)', async ({ page, request, baseURL }, testInfo) => {
+    const result = await loadHome(page, request, baseURL, 'no-preference');
+    const { loaded, unlisted } = result;
+    const scene: { path: string; size: Sizes; startTime: number }[] = [];
+    for (const path of unlisted) {
+      const body = await (await request.get(path)).body();
+      if (!body.includes(SCENE_CHUNK_MARKER)) continue;
+      const startTime = await page.evaluate((p) => performance.getEntriesByType('resource').find((e) => new URL(e.name).pathname === p)?.startTime ?? -1, path);
+      scene.push({ path, size: compressedSizes(body), startTime });
+    }
+    const others = unlisted.filter((path) => !scene.some((chunk) => chunk.path === path));
+    const loadEnd = await page.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).loadEventEnd);
+    record(testInfo, describeLoad(result));
     record(
       testInfo,
-      `Home scripts fetched at load: ${loaded.size}; not in the HTML: ${JSON.stringify(unlisted)}; in the HTML but not fetched: ${JSON.stringify(unfetched)}; router prefetches stopped: ${prefetches.length} ${JSON.stringify(prefetches)}`,
+      `scene chunk: ${JSON.stringify(scene.map((chunk) => ({ path: chunk.path, brotli: chunk.size.brotli, startTime: Math.round(chunk.startTime) })))}; load event ended at ${Math.round(loadEnd)} ms (cap ${bytes(SCENE_CHUNK_BROTLI_BUDGET)} brotli)`,
     );
     expect(loaded.size, 'the browser fetched the framework chunks').toBeGreaterThanOrEqual(5);
     // Anything here would escape the HTML-based budget above.
-    expect(unlisted, 'first-party scripts Home loads that its HTML does not list').toEqual([]);
+    expect(others, 'first-party scripts Home loads that its HTML does not list, other than the scene chunk').toEqual([]);
+    expect(scene, 'exactly one scene chunk loads when motion is allowed').toHaveLength(1);
+    expect(scene[0]?.size.brotli ?? Infinity, `scene chunk brotli (cap ${bytes(SCENE_CHUNK_BROTLI_BUDGET)})`).toBeLessThanOrEqual(SCENE_CHUNK_BROTLI_BUDGET);
+    expect(scene[0]?.startTime ?? -1, 'the scene chunk is requested after the load event').toBeGreaterThanOrEqual(loadEnd);
+  });
+
+  test('under reduced motion, no script the HTML does not list loads at all', async ({ page, request, baseURL }, testInfo) => {
+    const result = await loadHome(page, request, baseURL, 'reduce');
+    record(testInfo, describeLoad(result));
+    expect(result.loaded.size, 'the browser fetched the framework chunks').toBeGreaterThanOrEqual(5);
+    expect(result.unlisted, 'first-party scripts Home loads under reduced motion that its HTML does not list').toEqual([]);
   });
 
   test('the DOM has at most 3,000 nodes', async ({ page }, testInfo) => {

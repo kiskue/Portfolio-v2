@@ -15,6 +15,13 @@ export const HTML_BROTLI_BUDGET = 150 * 1024;
 export const JS_BROTLI_BUDGET = 153_515;
 /** measurements.md: the gzip equivalent next start serves (and Lighthouse CI asserts), rounded up. */
 export const JS_GZIP_BUDGET = 180_000;
+/** The marker the scene chunk's code carries at runtime (a duplicate of `SCENE_CHUNK_MARKER` in dragon/scene.ts; tests/unit/scene-chunk.test.ts keeps the two equal). */
+export const SCENE_CHUNK_MARKER = 'gm-scene-dragon';
+/**
+ * The scene chunk's brotli cap. PROVISIONAL: Task 8 sets it from the measured size plus 25%,
+ * rounded up to 1 KiB and capped at 16 KiB.
+ */
+export const SCENE_CHUNK_BROTLI_BUDGET = 16_384;
 
 export interface Sizes {
   readonly raw: number;
