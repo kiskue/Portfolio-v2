@@ -13,7 +13,7 @@ import { skyChange } from '@/components/sections/home/sky';
  * pins the animated layers at their start values (inline styles, so the new theme's CSS does not
  * flash), and the animations start after the click's frame has been presented. Interruptions never
  * pin or restart: a change while the start is still pending cancels it (the sky never moved, and
- * CSS already shows the restored theme); a change while the set runs reverses that set.
+ * CSS already shows the restored theme); a change while the set runs cancels it (a snap to CSS).
  */
 export function HeroScene(): ReactNode {
   const host = useRef<HTMLDivElement>(null);
@@ -66,8 +66,9 @@ export function HeroScene(): ReactNode {
         return;
       }
       if (current.length > 0) {
-        // The set is running: turn it around, creating nothing.
-        for (const animation of current) animation.reverse();
+        // The set is running: cancel it. CSS already shows the new theme's sky, so the sky snaps to it
+        // (running or reversed sets keep producing heavy frames that later input would wait for).
+        reset();
         return;
       }
       const change = skyChange(previous, next);

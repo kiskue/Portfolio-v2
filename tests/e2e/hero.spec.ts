@@ -359,7 +359,7 @@ test('a quick double click never flashes the night painting', async ({ page }) =
   expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(false);
 });
 
-test('a switch back mid-sunset plays it in reverse', async ({ page }) => {
+test('a switch back mid-sunset snaps to the restored sky', async ({ page }) => {
   test.skip(!isDesktopShell(page), 'the rail’s theme button is the desktop shell');
   await storeDisplay(page, { theme: 'light' });
   await page.goto('/', { waitUntil: 'load' });
@@ -369,18 +369,9 @@ test('a switch back mid-sunset plays it in reverse', async ({ page }) => {
   await page.waitForTimeout(400);
   expect((await heroAnimations(page)).length, 'the sunset is running').toBeGreaterThan(0);
   await button.click();
-  // The turn happens one frame after the click (so the click's own frame stays cheap).
-  const rates = async () =>
-    page.evaluate(() => {
-      const found: number[] = [];
-      for (const element of document.querySelectorAll('[data-section="hero"] [data-hero-layer]')) {
-        for (const animation of element.getAnimations()) found.push(animation.playbackRate);
-      }
-      return found;
-    });
-  await expect.poll(async () => [...new Set(await rates())], { timeout: 300, message: 'every animation runs backwards' }).toEqual([-1]);
-  await page.waitForTimeout(3_200);
-  expect(await heroAnimations(page), 'nothing runs once settled').toEqual([]);
+  // Within one animation frame of the click, the set is gone and CSS shows the restored sky.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await heroAnimations(page), 'no animation remains').toEqual([]);
   expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(false);
   expect(await opacity(page, DAY), 'day layer').toBe('1');
   expect(await page.locator(DAY).evaluate((element) => getComputedStyle(element).filter)).toBe('none');
