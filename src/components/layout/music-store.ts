@@ -10,7 +10,9 @@ import { nextMusicStatus, type MusicEvent, type MusicStatus } from '@/lib/music'
  *
  * A failure before the player exists (the chunk does not load, or play() is refused) ends the
  * session: the element is paused, the context closed and everything dropped, so the next press
- * starts a fresh one inside its own gesture. After the player exists, failures are its job.
+ * starts a fresh one inside its own gesture. After the player exists, failures are its job. A
+ * player that throws while it is created is a bug: the session ends the same way, and the error is
+ * reported (reportError), never swallowed.
  */
 
 interface Session {
@@ -83,12 +85,19 @@ function startSession(src: string): void {
   playing.catch(() => {
     if (!current.player) abandon(current);
   });
-  import('@/components/layout/music-player')
-    .then(({ createMusicPlayer }) => {
+  import('@/components/layout/music-player').then(
+    ({ createMusicPlayer }) => {
       if (session !== current) return;
-      current.player = createMusicPlayer({ el, ctx, playing, report, status: getMusicSnapshot });
-    })
-    .catch(() => abandon(current));
+      try {
+        current.player = createMusicPlayer({ el, ctx, playing, report, status: getMusicSnapshot });
+      } catch (error) {
+        // A bug, not a failed load: the session ends the same way, and the error surfaces.
+        abandon(current);
+        reportError(error);
+      }
+    },
+    () => abandon(current),
+  );
 }
 
 /** Called synchronously from the button's click handler. */

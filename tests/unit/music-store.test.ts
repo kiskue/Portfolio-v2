@@ -150,6 +150,30 @@ describe('the music store', () => {
     expect(options.el).toBe(FakeAudio.all[1]);
   });
 
+  it('(e) a player that throws on creation ends the session, surfaces the bug, and the next press starts afresh', async () => {
+    install();
+    const reportError = vi.fn();
+    vi.stubGlobal('reportError', reportError);
+    const { store, createMusicPlayer, release } = await freshStore();
+    const bug = new Error('player bug');
+    createMusicPlayer.mockImplementationOnce(() => {
+      throw bug;
+    });
+    store.toggleMusic('/a.mp3');
+    release();
+    await settle();
+    expect(store.getMusicSnapshot()).toBe('off');
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(reportError).toHaveBeenCalledWith(bug);
+    expect(FakeAudio.all[0]?.pause).toHaveBeenCalled();
+    expect(FakeContext.all[0]?.close).toHaveBeenCalled();
+    store.toggleMusic('/a.mp3');
+    expect(FakeAudio.all).toHaveLength(2);
+    expect(FakeAudio.all[1]?.play).toHaveBeenCalledTimes(1);
+    expect(FakeContext.all).toHaveLength(2);
+    expect(store.getMusicSnapshot()).toBe('starting');
+  });
+
   it('presses after the player exists go to the player', async () => {
     install();
     const { store, createMusicPlayer, release } = await freshStore();
