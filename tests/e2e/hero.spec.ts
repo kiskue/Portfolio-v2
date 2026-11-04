@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { music } from '@/content/music';
+import { collectConsoleProblems, describeConsoleProblems } from '../support/console';
+import { DRAGON, dragonState, flying, sampleFlight } from '../support/dragon';
 import { fontsReady, hydrated, isDesktopShell, storeDisplay } from '../support/page';
 
 /*
@@ -406,4 +408,171 @@ test('the click’s frame keeps the old sky (pins)', async ({ page }) => {
     return layer ? getComputedStyle(layer).opacity : 'missing';
   }, button);
   expect(day, 'the day layer is still shown in the click’s frame').toBe('1');
+});
+
+/*
+ * The dragon (design §3.3): the scene chunk flies it once per session, about 1.2 s after first
+ * paint, and again 1.6 s after each theme switch (tests/support/dragon.ts reads its state). Without
+ * WebGL it flies as stacked frames: hero-no-webgl.spec.ts, which needs a browser of its own.
+ */
+
+/** Clicks the theme button: the rail's on the desktop shell, the menu sheet's below 1280px. */
+async function switchTheme(page: Page): Promise<void> {
+  if (isDesktopShell(page)) {
+    await themeButton(page).click();
+    return;
+  }
+  await page.getByRole('banner').getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: /Switch to (dark|light) theme/ }).click();
+}
+
+/** Follows a primary nav link: the rail's on the desktop shell, the menu sheet's below 1280px. */
+async function navigate(page: Page, label: string): Promise<void> {
+  if (isDesktopShell(page)) {
+    await page.getByRole('complementary').getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: label, exact: true }).click();
+    return;
+  }
+  await page.getByRole('banner').getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('dialog', { name: 'Menu' }).getByRole('link', { name: label, exact: true }).click();
+}
+
+test.describe('the dragon', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('the opening flight plays once per session', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'load' });
+    await flying(page);
+    const first = await dragonState(page);
+    await page.waitForTimeout(500);
+    const later = await dragonState(page);
+    expect(later.transform, 'the dragon moved in 500 ms').not.toBe(first.transform);
+    expect(['webgl', 'images'], 'the renderer').toContain(later.renderer);
+    await page.reload({ waitUntil: 'load' });
+    expect(await sampleFlight(page, 200, 4_000), 'no second opening flight in the same session').not.toContain('flying');
+  });
+
+  test('a theme switch sends it out again 1.6 s later', async ({ page }) => {
+    // The session has already seen the opening flight, so only the switch can send it out.
+    await page.addInitScript(() => {
+      try {
+        sessionStorage.setItem('gm.dragon', '1');
+      } catch {
+        // Without storage the opening flight would fly; the test then fails on the idle check.
+      }
+    });
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    // The scene is ready once it knows its renderer.
+    await expect(page.locator(DRAGON)).toHaveAttribute('data-renderer', /^(webgl|images)$/);
+    expect((await dragonState(page)).flight, 'idle before the switch').toBe('idle');
+    await switchTheme(page);
+    await page.waitForTimeout(1_000);
+    expect((await dragonState(page)).flight, 'still idle 1 s after the switch').toBe('idle');
+    await expect(page.locator(DRAGON), 'flying by 3 s after the switch').toHaveAttribute('data-flight', 'flying', { timeout: 2_000 });
+  });
+
+  test('reduced motion: no dragon element and no flight', async ({ page }) => {
+    await storeDisplay(page, { motion: 'reduce' });
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    await page.waitForTimeout(4_000);
+    await expect(page.locator(DRAGON)).toHaveCount(0);
+  });
+
+  test('on a phone the big dragon keeps clear of the headline', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the phone path is the mobile project’s');
+    test.setTimeout(60_000);
+    await page.goto('/', { waitUntil: 'load' });
+    await fontsReady(page);
+    await flying(page);
+    // Every 100 ms until the flight ends: the 800×706 dragon inside its 1000×906 canvas (10% and
+    // 11.038% in, 80% × 77.925%), and the H1 and subline boxes.
+    const samples = await page.evaluate(async (selector) => {
+      const box = (element: Element | null) => {
+        const rect = element?.getBoundingClientRect();
+        return rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } : null;
+      };
+      const found: { scale: number; inner: { left: number; top: number; right: number; bottom: number }; h1: ReturnType<typeof box>; subline: ReturnType<typeof box> }[] = [];
+      const end = performance.now() + 15_000;
+      while (performance.now() < end) {
+        const dragon = document.querySelector<HTMLElement>(selector);
+        if (!dragon || dragon.dataset.flight !== 'flying') break;
+        const rect = dragon.getBoundingClientRect();
+        const left = rect.left + rect.width * 0.1;
+        const top = rect.top + rect.height * 0.11038;
+        found.push({
+          scale: Number(dragon.dataset.scale),
+          inner: { left, top, right: left + rect.width * 0.8, bottom: top + rect.height * 0.77925 },
+          h1: box(document.querySelector('main h1')),
+          subline: box(document.querySelector('main header h1 + p')),
+        });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return found;
+    }, DRAGON);
+    const big = samples.filter((sample) => sample.scale >= 0.5);
+    expect(big.length, `samples while the dragon is big (of ${samples.length})`).toBeGreaterThan(20);
+    for (const { scale, inner, h1, subline } of big) {
+      for (const [name, text] of [
+        ['H1', h1],
+        ['subline', subline],
+      ] as const) {
+        expect(text, `the ${name} is rendered`).not.toBeNull();
+        if (!text) continue;
+        const apart = inner.right <= text.left || text.right <= inner.left || inner.bottom <= text.top || text.bottom <= inner.top;
+        expect(apart, `at scale ${scale} the dragon ${JSON.stringify(inner)} overlaps the ${name} ${JSON.stringify(text)}`).toBe(true);
+      }
+    }
+  });
+
+  test('a flight stops when the hero scrolls away', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'load' });
+    await flying(page);
+    // #home-more starts where the hero ends: at the top of the viewport, no part of the hero shows.
+    await page.evaluate(() => {
+      const more = document.querySelector('#home-more');
+      if (more) window.scrollTo({ top: more.getBoundingClientRect().top + window.scrollY, behavior: 'instant' });
+    });
+    await expect(page.locator(DRAGON)).toHaveAttribute('data-flight', 'idle', { timeout: 1_000 });
+  });
+
+  test('a hidden tab drops the flight', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'load' });
+    await flying(page);
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect(page.locator(DRAGON)).toHaveAttribute('data-flight', 'idle', { timeout: 1_000 });
+  });
+
+  test('Home → About → Home five times leaks nothing', async ({ page }) => {
+    test.setTimeout(60_000);
+    const problems = collectConsoleProblems(page);
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    await flying(page);
+    for (let round = 1; round <= 5; round += 1) {
+      await navigate(page, 'About');
+      await expect(page, `round ${round}: on About`).toHaveURL(/\/about$/);
+      await expect(page.locator(DRAGON), `round ${round}: no dragon on About`).toHaveCount(0);
+      await navigate(page, 'Home');
+      await expect(page, `round ${round}: back on Home`).toHaveURL(/\/$/);
+      await expect(page.locator(DRAGON), `round ${round}: one dragon, ready`).toHaveAttribute('data-renderer', /^(webgl|images)$/);
+      expect((await dragonState(page)).count, `round ${round}: one dragon element`).toBe(1);
+    }
+    expect(await page.evaluate(() => document.querySelectorAll('canvas').length), 'canvases in the document').toBeLessThanOrEqual(1);
+    expect(describeConsoleProblems(problems)).toEqual([]);
+  });
+
+  test('a switch during a flight queues no second flight', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    await flying(page);
+    await switchTheme(page);
+    expect((await dragonState(page)).count, 'one dragon element').toBe(1);
+    await expect(page.locator(DRAGON), 'the flight ends').toHaveAttribute('data-flight', 'idle', { timeout: 20_000 });
+    expect(await sampleFlight(page, 200, 3_000), 'no flight after the one that ended').not.toContain('flying');
+  });
 });

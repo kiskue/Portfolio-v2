@@ -215,13 +215,54 @@
     background: linear-gradient(to bottom, transparent, var(--c-bg));
   }
 
-  /* The dragon's stage (a later task fills it): over the scrims, under the fade. */
+  /* The dragon's stage: over the scrims, under the fade. */
   .hero-dragon-host {
     position: absolute;
     inset: 0;
     overflow: hidden;
     pointer-events: none;
     z-index: 2;
+  }
+
+  /*
+   * The dragon (design §3.3), added by the scene chunk (dragon/scene.ts), which moves and fades it
+   * every frame (transform, opacity) at the width --dragon-w. --haze (0 near, 1 far) makes it lose
+   * contrast and colour far away, like the far hills. The canvas has 100px of room around the
+   * 800×706 dragon so the swinging tail is never cut off; the no-WebGL frames sit in that inner box.
+   */
+  .hero-dragon {
+    --haze: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--dragon-w);
+    aspect-ratio: 1000 / 906;
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+    filter: saturate(calc(1 - var(--haze) * 0.35)) contrast(calc(1 - var(--haze) * 0.3)) brightness(calc(1 + var(--haze) * 0.07)) blur(calc(var(--haze) * 0.5px));
+  }
+
+  /* At night: a little darker, with a soft moonlit glow. */
+  .dark .hero-dragon {
+    filter: brightness(calc(0.84 - var(--haze) * 0.12)) saturate(calc(0.88 - var(--haze) * 0.2)) blur(calc(var(--haze) * 0.5px)) drop-shadow(0 0 9px rgb(165 195 255 / 0.55));
+  }
+
+  .hero-dragon canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* The stacked frames (beats the painting rule `.hero-sky img`). */
+  .hero-sky .hero-dragon img {
+    inset: 11.038% auto auto 10%;
+    width: 80%;
+    height: 77.925%;
+    object-fit: fill;
+    opacity: 0;
   }
 
   /* ─── Shooting stars: night only, never under reduced motion ─── */
