@@ -7,7 +7,7 @@
 ## Provenance
 
 - The day and night paintings and the dragon frames are the owner's own pictures, made with Gemini.
-- Nothing comes from TikTok or any other third-party material.
+- No third-party picture is used: no picture comes from TikTok or any other outside source. The only third-party material is the track below, used under CC BY 4.0 with the credit given there.
 
 ## The track
 
@@ -24,11 +24,25 @@
 
 ## How `assets/` was made
 
-The scripts in `tools/` are copies of the originals; they need numpy plus an ffmpeg binary and are run with `python -I`.
+The inputs (`source/`, `assets/`, `audio/`) live only in the local `.planning/painted-hero/` folder, which git ignores: none of them is committed. The scripts in `tools/` are copies of the originals kept there; they need numpy plus an ffmpeg binary and are run with `python -I`. From `.planning/painted-hero/`, with `<ffmpeg>` the ffmpeg binary and `frames/` a scratch folder:
 
-1. `tools/dragon_key.py` with `DRAGON_W=800` keys the three dragon frames (`source/dragon-rear-*.jpg`) out of their green background into transparent PNG/WebP frames (`assets/rear-keyed-*.png`).
-2. `tools/tail_layer.py` then runs on those frames and writes the tail-less body frames (`assets/rear-body-*.webp`), the tail texture (`assets/rear-tailtex.webp`) and the spine (`assets/rear-spine.json`).
-3. `tools/tail_fk_tune2.py` is the tuning helper used for the tail's forward kinematics.
+1. Key the three dragon frames out of their green background. `dragon_key.py` crops all three to one box, scales them to 800 px wide and writes `frames/dragon-<name>.png` and `frames/dragon-<name>.webp`:
+
+   ```
+   DRAGON_W=800 python -I tools/dragon_key.py <ffmpeg> frames up=source/dragon-rear-up.jpg level=source/dragon-rear-mid.jpg down=source/dragon-rear-down.jpg
+   ```
+
+2. Split the frames into tail-less bodies and one bending tail. `tail_layer.py` reads `frames/dragon-{up,level,down}.png` and writes `assets/rear-body-{up,level,down}.webp`, `assets/rear-tailtex.webp` and `assets/rear-spine.json`:
+
+   ```
+   python -I tools/tail_layer.py <ffmpeg> frames assets
+   ```
+
+3. Keep the keyed PNGs as the no-WebGL frames under their input names: rename `frames/dragon-up.png`, `frames/dragon-level.png` and `frames/dragon-down.png` to `assets/rear-keyed-up.png`, `assets/rear-keyed-level.png` and `assets/rear-keyed-down.png`. The `frames/dragon-*.webp` files are the mockup's `rear-*.webp`; `prepare-scene.mjs` does not read them.
+
+Run this way with the ffmpeg of imageio-ffmpeg 0.8.0 and numpy 2.5, the three steps rebuild every `assets/rear-*` file byte for byte (checked 2026-11-04).
+
+`tools/tail_fk_tune2.py` makes no assets. It is a tuning check: it prints how far the tail swings under a few forward-kinematics settings (`python -I tools/tail_fk_tune2.py assets/rear-spine.json`).
 
 ## Rebuild
 
