@@ -61,7 +61,7 @@ export function HomeHero({ children }: { readonly children: ReactNode }): ReactN
       </div>
       <div className="hero-content">{children}</div>
       <div className="hero-foot">
-        <p data-hero-credit className="hero-credit text-[0.75rem] leading-4 text-ink-3">
+        <p data-hero-credit className="hero-credit text-[0.75rem] leading-4 text-ink-2">
           Music: &apos;{music.title}&apos; by {music.artist} – released under{' '}
           <ExternalLink href={music.licenceHref} icon={false}>
             {music.licenceLabel}
@@ -71,7 +71,7 @@ export function HomeHero({ children }: { readonly children: ReactNode }): ReactN
             {music.artistLabel}
           </ExternalLink>
         </p>
-        <a href="#home-more" className={`hero-pill ${buttonVariants({ variant: 'secondary', size: 'sm' })}`}>
+        <a href="#home-more" className={`hero-pill ${buttonVariants({ variant: 'secondary', size: 'sm' })} print:hidden`}>
           <Icon name="chevron-down" size={14} />
           Projects, services and more
         </a>

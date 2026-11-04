@@ -167,14 +167,30 @@ test('on short screens the hero grows to fit its text: nothing overlaps', async 
       };
       const main = document.querySelector('main#content');
       const gutter = main ? Number.parseFloat(getComputedStyle(main).paddingLeft) : 0;
+      // The credit's own width, measured without its plate: that blurred patch reaches 1.25rem past
+      // each side of the text on purpose.
+      const credit = document.querySelector('[data-hero-credit]');
+      if (!credit) throw new Error('[data-hero-credit] is not rendered');
+      const unplated = document.createElement('style');
+      unplated.textContent = '.hero-credit::before { display: none !important; }';
+      document.head.append(unplated);
+      const creditWidths = { scroll: credit.scrollWidth, client: credit.clientWidth };
+      unplated.remove();
       return {
         hero: rect('[data-section="hero"]'),
         header: rect('[data-section="hero"] header'),
         foot: rect('.hero-foot'),
         tools: rect('[data-section="tools"]'),
-        main: main ? { width: main.getBoundingClientRect().width, gutter } : { width: 0, gutter },      };
+        main: main ? { width: main.getBoundingClientRect().width, gutter } : { width: 0, gutter },
+        credit: rect('[data-hero-credit]'),
+        creditWidths,
+      };
     });
-    const { hero, header, foot, tools, main } = rects;
+    const { hero, header, foot, tools, main, credit, creditWidths } = rects;
+    // Nothing in the credit overflows it (its links never break: white-space: nowrap), and it sits inside the hero.
+    expect(creditWidths.scroll, `${label}: the credit's scrollWidth ${creditWidths.scroll} fits its ${creditWidths.client}`).toBeLessThanOrEqual(creditWidths.client);
+    expect(credit.left, `${label}: the credit starts inside the hero`).toBeGreaterThanOrEqual(hero.left - 0.5);
+    expect(credit.right, `${label}: the credit ends inside the hero`).toBeLessThanOrEqual(hero.right + 0.5);
     const wide = size.width >= 1280;
     const heroWidth = main.width + 2 * main.gutter;
     const formula = size.width < 768 ? size.height - 60 : wide ? Math.min(size.height, heroWidth * 0.75) : Math.min(size.height - 64, heroWidth * 0.75);
@@ -198,6 +214,9 @@ test('the credit is on the painting with its two links', async ({ page }) => {
   expect(text).toBe(`Music: ${music.credit}`);
   await expect(credit.getByRole('link', { name: music.licenceLabel })).toHaveAttribute('href', music.licenceHref);
   await expect(credit.getByRole('link', { name: music.artistLabel })).toHaveAttribute('href', music.artistHref);
+  // Each link stays on one line (on a phone "CC-BY 4.0" used to break after its hyphen).
+  const lines = await credit.locator('a').evaluateAll((links) => links.map((link) => link.getClientRects().length));
+  expect(lines, `line boxes of the links ${music.licenceLabel} and ${music.artistLabel}`).toEqual([1, 1]);
   const creditBox = await credit.boundingBox();
   const pillBox = await page.getByRole('link', { name: 'Projects, services and more' }).boundingBox();
   expect(creditBox, 'the credit is rendered').not.toBeNull();

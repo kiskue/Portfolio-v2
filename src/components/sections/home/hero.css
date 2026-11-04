@@ -346,6 +346,11 @@
     order: -1;
   }
 
+  /* Each link stays whole on one line: "CC-BY 4.0" never splits after its hyphen. */
+  .hero-credit a {
+    white-space: nowrap;
+  }
+
   @media (min-width: 64rem) {
     .hero-foot {
       display: grid;
@@ -363,6 +368,39 @@
       grid-column: 2;
       grid-row: 1;
       order: 0;
+    }
+  }
+
+  /*
+   * Print: like the site's other decorative chrome, the painting and everything drawn over it (the
+   * sky's layers, the dragon, the bottom fade), the text plates and the halo stay off paper, and the
+   * hero is only as tall as its text, so the headline and subline print as plain text. The credit
+   * stays, a line apart from the subline. The scroll pill is hidden by print:hidden in
+   * home-hero.tsx: its button utilities would win over this layer.
+   */
+  @media print {
+    .hero {
+      min-height: 0;
+    }
+
+    .hero-foot {
+      padding-top: 1rem;
+    }
+
+    .hero-sky,
+    .hero-fade {
+      display: none;
+    }
+
+    .hero-content header > div:first-child::before,
+    .hero-content header > p::before,
+    .hero-credit::before {
+      display: none;
+    }
+
+    .hero-content h1,
+    .hero-content h1 + p {
+      text-shadow: none;
     }
   }
 }
