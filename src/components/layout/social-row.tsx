@@ -29,9 +29,10 @@ function Glyph({ glyph, label }: { readonly glyph: SocialGlyph; readonly label: 
 }
 
 /**
- * GitHub, LinkedIn, Email and the theme toggle as round 40px buttons (design §4.1): raised
+ * GitHub, LinkedIn, Email, the theme toggle and the music speaker as round buttons (design §4.1):
+ * 40px by default, 36px in the docked rail (40px on coarse pointers), 44px on request; raised
  * background, 1px line border, ink glyphs. GitHub and LinkedIn open in a new tab and say so;
- * Email is a mailto link named "Email Gerric".
+ * Email is a mailto link named "Email Gerric". The row wraps rather than overflow.
  */
 export function SocialRow({ size = 40, themeToggle = true, music: withMusic = themeToggle, className }: SocialRowProps) {
   const circle = cn(

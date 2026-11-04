@@ -1,3 +1,4 @@
+import type { MusicPlayer } from '@/components/layout/music-player';
 import { nextMusicStatus, type MusicEvent, type MusicStatus } from '@/lib/music';
 
 /*
@@ -6,19 +7,16 @@ import { nextMusicStatus, type MusicEvent, type MusicStatus } from '@/lib/music'
  * a lazy chunk fetched on the first press. The AudioContext and the media element are created
  * here, inside the click, because that is the gesture the browser needs to let sound start;
  * nothing exists before it.
+ *
+ * A failure before the player exists (the chunk does not load, or play() is refused) ends the
+ * session: the element is paused, the context closed and everything dropped, so the next press
+ * starts a fresh one inside its own gesture. After the player exists, failures are its job.
  */
-
-interface Player {
-  start(): void;
-  stop(): void;
-}
 
 interface Session {
   readonly el: HTMLAudioElement;
   readonly ctx: AudioContext | null;
-  readonly playing: Promise<void>;
-  player: Player | null;
-  loading: boolean;
+  player: MusicPlayer | null;
 }
 
 let status: MusicStatus = 'off';
@@ -60,44 +58,49 @@ function createContext(): AudioContext | null {
   }
 }
 
-/** Fetches the player chunk and hands over the element. A failed fetch pauses the song and reports `failed`. */
-function loadPlayer(current: Session): void {
-  current.loading = true;
+/** Ends a session that never got a player: silence, release, forget, and report `failed`. */
+function abandon(current: Session): void {
+  if (session !== current) return;
+  session = null;
+  current.el.pause();
+  current.ctx?.close().catch(() => undefined);
+  report('failed');
+}
+
+/** The first press: creates the element and context in the gesture, plays, and fetches the player. */
+function startSession(src: string): void {
+  const el = new Audio();
+  el.preload = 'none';
+  el.loop = true;
+  // iOS ignores volume, so the element stays muted until the player has wired it (or set a volume).
+  el.muted = true;
+  el.volume = 0;
+  el.src = src;
+  const ctx = createContext();
+  const current: Session = { el, ctx, player: null };
+  session = current;
+  const playing = el.play();
+  playing.catch(() => {
+    if (!current.player) abandon(current);
+  });
   import('@/components/layout/music-player')
     .then(({ createMusicPlayer }) => {
-      current.player = createMusicPlayer({ el: current.el, ctx: current.ctx, playing: current.playing, report, status: getMusicSnapshot });
+      if (session !== current) return;
+      current.player = createMusicPlayer({ el, ctx, playing, report, status: getMusicSnapshot });
     })
-    .catch(() => {
-      current.el.pause();
-      report('failed');
-    })
-    .finally(() => {
-      current.loading = false;
-    });
+    .catch(() => abandon(current));
 }
 
 /** Called synchronously from the button's click handler. */
 export function toggleMusic(src: string): void {
   report('press');
   if (!session) {
-    const el = new Audio();
-    el.preload = 'none';
-    el.loop = true;
-    el.volume = 0;
-    el.src = src;
-    const ctx = createContext();
-    const current: Session = { el, ctx, playing: el.play(), player: null, loading: false };
-    session = current;
-    current.playing.catch(() => {
-      if (!current.player) report('failed');
-    });
-    loadPlayer(current);
+    startSession(src);
     return;
   }
+  // Before the player exists a press only moves the status; the player catches up on creation.
   if (session.player) {
     if (status === 'starting') session.player.start();
     else if (status === 'stopping') session.player.stop();
-  } else if (!session.loading && status === 'starting') {
-    loadPlayer(session);
   }
 }

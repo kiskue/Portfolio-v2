@@ -1,5 +1,6 @@
 import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
 import {
+  isMusicPlaying,
   MUSIC_FADE_IN_S,
   MUSIC_FADE_OUT_S,
   MUSIC_TONE_RAMP_S,
@@ -29,11 +30,15 @@ const isDark = (): boolean => getDisplaySnapshot().resolved.dark;
 /** Moves an AudioParam from where it is now to `target` over `seconds`. */
 function ramp(param: AudioParam, target: number, seconds: number, ctx: AudioContext, exponential = false): void {
   const now = ctx.currentTime;
+  const from = param.value;
   param.cancelScheduledValues(now);
-  param.setValueAtTime(param.value, now);
+  param.setValueAtTime(from, now);
   if (exponential) param.exponentialRampToValueAtTime(target, now + seconds);
   else param.linearRampToValueAtTime(target, now + seconds);
 }
+
+/** A filter cutoff the context accepts: above half the sample rate Chromium warns. */
+const cutoffFor = (ctx: AudioContext, dark: boolean): number => Math.min(musicTone(dark).cutoffHz, ctx.sampleRate / 2);
 
 export function createMusicPlayer({ el, ctx, playing, report, status }: MusicPlayerOptions): MusicPlayer {
   // Each start or stop makes the earlier one stale: its promise or timer then does nothing.
@@ -46,14 +51,27 @@ export function createMusicPlayer({ el, ctx, playing, report, status }: MusicPla
     filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.Q.value = Math.SQRT1_2;
-    filter.frequency.value = musicTone(isDark()).cutoffHz;
+    filter.frequency.value = cutoffFor(ctx, isDark());
     gain = ctx.createGain();
     gain.gain.value = 0;
     ctx.createMediaElementSource(el).connect(filter);
     filter.connect(gain);
     gain.connect(ctx.destination);
+    el.muted = false;
     el.volume = 1;
   }
+
+  /** Playback ended on its own account (an error, or the browser's media controls paused it). */
+  function fail(): void {
+    token += 1;
+    clearTimeout(stopTimer);
+    report('failed');
+  }
+  el.addEventListener('error', fail);
+  el.addEventListener('pause', () => {
+    // A pause the player asked for happens while stopping; a late event after a new play() is stale.
+    if (el.paused && isMusicPlaying(status())) fail();
+  });
 
   /** Once the element is playing: fade in (or set the volume without a context), then report it. */
   function begin(played: Promise<void>): void {
@@ -62,12 +80,13 @@ export function createMusicPlayer({ el, ctx, playing, report, status }: MusicPla
     played.then(
       () => {
         if (mine !== token || status() !== 'starting') return;
-        const tone = musicTone(isDark());
+        const dark = isDark();
+        const tone = musicTone(dark);
         if (ctx && gain && filter) {
-          ctx.resume().catch(() => undefined);
-          filter.frequency.value = tone.cutoffHz;
+          filter.frequency.value = cutoffFor(ctx, dark);
           ramp(gain.gain, tone.gain, MUSIC_FADE_IN_S, ctx);
         } else {
+          el.muted = false;
           el.volume = tone.gain;
         }
         report('started');
@@ -79,8 +98,9 @@ export function createMusicPlayer({ el, ctx, playing, report, status }: MusicPla
   }
 
   function start(): void {
+    // Both calls run at once, inside the click: Safari wants play() and resume() in the gesture.
+    ctx?.resume().catch(() => undefined);
     if (el.error) el.load();
-    // play() runs at once, inside the click, because Safari wants it in the gesture.
     begin(el.play());
   }
 
@@ -110,7 +130,7 @@ export function createMusicPlayer({ el, ctx, playing, report, status }: MusicPla
       if (status() === 'on') el.volume = tone.gain;
       return;
     }
-    ramp(filter.frequency, tone.cutoffHz, MUSIC_TONE_RAMP_S, ctx, true);
+    ramp(filter.frequency, cutoffFor(ctx, next), MUSIC_TONE_RAMP_S, ctx, true);
     if (status() === 'on') ramp(gain.gain, tone.gain, MUSIC_TONE_RAMP_S, ctx);
   });
 
