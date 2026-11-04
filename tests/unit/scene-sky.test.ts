@@ -1,41 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import { SUNRISE, SUNSET, WARM_FILTER, skyChange, type SkyAnimation } from '@/components/sections/home/sky';
 
-/** layer / duration / delay / fill per entry: the design's §3.2 table. */
-function summary(set: readonly SkyAnimation[]): readonly (readonly [string, number, number, string])[] {
-  return set.map((entry) => [entry.layer, entry.timing.duration, entry.timing.delay, entry.timing.fill] as const);
+type Row = readonly [layer: string, duration: number, delay: number, fill: string, easing: string, keyframes: readonly Keyframe[]];
+
+/** layer / duration / delay / fill / effect easing / keyframes per entry: the design's §3.2 table. */
+function rows(set: readonly SkyAnimation[]): Row[] {
+  return set.map((entry): Row => [entry.layer, entry.timing.duration, entry.timing.delay, entry.timing.fill, entry.timing.easing, entry.keyframes]);
 }
 
 describe('the sky change', () => {
-  it('SUNSET follows the table', () => {
-    expect(summary(SUNSET)).toEqual([
-      ['day', 900, 0, 'forwards'],
-      ['day', 1300, 600, 'backwards'],
-      ['night', 1500, 550, 'backwards'],
-      ['tint', 2600, 0, 'backwards'],
-      ['scrim-day', 1200, 350, 'backwards'],
-      ['scrim-night', 1200, 350, 'backwards'],
-      ['stars', 600, 2200, 'backwards'],
+  it('SUNSET follows the table, entry by entry', () => {
+    expect(rows(SUNSET)).toEqual([
+      ['day', 900, 0, 'forwards', 'ease', [{ filter: 'none' }, { filter: WARM_FILTER }]],
+      ['day', 1300, 600, 'backwards', 'ease', [{ opacity: 1 }, { opacity: 0 }]],
+      ['night', 1500, 550, 'backwards', 'ease', [{ opacity: 0 }, { opacity: 1 }]],
+      ['tint', 2600, 0, 'backwards', 'linear', [{ opacity: 0, easing: 'ease' }, { opacity: 1, offset: 0.35, easing: 'ease' }, { opacity: 0 }]],
+      ['scrim-day', 1200, 350, 'backwards', 'ease', [{ opacity: 1 }, { opacity: 0 }]],
+      ['scrim-night', 1200, 350, 'backwards', 'ease', [{ opacity: 0 }, { opacity: 1 }]],
+      ['stars', 600, 2200, 'backwards', 'ease', [{ opacity: 0 }, { opacity: 1 }]],
     ]);
-    expect(SUNSET[0]?.keyframes).toEqual([{ filter: 'none' }, { filter: WARM_FILTER }]);
-    expect(SUNSET[3]?.keyframes).toEqual([{ opacity: 0 }, { opacity: 1, offset: 0.35 }, { opacity: 0 }]);
   });
 
-  it('SUNRISE follows the table', () => {
-    expect(summary(SUNRISE)).toEqual([
-      ['night', 1100, 100, 'backwards'],
-      ['day', 1200, 0, 'backwards'],
-      ['day', 1300, 500, 'backwards'],
-      ['tint', 2400, 0, 'backwards'],
-      ['scrim-day', 1200, 350, 'backwards'],
-      ['scrim-night', 1200, 350, 'backwards'],
+  it('SUNRISE follows the table, entry by entry', () => {
+    expect(rows(SUNRISE)).toEqual([
+      ['night', 1100, 100, 'backwards', 'ease', [{ opacity: 1 }, { opacity: 0 }]],
+      ['day', 1200, 0, 'backwards', 'ease', [{ opacity: 0 }, { opacity: 1 }]],
+      ['day', 1300, 500, 'backwards', 'ease', [{ filter: WARM_FILTER }, { filter: 'none' }]],
+      ['tint', 2400, 0, 'backwards', 'linear', [{ opacity: 0, easing: 'ease' }, { opacity: 0.85, offset: 0.4, easing: 'ease' }, { opacity: 0 }]],
+      ['scrim-day', 1200, 350, 'backwards', 'ease', [{ opacity: 0 }, { opacity: 1 }]],
+      ['scrim-night', 1200, 350, 'backwards', 'ease', [{ opacity: 1 }, { opacity: 0 }]],
     ]);
-    expect(SUNRISE[2]?.keyframes).toEqual([{ filter: WARM_FILTER }, { filter: 'none' }]);
-    expect(SUNRISE[3]?.keyframes).toEqual([{ opacity: 0 }, { opacity: 0.85, offset: 0.4 }, { opacity: 0 }]);
-  });
-
-  it('every entry eases with "ease"', () => {
-    for (const entry of [...SUNSET, ...SUNRISE]) expect(entry.timing.easing).toBe('ease');
   });
 
   it('picks the set from the direction of the change', () => {

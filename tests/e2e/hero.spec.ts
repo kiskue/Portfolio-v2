@@ -319,3 +319,100 @@ test('rapid toggling settles on the final theme', async ({ page }) => {
   expect(await opacity(page, DAY), 'day layer').toBe('0');
   expect(await page.locator(DAY).evaluate((element) => getComputedStyle(element).filter)).toBe('none');
 });
+
+/** Inline opacity or filter left on any hero layer. */
+async function inlineStyles(page: Page): Promise<string[]> {
+  return page.evaluate((layers) => {
+    const left: string[] = [];
+    for (const layer of layers) {
+      const element = document.querySelector<HTMLElement>(`[data-section="hero"] [data-hero-layer="${layer}"]`);
+      if (element && (element.style.opacity !== '' || element.style.filter !== '')) left.push(`${layer}: ${element.getAttribute('style')}`);
+    }
+    return left;
+  }, LAYERS);
+}
+
+test('a quick double click never flashes the night painting', async ({ page }) => {
+  test.skip(!isDesktopShell(page), 'the rail’s theme button is the desktop shell');
+  await storeDisplay(page, { theme: 'light' });
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  const button = await themeButton(page).elementHandle();
+  expect(button, 'the theme button').not.toBeNull();
+  // Both clicks land in the same task, so the second arrives while the sunset's start is pending.
+  const seen = await page.evaluate(async (target) => {
+    (target as HTMLElement).click();
+    (target as HTMLElement).click();
+    const samples: string[] = [];
+    const day = document.querySelector('[data-section="hero"] [data-hero-layer="day"]');
+    const end = performance.now() + 300;
+    while (performance.now() < end) {
+      samples.push(day ? getComputedStyle(day).opacity : 'missing');
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    return samples;
+  }, button);
+  expect(seen.length, 'frames sampled').toBeGreaterThan(3);
+  expect(new Set(seen), 'the day layer stayed fully shown').toEqual(new Set(['1']));
+  expect(await heroAnimations(page), 'nothing runs').toEqual([]);
+  expect(await inlineStyles(page), 'no inline styles are left').toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(false);
+});
+
+test('a switch back mid-sunset plays it in reverse', async ({ page }) => {
+  test.skip(!isDesktopShell(page), 'the rail’s theme button is the desktop shell');
+  await storeDisplay(page, { theme: 'light' });
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  const button = themeButton(page);
+  await button.click();
+  await page.waitForTimeout(400);
+  expect((await heroAnimations(page)).length, 'the sunset is running').toBeGreaterThan(0);
+  await button.click();
+  // The turn happens one frame after the click (so the click's own frame stays cheap).
+  const rates = async () =>
+    page.evaluate(() => {
+      const found: number[] = [];
+      for (const element of document.querySelectorAll('[data-section="hero"] [data-hero-layer]')) {
+        for (const animation of element.getAnimations()) found.push(animation.playbackRate);
+      }
+      return found;
+    });
+  await expect.poll(async () => [...new Set(await rates())], { timeout: 300, message: 'every animation runs backwards' }).toEqual([-1]);
+  await page.waitForTimeout(3_200);
+  expect(await heroAnimations(page), 'nothing runs once settled').toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(false);
+  expect(await opacity(page, DAY), 'day layer').toBe('1');
+  expect(await page.locator(DAY).evaluate((element) => getComputedStyle(element).filter)).toBe('none');
+  expect(await inlineStyles(page), 'no inline styles are left').toEqual([]);
+});
+
+test('turning reduced motion on mid-sunset stops the sky', async ({ page }) => {
+  test.skip(!isDesktopShell(page), 'the rail’s theme button is the desktop shell');
+  await storeDisplay(page, { theme: 'light' });
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  await themeButton(page).click();
+  await page.waitForTimeout(200);
+  expect((await heroAnimations(page)).length, 'the sunset is running').toBeGreaterThan(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(async () => (await heroAnimations(page)).length, { timeout: 500 }).toBe(0);
+  expect(await opacity(page, DAY), 'day layer').toBe('0');
+  expect(await opacity(page, NIGHT), 'night layer').toBe('1');
+  expect(await inlineStyles(page), 'no inline styles are left').toEqual([]);
+});
+
+test('the click’s frame keeps the old sky (pins)', async ({ page }) => {
+  test.skip(!isDesktopShell(page), 'the rail’s theme button is the desktop shell');
+  await storeDisplay(page, { theme: 'light' });
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  const button = await themeButton(page).elementHandle();
+  const day = await page.evaluate(async (target) => {
+    (target as HTMLElement).click();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const layer = document.querySelector('[data-section="hero"] [data-hero-layer="day"]');
+    return layer ? getComputedStyle(layer).opacity : 'missing';
+  }, button);
+  expect(day, 'the day layer is still shown in the click’s frame').toBe('1');
+});

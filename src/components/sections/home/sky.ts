@@ -12,7 +12,7 @@ export interface SkyAnimation {
   readonly timing: {
     readonly duration: number;
     readonly delay: number;
-    readonly easing: 'ease';
+    readonly easing: 'ease' | 'linear';
     readonly fill: FillMode;
   };
 }
@@ -20,15 +20,28 @@ export interface SkyAnimation {
 /** The warm cast the day painting takes on at the golden hour. */
 export const WARM_FILTER = 'brightness(.72) saturate(1.35) sepia(.3)';
 
-function entry(layer: SkyLayer, keyframes: readonly Keyframe[], duration: number, delay: number, fill: FillMode = 'backwards'): SkyAnimation {
-  return { layer, keyframes, timing: { duration, delay, easing: 'ease', fill } };
+function entry(
+  layer: SkyLayer,
+  keyframes: readonly Keyframe[],
+  duration: number,
+  delay: number,
+  fill: FillMode = 'backwards',
+  easing: 'ease' | 'linear' = 'ease',
+): SkyAnimation {
+  return { layer, keyframes, timing: { duration, delay, easing, fill } };
 }
+
+/*
+ * The tints' three keyframes ease per segment, as CSS @keyframes do: an effect-level easing would
+ * bend the offsets (the sunset peak would come at 22% of the time, not 35%), so their timing is linear.
+ */
+const EASE = 'ease';
 
 export const SUNSET: readonly SkyAnimation[] = [
   entry('day', [{ filter: 'none' }, { filter: WARM_FILTER }], 900, 0, 'forwards'),
   entry('day', [{ opacity: 1 }, { opacity: 0 }], 1300, 600),
   entry('night', [{ opacity: 0 }, { opacity: 1 }], 1500, 550),
-  entry('tint', [{ opacity: 0 }, { opacity: 1, offset: 0.35 }, { opacity: 0 }], 2600, 0),
+  entry('tint', [{ opacity: 0, easing: EASE }, { opacity: 1, offset: 0.35, easing: EASE }, { opacity: 0 }], 2600, 0, 'backwards', 'linear'),
   entry('scrim-day', [{ opacity: 1 }, { opacity: 0 }], 1200, 350),
   entry('scrim-night', [{ opacity: 0 }, { opacity: 1 }], 1200, 350),
   entry('stars', [{ opacity: 0 }, { opacity: 1 }], 600, 2200),
@@ -38,7 +51,7 @@ export const SUNRISE: readonly SkyAnimation[] = [
   entry('night', [{ opacity: 1 }, { opacity: 0 }], 1100, 100),
   entry('day', [{ opacity: 0 }, { opacity: 1 }], 1200, 0),
   entry('day', [{ filter: WARM_FILTER }, { filter: 'none' }], 1300, 500),
-  entry('tint', [{ opacity: 0 }, { opacity: 0.85, offset: 0.4 }, { opacity: 0 }], 2400, 0),
+  entry('tint', [{ opacity: 0, easing: EASE }, { opacity: 0.85, offset: 0.4, easing: EASE }, { opacity: 0 }], 2400, 0, 'backwards', 'linear'),
   entry('scrim-day', [{ opacity: 0 }, { opacity: 1 }], 1200, 350),
   entry('scrim-night', [{ opacity: 1 }, { opacity: 0 }], 1200, 350),
 ];
