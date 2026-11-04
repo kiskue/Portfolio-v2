@@ -48,19 +48,26 @@ test.describe('without JavaScript', () => {
   });
 });
 
-test('the head preloads the AVIF painting for each OS colour scheme', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'load' });
-  const preloads = await page.locator('head link[rel="preload"][as="image"][href^="/scene/"]').evaluateAll((links) =>
-    links.map((link) => ({
-      href: link.getAttribute('href'),
-      type: link.getAttribute('type'),
-      media: link.getAttribute('media'),
-      priority: link.getAttribute('fetchpriority'),
-    })),
-  );
+/** The attributes of an HTML start tag, names lower-cased. */
+function attributesOf(tag: string): Record<string, string> {
+  return Object.fromEntries([...tag.matchAll(/([\w:-]+)="([^"]*)"/g)].map(([, name = '', value = '']) => [name.toLowerCase(), value]));
+}
+
+test('the head preloads the AVIF painting for each OS colour scheme', async ({ request }) => {
+  // The server's HTML, not the live DOM: at hydration React adds the same hints again from the
+  // inline Flight payload, so the DOM would show them even if the HTML lost them.
+  const response = await request.get('/');
+  expect(response.ok()).toBe(true);
+  const html = await response.text();
+  const headEnd = html.indexOf('</head>');
+  expect(headEnd, 'the HTML has a head').toBeGreaterThan(0);
+  const preloads = [...html.matchAll(/<link\b[^>]*>/g)]
+    .map((match) => ({ at: match.index, link: attributesOf(match[0]) }))
+    .filter(({ link }) => link.rel === 'preload' && link.as === 'image' && link.href?.startsWith('/scene/'))
+    .map(({ at, link }) => ({ inHead: at < headEnd, href: link.href, type: link.type, media: link.media, priority: link.fetchpriority }));
   expect(preloads).toHaveLength(2);
-  expect(preloads).toContainEqual({ href: '/scene/day.avif', type: 'image/avif', media: '(prefers-color-scheme: light)', priority: 'high' });
-  expect(preloads).toContainEqual({ href: '/scene/night.avif', type: 'image/avif', media: '(prefers-color-scheme: dark)', priority: 'high' });
+  expect(preloads).toContainEqual({ inHead: true, href: '/scene/day.avif', type: 'image/avif', media: '(prefers-color-scheme: light)', priority: 'high' });
+  expect(preloads).toContainEqual({ inHead: true, href: '/scene/night.avif', type: 'image/avif', media: '(prefers-color-scheme: dark)', priority: 'high' });
 });
 
 test('the hero fills the first screen', async ({ page }, testInfo) => {
