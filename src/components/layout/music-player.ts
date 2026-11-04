@@ -61,16 +61,35 @@ export function createMusicPlayer({ el, ctx, playing, report, status }: MusicPla
     el.volume = 1;
   }
 
+  /** Silent at once: the gain to 0 (without a context, the element muted), so the next start fades in. */
+  function silence(): void {
+    if (ctx && gain) {
+      gain.gain.cancelScheduledValues(ctx.currentTime);
+      gain.gain.value = 0;
+    } else {
+      el.muted = true;
+    }
+  }
+
   /** Playback ended on its own account (an error, or the browser's media controls paused it). */
   function fail(): void {
     token += 1;
     clearTimeout(stopTimer);
+    // From silence, the next start (a press or an outside resume) fades in again.
+    silence();
     report('failed');
   }
   el.addEventListener('error', fail);
   el.addEventListener('pause', () => {
     // A pause the player asked for happens while stopping; a late event after a new play() is stale.
     if (el.paused && isMusicPlaying(status())) fail();
+  });
+  el.addEventListener('play', () => {
+    // An outside resume (lock screen, headset, media key) counts as a press: the button follows and the
+    // song fades in from the current gain. Our own start() plays while the status is already `starting`.
+    if (isMusicPlaying(status())) return;
+    report('press');
+    begin(Promise.resolve());
   });
 
   /** Once the element is playing: fade in (or set the volume without a context), then report it. */

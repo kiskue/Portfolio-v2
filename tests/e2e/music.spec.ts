@@ -163,6 +163,24 @@ test('the speaker plays the song and stops it', async ({ page }) => {
   await expect.poll(() => mediaPaused(page), { timeout: 2_000 }).toBe(true);
 });
 
+test('the button follows a pause and a resume from the media controls', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'one project is enough');
+  await page.goto('/', { waitUntil: 'load' });
+  await hydrated(page);
+  const button = await reachSpeaker(page);
+  await button.click();
+  await expect.poll(() => mediaTime(page), { timeout: 5_000 }).toBeGreaterThan(0);
+  // Only the player unmutes the element, so its listeners are on.
+  await expect.poll(() => page.evaluate(() => window.__qaMedia?.muted), { timeout: 3_000 }).toBe(false);
+  // The OS controls (lock screen, headset, media key) act on the element itself.
+  await page.evaluate(() => window.__qaMedia?.pause());
+  await expect(button, 'an outside pause').toHaveAccessibleName('Play music', { timeout: 1_000 });
+  await page.evaluate(() => window.__qaMedia?.play());
+  await expect(button, 'an outside resume').toHaveAccessibleName('Pause music', { timeout: 1_000 });
+  const resumed = await mediaTime(page);
+  await expect.poll(() => mediaTime(page), { message: 'the song runs again', timeout: 3_000 }).toBeGreaterThan(resumed);
+});
+
 test('the player chunk loads on the first press', async ({ page }) => {
   const scripts = trackScripts(page);
   await page.goto('/', { waitUntil: 'load' });
