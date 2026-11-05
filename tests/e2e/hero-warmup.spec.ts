@@ -139,6 +139,84 @@ for (const size of [
   });
 }
 
+interface DragonRecord {
+  __dragon: { readonly opacity: string; readonly warm: boolean; readonly filter: string; readonly haze: string; readonly flight: string }[];
+}
+
+/**
+ * The dragon's warm-up (dragon/scene.ts): before it is ready, it is drawn at a few poses along its
+ * path in the theme on show's filter and in the other theme's, at opacity 0.002, then hidden. Records
+ * every change of the dragon's style or data-warm (before any page script runs).
+ */
+async function recordDragon(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const record = window as unknown as DragonRecord;
+    record.__dragon = [];
+    const seen = (dragon: HTMLElement) =>
+      record.__dragon.push({
+        opacity: dragon.style.opacity,
+        warm: dragon.hasAttribute('data-warm'),
+        filter: getComputedStyle(dragon).filter,
+        haze: dragon.style.getPropertyValue('--haze'),
+        flight: dragon.dataset.flight ?? '',
+      });
+    new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        const target = mutation.target as HTMLElement;
+        if (target.classList?.contains('hero-dragon')) seen(target);
+      }
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['style', 'data-warm'] });
+  });
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}: before it is ready, the dragon is drawn in both themes' filters along its path, at a strength no screen shows`, async ({ page }) => {
+    await alreadyFlown(page);
+    await storeDisplay(page, { theme });
+    await recordDragon(page);
+    await page.goto('/', { waitUntil: 'load' });
+    await sceneReady(page);
+    const records = await page.evaluate(() => (window as unknown as DragonRecord).__dragon);
+    const drawn = records.filter((record) => record.opacity !== '' && Number(record.opacity) > 0);
+    expect(drawn.length, 'the dragon was drawn').toBeGreaterThan(0);
+    for (const record of drawn) expect(Number(record.opacity), `opacity before any flight (${record.flight})`).toBeLessThanOrEqual(TRACE);
+    // At night it has a moonlit drop-shadow: the other theme's filter is drawn too.
+    const shadowed = (record: { readonly filter: string }) => record.filter.includes('drop-shadow');
+    const otherTheme = drawn.filter((record) => record.warm);
+    const ownTheme = drawn.filter((record) => !record.warm);
+    expect(otherTheme.length, 'drawn in the other theme’s filter').toBeGreaterThan(0);
+    expect(ownTheme.length, 'drawn in the theme on show’s filter').toBeGreaterThan(0);
+    for (const record of otherTheme) expect(shadowed(record), `the other theme (${theme} on show)`).toBe(theme === 'light');
+    for (const record of ownTheme) expect(shadowed(record), `the theme on show (${theme})`).toBe(theme === 'dark');
+    expect(new Set(drawn.map((record) => record.haze)).size, 'at several poses along the path').toBeGreaterThanOrEqual(3);
+    // Then hidden, and back on its own theme's filter.
+    expect(await page.locator('.hero-dragon').evaluate((dragon: HTMLElement) => ({ opacity: dragon.style.opacity, warm: dragon.hasAttribute('data-warm') }))).toEqual({
+      opacity: '0',
+      warm: false,
+    });
+  });
+}
+
+test('the dragon’s filters are the same values as before (custom properties)', async ({ page }) => {
+  await alreadyFlown(page);
+  await storeDisplay(page, { theme: 'light' });
+  await page.goto('/', { waitUntil: 'load' });
+  await sceneReady(page);
+  const filterAt = (haze: string, dark: boolean) =>
+    page.locator('.hero-dragon').evaluate(
+      (dragon: HTMLElement, { value, night }) => {
+        document.documentElement.classList.toggle('dark', night);
+        dragon.style.setProperty('--haze', value);
+        const filter = getComputedStyle(dragon).filter;
+        document.documentElement.classList.remove('dark');
+        return filter;
+      },
+      { value: haze, night: dark },
+    );
+  expect(await filterAt('0.5', false)).toBe('saturate(0.825) contrast(0.85) brightness(1.035) blur(0.25px)');
+  expect(await filterAt('0.5', true)).toBe('brightness(0.78) saturate(0.78) blur(0.25px) drop-shadow(rgba(165, 195, 255, 0.55) 0px 0px 9px)');
+});
+
 test('a theme change during the warm-up cancels it, and the change plays in full', async ({ page }) => {
   await alreadyFlown(page);
   await page.emulateMedia({ colorScheme: 'light' });

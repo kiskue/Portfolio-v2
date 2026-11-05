@@ -242,6 +242,9 @@
    */
   .hero-dragon {
     --haze: 0;
+    /* By day; at night a little darker, with a soft moonlit glow. */
+    --dragon-day: saturate(calc(1 - var(--haze) * 0.35)) contrast(calc(1 - var(--haze) * 0.3)) brightness(calc(1 + var(--haze) * 0.07)) blur(calc(var(--haze) * 0.5px));
+    --dragon-night: brightness(calc(0.84 - var(--haze) * 0.12)) saturate(calc(0.88 - var(--haze) * 0.2)) blur(calc(var(--haze) * 0.5px)) drop-shadow(0 0 9px rgb(165 195 255 / 0.55));
     position: absolute;
     left: 0;
     top: 0;
@@ -250,12 +253,20 @@
     opacity: 0;
     pointer-events: none;
     will-change: transform, opacity;
-    filter: saturate(calc(1 - var(--haze) * 0.35)) contrast(calc(1 - var(--haze) * 0.3)) brightness(calc(1 + var(--haze) * 0.07)) blur(calc(var(--haze) * 0.5px));
+    filter: var(--dragon-day);
   }
 
-  /* At night: a little darker, with a soft moonlit glow. */
   .dark .hero-dragon {
-    filter: brightness(calc(0.84 - var(--haze) * 0.12)) saturate(calc(0.88 - var(--haze) * 0.2)) blur(calc(var(--haze) * 0.5px)) drop-shadow(0 0 9px rgb(165 195 255 / 0.55));
+    filter: var(--dragon-night);
+  }
+
+  /* The other theme's filter, while the scene warms it up before any flight (dragon/scene.ts). */
+  .hero-dragon[data-warm] {
+    filter: var(--dragon-night);
+  }
+
+  .dark .hero-dragon[data-warm] {
+    filter: var(--dragon-day);
   }
 
   .hero-dragon canvas {
