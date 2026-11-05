@@ -4,14 +4,19 @@ import { fontsReady, storeDisplay } from '../support/page';
 
 /*
  * axe cannot judge contrast over an image, so this samples the real pixels behind every hero text
- * (design §3.5): the text is made transparent (the halo text-shadow keeps painting), the viewport
- * is screenshotted at DPR 1, and each text colour is compared with every pixel inside its line
- * rects. The 2nd percentile per text must reach 3 (large text) or 4.5 (everything else).
+ * (design §3.5): the text and its underlines are made transparent (the halo text-shadow keeps
+ * painting), the viewport is screenshotted at DPR 1, and each text colour is compared with every
+ * pixel inside its line rects. The 2nd percentile per text must reach 3 (large text) or 4.5
+ * (everything else).
+ * On a short screen the hero grows taller than the viewport to fit its text (at 320x568 the
+ * credit sits below the fold), so a text below the fold is sampled in a screenshot scrolled to it.
+ * 320x568 is there for the text plates, which are narrower below 22.5rem (ledger Ruling 42).
  */
 
 test.describe.configure({ mode: 'default' });
 
 const VIEWPORTS = [
+  { width: 320, height: 568 },
   { width: 390, height: 844 },
   { width: 1024, height: 768 },
   { width: 1447, height: 722 },
@@ -109,31 +114,51 @@ test.describe('Hero text contrast', () => {
         });
         expect(texts.length).toBeGreaterThan(0);
 
+        // The text and its decorations: a link's underline drawn on the last row of its line box
+        // falls inside the next line's rect, and is foreground, not background.
         await page.addStyleTag({
           content:
-            '[data-section="hero"] * { color: transparent !important; -webkit-text-fill-color: transparent !important; }',
+            '[data-section="hero"] * { color: transparent !important; -webkit-text-fill-color: transparent !important; text-decoration-color: transparent !important; }',
         });
         await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
         await page.waitForTimeout(400);
 
-        const { data, info } = await sharp(await page.screenshot())
-          .ensureAlpha()
-          .raw()
-          .toBuffer({ resolveWithObject: true });
-        expect(info.channels).toBe(4);
+        // Screenshots by scroll position (the rects were measured at the top of the page).
+        const shots = new Map<number, { data: Buffer; width: number; height: number; scrollY: number }>();
+        const screenshotAt = async (top: number) => {
+          const cached = shots.get(top);
+          if (cached) return cached;
+          const scrollY = await page.evaluate(async (y) => {
+            window.scrollTo({ top: y, behavior: 'instant' });
+            await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+            return window.scrollY;
+          }, top);
+          if (top > 0) await page.waitForTimeout(200);
+          const { data, info } = await sharp(await page.screenshot())
+            .ensureAlpha()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+          expect(info.channels).toBe(4);
+          const shot = { data, width: info.width, height: info.height, scrollY };
+          shots.set(top, shot);
+          return shot;
+        };
 
         const failures: string[] = [];
         for (const text of texts) {
           const fg = parseColor(text.color);
           const ratios: number[] = [];
+          // Below the fold: scroll so the text's last line sits 16 px above the bottom edge.
+          const bottom = Math.max(...text.rects.map((rect) => rect.y + rect.height));
+          const { data, width, height, scrollY } = await screenshotAt(bottom > viewport.height ? Math.ceil(bottom - viewport.height + 16) : 0);
           for (const rect of text.rects) {
             const x0 = Math.max(0, Math.floor(rect.x));
-            const y0 = Math.max(0, Math.floor(rect.y));
-            const x1 = Math.min(info.width, Math.ceil(rect.x + rect.width));
-            const y1 = Math.min(info.height, Math.ceil(rect.y + rect.height));
+            const y0 = Math.max(0, Math.floor(rect.y - scrollY));
+            const x1 = Math.min(width, Math.ceil(rect.x + rect.width));
+            const y1 = Math.min(height, Math.ceil(rect.y - scrollY + rect.height));
             for (let y = y0; y < y1; y += 1) {
               for (let x = x0; x < x1; x += 1) {
-                const i = (y * info.width + x) * 4;
+                const i = (y * width + x) * 4;
                 const br = data[i] ?? 0;
                 const bg = data[i + 1] ?? 0;
                 const bb = data[i + 2] ?? 0;
