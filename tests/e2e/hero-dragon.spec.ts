@@ -32,6 +32,116 @@ async function alreadyFlown(page: Page): Promise<void> {
   });
 }
 
+/** What watchWebGL saw at the page's first request for a 'webgl' context. */
+interface FirstWebGLRequest {
+  /** performance.now() at the request. */
+  readonly at: number;
+  /** The day painting's `complete` and `naturalWidth` at that moment. */
+  readonly dayComplete: boolean;
+  readonly dayWidth: number;
+}
+
+interface WebGLWatch {
+  __webglRequests: number;
+  __firstWebGL: FirstWebGLRequest | null;
+}
+
+/** Counts the page's requests for a 'webgl' context and records the first one (before any page script runs). */
+async function watchWebGL(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const watch = window as unknown as WebGLWatch;
+    watch.__webglRequests = 0;
+    watch.__firstWebGL = null;
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function getContext(this: HTMLCanvasElement, contextId: string, options?: unknown) {
+      if (contextId === 'webgl') {
+        watch.__webglRequests += 1;
+        if (!watch.__firstWebGL) {
+          const day = document.querySelector<HTMLImageElement>('[data-section="hero"] img[data-hero-painting="day"]');
+          watch.__firstWebGL = { at: performance.now(), dayComplete: day?.complete ?? false, dayWidth: day?.naturalWidth ?? 0 };
+        }
+      }
+      return original.call(this, contextId, options);
+    } as typeof original;
+  });
+}
+
+async function webglWatch(page: Page): Promise<WebGLWatch> {
+  return page.evaluate(() => {
+    const { __webglRequests, __firstWebGL } = window as unknown as WebGLWatch;
+    return { __webglRequests, __firstWebGL };
+  });
+}
+
+/**
+ * Holds Home's first contentful paint until window.__reveal() (before any page script runs): an
+ * adopted style sheet hides every element, so the page loads, hydrates and starts the scene while
+ * it paints no content at all. The load event then fires before first contentful paint, as it does
+ * on Home in Chrome on a GPU, whose first frame waits for the GPU process (Task 10 measured it;
+ * Playwright's headless browser here paints Home before the scene's chunk has even arrived).
+ */
+async function holdFirstPaint(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync('*, *::before, *::after { visibility: hidden !important; }');
+    document.adoptedStyleSheets = [sheet];
+    (window as unknown as { __reveal: () => void }).__reveal = () => {
+      document.adoptedStyleSheets = [];
+    };
+  });
+}
+
+/** The dragon frames (/scene/dragon-*) the page requests from now on, as paths. */
+function dragonFrameRequests(page: Page): string[] {
+  const paths: string[] = [];
+  page.on('request', (request) => {
+    const { pathname } = new URL(request.url());
+    if (pathname.startsWith('/scene/dragon-')) paths.push(pathname);
+  });
+  return paths;
+}
+
+interface IdleHold {
+  __gateHeld: () => number;
+  __releaseIdle: () => void;
+}
+
+/**
+ * Holds every requestIdleCallback callback until window.__releaseIdle() runs them (before any page
+ * script runs); cancelIdleCallback drops one. The dragon's start gate ends with an idle callback
+ * that has a 1 s timeout, so window.__gateHeld() (the held callbacks with that timeout) tells that
+ * the gate is waiting at its last step, and that leaving the page cancelled it.
+ */
+async function holdIdleCallbacks(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const held = new Map<number, { readonly callback: IdleRequestCallback; readonly timeout: number | undefined }>();
+    let last = 0;
+    window.requestIdleCallback = (callback, options) => {
+      last += 1;
+      held.set(last, { callback, timeout: options?.timeout });
+      return last;
+    };
+    window.cancelIdleCallback = (id) => {
+      held.delete(id);
+    };
+    const hold = window as unknown as IdleHold;
+    hold.__gateHeld = () => [...held.values()].filter((entry) => entry.timeout === 1_000).length;
+    hold.__releaseIdle = () => {
+      const all = [...held.values()];
+      held.clear();
+      for (const { callback } of all) callback({ didTimeout: true, timeRemaining: () => 0 });
+    };
+  });
+}
+
+async function gateHeld(page: Page): Promise<number> {
+  return page.evaluate(() => (window as unknown as IdleHold).__gateHeld());
+}
+
+async function releaseIdle(page: Page): Promise<void> {
+  await page.evaluate(() => (window as unknown as IdleHold).__releaseIdle());
+}
+
 test.describe('the dragon', () => {
   test.use({ reducedMotion: 'no-preference' });
 
@@ -246,5 +356,92 @@ test.describe('the dragon', () => {
     expect(new Set(unseen), 'idle while the page is hidden').toEqual(new Set(['idle']));
     await page.evaluate(() => (window as unknown as { __show: () => void }).__show());
     await expect(page.locator(DRAGON), 'flying within 3 s of being shown').toHaveAttribute('data-flight', 'flying', { timeout: 3_000 });
+  });
+});
+
+/*
+ * The dragon's start waits for the page to settle (design §5 and §6.3; ledger Ruling 40): asking
+ * for a WebGL context while the GPU process still makes Home's first frame blocks the main thread
+ * for hundreds of milliseconds. So the scene asks for none before first contentful paint, before
+ * the painting the theme shows is decoded, and before any dragon frame is requested. The default
+ * headless browser still asks (its context is then refused as software, renderer.ts), so these
+ * run there.
+ */
+test.describe('the dragon waits for the page to settle', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('the dragon asks for no WebGL context before the page has painted', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'one project is enough');
+    // Light, so the painting on show is the day one.
+    await storeDisplay(page, { theme: 'light' });
+    await watchWebGL(page);
+    await holdFirstPaint(page);
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    // The scene has started (it adds the dragon element first), and nothing has been painted yet.
+    await expect(page.locator(DRAGON), 'the scene started').toHaveCount(1);
+    expect(await page.evaluate(() => performance.getEntriesByName('first-contentful-paint').length), 'no content painted yet').toBe(0);
+    await page.evaluate(() => (window as unknown as { __reveal: () => void }).__reveal());
+    await sceneReady(page);
+    const seen = await page.evaluate(() => ({
+      fcp: performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? null,
+      frames: performance
+        .getEntriesByType('resource')
+        .filter((entry) => new URL(entry.name).pathname.startsWith('/scene/dragon-'))
+        .map((entry) => ({ path: new URL(entry.name).pathname, startTime: entry.startTime })),
+    }));
+    const first = (await webglWatch(page)).__firstWebGL;
+    expect(first, 'the scene asked for a WebGL context').not.toBeNull();
+    expect(seen.fcp, 'first contentful paint').not.toBeNull();
+    if (!first || seen.fcp === null) return;
+    expect(first.at, `the first WebGL request (${Math.round(first.at)} ms) comes after first contentful paint (${Math.round(seen.fcp)} ms)`).toBeGreaterThan(seen.fcp);
+    expect({ complete: first.dayComplete, decoded: first.dayWidth > 0 }, 'the day painting at the first WebGL request').toEqual({ complete: true, decoded: true });
+    expect(seen.frames.length, 'dragon frames requested').toBeGreaterThan(0);
+    for (const frame of seen.frames) {
+      expect(frame.startTime, `${frame.path} (requested at ${Math.round(frame.startTime)} ms) comes after the first WebGL request (${Math.round(first.at)} ms)`).toBeGreaterThanOrEqual(first.at);
+    }
+  });
+
+  test('leaving Home while the page settles leaves nothing behind', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the rail’s links; one project is enough');
+    const problems = collectConsoleProblems(page);
+    await holdIdleCallbacks(page);
+    await watchWebGL(page);
+    const frames = dragonFrameRequests(page);
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    await expect(page.locator(DRAGON), 'the scene started').toHaveCount(1);
+    await expect.poll(() => gateHeld(page), { message: 'the scene waits for an idle main thread' }).toBe(1);
+    await navigate(page, 'About');
+    await expect(page).toHaveURL(/\/about$/);
+    expect(await gateHeld(page), 'leaving Home cancelled the idle callback').toBe(0);
+    await releaseIdle(page);
+    await page.waitForTimeout(1_000);
+    expect((await webglWatch(page)).__webglRequests, 'WebGL contexts asked for').toBe(0);
+    expect(frames, 'dragon frames requested').toEqual([]);
+    await expect(page.locator(DRAGON)).toHaveCount(0);
+    expect(await canvases(page), 'canvases in the document').toBe(0);
+    expect(describeConsoleProblems(problems)).toEqual([]);
+  });
+
+  test('reduced motion while the page settles: no WebGL context and no frames', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'one project is enough');
+    const problems = collectConsoleProblems(page);
+    await holdIdleCallbacks(page);
+    await watchWebGL(page);
+    const frames = dragonFrameRequests(page);
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    await expect(page.locator(DRAGON), 'the scene started').toHaveCount(1);
+    await expect.poll(() => gateHeld(page), { message: 'the scene waits for an idle main thread' }).toBe(1);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(page.locator(DRAGON), 'reduced motion removes the scene').toHaveCount(0);
+    expect(await gateHeld(page), 'the idle callback was cancelled').toBe(0);
+    await releaseIdle(page);
+    await page.waitForTimeout(1_000);
+    expect((await webglWatch(page)).__webglRequests, 'WebGL contexts asked for').toBe(0);
+    expect(frames, 'dragon frames requested').toEqual([]);
+    expect(await canvases(page), 'canvases in the document').toBe(0);
+    expect(describeConsoleProblems(problems)).toEqual([]);
   });
 });

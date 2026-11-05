@@ -5,9 +5,9 @@ import { bendTail, rigTail, TAIL } from '@/components/sections/home/dragon/tail'
  * The dragon's two renderers (design §3.3, §5, §7). WebGL blends the three wing frames of the
  * tail-less body in a fragment shader and draws the tail under it as a textured triangle strip
  * along its bent centre line: createWebGLContext asks for a hardware context first, then
- * createWebGLRenderer builds the programs and textures on it. Without WebGL, the three full frames
- * (tail included, not bending) are stacked images whose opacities are the weights. Nothing here
- * ever logs: a failure returns null and the caller falls back.
+ * createWebGLRenderer builds the programs and textures on it, in short tasks (Ruling 40). Without
+ * WebGL, the three full frames (tail included, not bending) are stacked images whose opacities are
+ * the weights. Nothing here ever logs: a failure returns null and the caller falls back.
  */
 
 export interface DragonRenderer {
@@ -16,11 +16,50 @@ export interface DragonRenderer {
   dispose(): void;
 }
 
-export interface DragonImages {
-  readonly up: HTMLImageElement;
-  readonly level: HTMLImageElement;
-  readonly down: HTMLImageElement;
-  readonly tail: HTMLImageElement;
+/** The WebGL frames' files, in texture units 0-3: the body's up, level and down frames, then the tail. */
+export type WebGLFrames = readonly [string, string, string, string];
+
+/**
+ * Premultiplied as they are decoded: WebGL ignores UNPACK_PREMULTIPLY_ALPHA_WEBGL for an
+ * ImageBitmap, so this does what that flag did for the <img> uploads before.
+ */
+const BITMAP: ImageBitmapOptions = { premultiplyAlpha: 'premultiply' };
+
+/** One frame, fetched and decoded off the main thread; null when it does not load or decode. */
+function frameBitmap(url: string): Promise<ImageBitmap | null> {
+  return fetch(url)
+    .then((response) => (response.ok ? response.blob() : null))
+    .then((blob) => (blob ? createImageBitmap(blob, BITMAP) : null))
+    .catch(() => null);
+}
+
+/**
+ * The frames as bitmaps, in order, or null when one does not load or decode (a response that is
+ * not ok, a failed fetch, a picture that does not decode): the one failure the start expects. The
+ * other bitmaps are closed then.
+ */
+export async function frameBitmaps(urls: readonly string[]): Promise<ImageBitmap[] | null> {
+  const all = await Promise.all(urls.map(frameBitmap));
+  const made = all.filter((bitmap) => bitmap !== null);
+  if (made.length === urls.length) return made;
+  for (const bitmap of made) bitmap.close();
+  return null;
+}
+
+/** Resolves in a task of its own: a message, not a timer, so nothing clamps or throttles it. */
+function nextTask(): Promise<void> {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => {
+      channel.port1.close();
+      resolve();
+    };
+    channel.port2.postMessage(null);
+  });
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 const CONTEXT: WebGLContextAttributes = {
@@ -74,8 +113,12 @@ function softwareRendered(gl: WebGLRenderingContext): boolean {
   return SOFTWARE.test(name);
 }
 
-/** A linked program, or null (a shader that fails to compile fails the link too). */
-function link(gl: WebGLRenderingContext, vertex: string, fragment: string, attributes: readonly string[]): WebGLProgram | null {
+/**
+ * A program whose compile and link are queued, not waited for: reading its status right away would
+ * block until the GPU process has linked it. Null without a context. (A shader that fails to
+ * compile fails the link too.)
+ */
+function queueProgram(gl: WebGLRenderingContext, vertex: string, fragment: string, attributes: readonly string[]): WebGLProgram | null {
   const program = gl.createProgram();
   if (!program) return null;
   for (const [type, source] of [
@@ -90,7 +133,7 @@ function link(gl: WebGLRenderingContext, vertex: string, fragment: string, attri
   }
   attributes.forEach((name, location) => gl.bindAttribLocation(program, location, name));
   gl.linkProgram(program);
-  return gl.getProgramParameter(program, gl.LINK_STATUS) ? program : null;
+  return program;
 }
 
 /** Frees the context's GPU memory now. Once only: a second loseContext() logs "INVALID_OPERATION: … context already lost". */
@@ -113,72 +156,110 @@ export function createWebGLContext(canvas: HTMLCanvasElement): WebGLRenderingCon
   return gl;
 }
 
-/** The WebGL renderer on `gl`, or null when a program fails to build (the context is lost first). */
-export function createWebGLRenderer(gl: WebGLRenderingContext, images: DragonImages): DragonRenderer | null {
-  const tailProgram = link(gl, TAIL_VS, TAIL_FS, ['p', 'uv']);
-  const bodyProgram = link(gl, BODY_VS, BODY_FS, ['p']);
-  const quad = gl.createBuffer();
-  const strip = gl.createBuffer();
-  if (!tailProgram || !bodyProgram || !quad || !strip) {
-    loseContext(gl);
-    return null;
+/** The build stopped or failed: the context is lost, and the answer is null. */
+function lost(gl: WebGLRenderingContext): null {
+  loseContext(gl);
+  return null;
+}
+
+/** Uploads one frame into texture unit `unit` (body frames 0-2, the tail 3). */
+function upload(gl: WebGLRenderingContext, unit: number, frame: ImageBitmap): void {
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+}
+
+/**
+ * The WebGL renderer on `gl`, built in short tasks so that none holds the main thread for long
+ * (design §5; Ruling 40):
+ * 1. a task after the context's: the programs' compile and link are queued, and the frames at
+ *    `urls` are requested (fetched and decoded off the main thread, frameBitmaps);
+ * 2. once the frames are in, a later task than the link's: the link results, never waited for
+ *    (with KHR_parallel_shader_compile, read once it reports both programs done, checked once a
+ *    frame), then the buffers and uniforms;
+ * 3. the uploads, one frame per task, each bitmap closed once it is uploaded.
+ * Null when a frame does not load or decode or a program fails, and as soon as `stopped()` is true
+ * after a wait (the scene was disposed, or motion was reduced): then the context is lost, every
+ * bitmap is closed and nothing more happens.
+ */
+export async function createWebGLRenderer(gl: WebGLRenderingContext, urls: WebGLFrames, stopped: () => boolean): Promise<DragonRenderer | null> {
+  await nextTask();
+  if (stopped()) return lost(gl);
+  const parallel = gl.getExtension('KHR_parallel_shader_compile');
+  const tailProgram = queueProgram(gl, TAIL_VS, TAIL_FS, ['p', 'uv']);
+  const bodyProgram = queueProgram(gl, BODY_VS, BODY_FS, ['p']);
+  const loaded = await frameBitmaps(urls);
+  const frames = loaded ?? [];
+  try {
+    if (!loaded || stopped() || !tailProgram || !bodyProgram) return lost(gl);
+    const programs = [tailProgram, bodyProgram];
+    if (parallel) {
+      while (!programs.every((program) => gl.getProgramParameter(program, parallel.COMPLETION_STATUS_KHR))) {
+        await nextFrame();
+        if (stopped()) return lost(gl);
+      }
+    }
+    const quad = gl.createBuffer();
+    const strip = gl.createBuffer();
+    if (!programs.every((program) => gl.getProgramParameter(program, gl.LINK_STATUS)) || !quad || !strip) return lost(gl);
+
+    const rig = rigTail(DRAGON_SPINE);
+    const { pad, canvasWidth: width, canvasHeight: height } = TAIL;
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, strip);
+    gl.bufferData(gl.ARRAY_BUFFER, rig.verts.byteLength, gl.DYNAMIC_DRAW);
+    gl.useProgram(bodyProgram);
+    ['tU', 'tL', 'tD'].forEach((name, unit) => gl.uniform1i(gl.getUniformLocation(bodyProgram, name), unit));
+    const weightsAt = gl.getUniformLocation(bodyProgram, 'op');
+    gl.useProgram(tailProgram);
+    gl.uniform1i(gl.getUniformLocation(tailProgram, 'tT'), 3);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.clearColor(0, 0, 0, 0);
+    gl.enableVertexAttribArray(POSITION);
+
+    for (const [unit, frame] of frames.entries()) {
+      await nextTask();
+      if (stopped()) return lost(gl);
+      upload(gl, unit, frame);
+      frame.close();
+    }
+
+      return {
+      draw(weights, tailSeconds) {
+        const verts = bendTail(rig, tailSeconds);
+        gl.viewport(0, 0, width, height);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        // 1. The tail, behind the body: a strip along the bent centre line, over the whole canvas.
+        gl.useProgram(tailProgram);
+        gl.bindBuffer(gl.ARRAY_BUFFER, strip);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
+        gl.vertexAttribPointer(POSITION, 2, gl.FLOAT, false, 16, 0);
+        gl.enableVertexAttribArray(UV);
+        gl.vertexAttribPointer(UV, 2, gl.FLOAT, false, 16, 8);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, verts.length / 4);
+        gl.disableVertexAttribArray(UV);
+        // 2. The body: the three wing frames blended, in the 800×706 frame inside the padding.
+        gl.useProgram(bodyProgram);
+        gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+        gl.vertexAttribPointer(POSITION, 2, gl.FLOAT, false, 0, 0);
+        gl.uniform3f(weightsAt, weights[0], weights[1], weights[2]);
+        gl.viewport(pad, pad, width - 2 * pad, height - 2 * pad);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      },
+      dispose() {
+        loseContext(gl);
+      },
+    };
+  } finally {
+    // Each bitmap is closed: once uploaded, or unused when the build stopped, failed or threw.
+    for (const frame of frames) frame.close();
   }
-
-  const rig = rigTail(DRAGON_SPINE);
-  const { pad, canvasWidth: width, canvasHeight: height } = TAIL;
-  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, strip);
-  gl.bufferData(gl.ARRAY_BUFFER, rig.verts.byteLength, gl.DYNAMIC_DRAW);
-
-  // Body frames in texture units 0-2, the tail in unit 3; premultiplied on upload.
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-  [images.up, images.level, images.down, images.tail].forEach((image, unit) => {
-    gl.activeTexture(gl.TEXTURE0 + unit);
-    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  });
-  gl.useProgram(bodyProgram);
-  ['tU', 'tL', 'tD'].forEach((name, unit) => gl.uniform1i(gl.getUniformLocation(bodyProgram, name), unit));
-  const weightsAt = gl.getUniformLocation(bodyProgram, 'op');
-  gl.useProgram(tailProgram);
-  gl.uniform1i(gl.getUniformLocation(tailProgram, 'tT'), 3);
-
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  gl.clearColor(0, 0, 0, 0);
-  gl.enableVertexAttribArray(POSITION);
-
-  return {
-    draw(weights, tailSeconds) {
-      const verts = bendTail(rig, tailSeconds);
-      gl.viewport(0, 0, width, height);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      // 1. The tail, behind the body: a strip along the bent centre line, over the whole canvas.
-      gl.useProgram(tailProgram);
-      gl.bindBuffer(gl.ARRAY_BUFFER, strip);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
-      gl.vertexAttribPointer(POSITION, 2, gl.FLOAT, false, 16, 0);
-      gl.enableVertexAttribArray(UV);
-      gl.vertexAttribPointer(UV, 2, gl.FLOAT, false, 16, 8);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, verts.length / 4);
-      gl.disableVertexAttribArray(UV);
-      // 2. The body: the three wing frames blended, in the 800×706 frame inside the padding.
-      gl.useProgram(bodyProgram);
-      gl.bindBuffer(gl.ARRAY_BUFFER, quad);
-      gl.vertexAttribPointer(POSITION, 2, gl.FLOAT, false, 0, 0);
-      gl.uniform3f(weightsAt, weights[0], weights[1], weights[2]);
-      gl.viewport(pad, pad, width - 2 * pad, height - 2 * pad);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    },
-    dispose() {
-      loseContext(gl);
-    },
-  };
 }
 
 /** The no-WebGL renderer: each full frame's opacity is its weight (the tail does not bend). */

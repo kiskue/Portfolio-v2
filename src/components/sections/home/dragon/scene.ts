@@ -1,7 +1,8 @@
 import { coverMap, PAINTING, paintingToScreen, parseObjectPosition, pxPerUnit, unitsToPainting, type CoverMap } from '@/components/sections/home/dragon/cover';
 import { DRAGON_UNITS, FLIGHT_DESKTOP, FLIGHT_PHONE, flightAt, headingTurnDeg, nextRoll, PHONE_SCALE, tiltDeg } from '@/components/sections/home/dragon/flight';
-import { createImageRenderer, createWebGLContext, createWebGLRenderer, loseContext, type DragonRenderer } from '@/components/sections/home/dragon/renderer';
+import { createImageRenderer, createWebGLContext, createWebGLRenderer, loseContext, type DragonRenderer, type WebGLFrames } from '@/components/sections/home/dragon/renderer';
 import { markFlown, onThemeSwitch, openingFlightDue, openingStartAt, type FlightPlan } from '@/components/sections/home/dragon/schedule';
+import { settle } from '@/components/sections/home/dragon/settled';
 import { TAIL } from '@/components/sections/home/dragon/tail';
 import { bobUnits, WING_LOOP_S, wingWeights } from '@/components/sections/home/dragon/wings';
 import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
@@ -13,14 +14,16 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  *
  * startScene adds the dragon to the hero's host and flies it out to sea: once per session about
  * 1.2 s after Home has painted (first paint, or the island's mount on a client-side visit), and
- * 1.6 s after each theme switch (schedule.ts). A hidden page (a background tab, a prerender) has not
- * been seen, so an opening flight that has not started waits for it: it starts 1.2 s after the page
- * is first shown. A flight stops when the tab hides, the hero leaves the screen or motion is
- * reduced. Each frame writes the element's transform, opacity, --haze and data-scale and draws
- * once; the cover map that turns design units into screen pixels is measured only when the host
- * resizes. The expected failures stay quiet: without a hardware WebGL context, or
- * when its frames fail, the dragon flies as stacked frames; when those fail to load, it stays away.
- * Anything else is a bug and is reported (reportError), never swallowed.
+ * 1.6 s after each theme switch (schedule.ts). Its start waits for the page to settle (settled.ts:
+ * first paint, the painting on show decoded, two frames, an idle moment) and then runs in short
+ * tasks (renderer.ts; Ruling 40). A hidden page (a background tab, a prerender) has not been seen,
+ * so an opening flight that has not started waits for it: it starts 1.2 s after the page is shown.
+ * A flight stops when the tab hides, the hero leaves the screen or motion is reduced. Each frame
+ * writes the element's transform, opacity, --haze and data-scale and draws once; the cover map
+ * that turns design units into screen pixels is measured only when the host resizes. The expected
+ * failures stay quiet: without a hardware WebGL context, or when its frames do not load or decode,
+ * the dragon flies as stacked frames; when those fail to load, it stays away. Anything else is a
+ * bug and is reported (reportError), never swallowed.
  */
 
 /** Written to the dragon element at runtime, so the speed gate can tell this chunk from any other (a duplicate lives in tests/support/budgets.ts). */
@@ -36,11 +39,13 @@ const PHONE_QUERY = '(max-width: 47.99rem)';
 const MIN_VISIBLE = 0.1;
 /** IntersectionObserver ratios carry rounding error at the threshold. */
 const RATIO_EPSILON = 0.001;
+/** The WebGL set: the tail-less body's up, level and down frames, and the tail. */
+const WEBGL_FRAMES: WebGLFrames = ['/scene/dragon-up.webp', '/scene/dragon-level.webp', '/scene/dragon-down.webp', '/scene/dragon-tail.webp'];
 
 /** An image, decoded off the main thread; rejects when it does not load or decode. */
 function decoded(src: string): Promise<HTMLImageElement> {
   const image = new Image();
-  // Decorative, like the whole (aria-hidden) sky: the frames shown without WebGL and the WebGL set alike.
+  // Decorative, like the whole (aria-hidden) sky: the frames shown without WebGL.
   image.alt = '';
   image.src = src;
   return image.decode().then(() => image);
@@ -80,8 +85,9 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   host.appendChild(dragon);
   const style = dragon.style;
   const phoneQuery = window.matchMedia(PHONE_QUERY);
+  const sky = host.parentElement;
   // The day painting's crop (object-position) places the path; the night painting shares it.
-  const painting = host.parentElement?.querySelector('img[data-hero-painting="day"]') ?? null;
+  const painting = sky?.querySelector('img[data-hero-painting="day"]') ?? null;
 
   let disposed = false;
   /** A WebGL context held before a renderer owns it; lost on dispose. */
@@ -92,6 +98,8 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   let opening = false;
   /** The opening flight waits for the hidden page to be shown; the plan stays idle meanwhile. */
   let openingPending = false;
+  /** When a hidden page was last shown again (0 until then): Home was seen afresh at that moment. */
+  let shownAt = 0;
   let timer = 0;
   let frame = 0;
   let startedAt = 0;
@@ -218,8 +226,10 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
         // A background tab or a prerender has not been seen yet: the opening flight waits for it.
         openingPending = true;
       } else {
-        // Home painted at first paint, or when the island mounted after a client-side visit.
-        const at = openingStartAt(Math.max(firstPaint(), mountedAt), performance.now());
+        // Home painted at first paint, or when the island mounted after a client-side visit, or was
+        // seen afresh when the page was shown again: the start waits for a hidden page to be shown
+        // (settled.ts), so the opening it has not started is timed from then, not dropped.
+        const at = openingStartAt(Math.max(firstPaint(), mountedAt, shownAt), performance.now());
         if (at !== null) {
           plan = { kind: 'scheduled', at };
           opening = true;
@@ -229,36 +239,40 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     arm();
   };
 
-  // WebGL first: a hardware context on the still-detached canvas, then its frames (the tail-less
-  // body and the tail). Without the context, or when its frames or programs fail, the three full
-  // frames fly as stacked images. Only a frame that does not load or decode is expected to fail.
+  /** Disposed, or motion turned off: the start goes no further. */
+  const stopped = (): boolean => disposed || getDisplaySnapshot().resolved.reduceMotion;
+
+  // Nothing is asked of the GPU or the network before the page has settled; the painting waited
+  // for is the one the theme shows when the gate gets to it.
+  const settling = settle(() => sky?.querySelector<HTMLImageElement>(`img[data-hero-painting="${getDisplaySnapshot().resolved.dark ? 'night' : 'day'}"]`));
+
+  // Then WebGL first: a hardware context on the still-detached canvas (in a task of its own), then
+  // its frames and programs in short tasks (renderer.ts). Without the context, or when its frames
+  // or programs fail, the three full frames fly as stacked images. Only a frame that does not load
+  // or decode is expected to fail.
   const start = async (): Promise<void> => {
+    await settling.settled;
+    if (stopped()) return;
     const canvas = document.createElement('canvas');
     canvas.width = TAIL.canvasWidth;
     canvas.height = TAIL.canvasHeight;
     context = createWebGLContext(canvas);
     if (context) {
-      const body = Promise.all([
-        decoded('/scene/dragon-up.webp'),
-        decoded('/scene/dragon-level.webp'),
-        decoded('/scene/dragon-down.webp'),
-        decoded('/scene/dragon-tail.webp'),
-      ]);
-      const set = await decodedOrNull(body);
-      // Disposed meanwhile: dispose has lost the context.
-      if (disposed) return;
-      const gl = context;
+      const webgl = await createWebGLRenderer(context, WEBGL_FRAMES, stopped);
+      // The renderer owns the context now; without one, the build has lost it.
       context = null;
-      const webgl = set && createWebGLRenderer(gl, { up: set[0], level: set[1], down: set[2], tail: set[3] });
+      if (stopped()) {
+        webgl?.dispose();
+        return;
+      }
       if (webgl) {
         ready(webgl, 'webgl', [canvas]);
         return;
       }
-      loseContext(gl);
     }
     const full = Promise.all([decoded('/scene/dragon-full-up.webp'), decoded('/scene/dragon-full-level.webp'), decoded('/scene/dragon-full-down.webp')]);
     const frames = await decodedOrNull(full);
-    if (frames && !disposed) ready(createImageRenderer(frames), 'images', frames);
+    if (frames && !stopped()) ready(createImageRenderer(frames), 'images', frames);
   };
   start().catch((error: unknown) => reportError(error));
 
@@ -287,6 +301,7 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
       if (!opening && !openingPending) abort();
       return;
     }
+    shownAt = performance.now();
     if (!openingPending) return;
     // Shown at last: Home has just been seen, so the opening flight starts 1.2 s from now.
     openingPending = false;
@@ -320,6 +335,7 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     dispose(): void {
       if (disposed) return;
       disposed = true;
+      settling.cancel();
       abort();
       unsubscribe();
       document.removeEventListener('visibilitychange', onVisibility);
