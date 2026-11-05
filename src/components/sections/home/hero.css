@@ -86,6 +86,14 @@
     filter: blur(18px);
   }
 
+  /*
+   * The meta row sits low in a short hero, where the scrim has faded, so its plate is denser: with
+   * its ink-2 text that keeps it at WCAG AA at every size (Ruling 46). The other plates stay at 82%.
+   */
+  .hero-content .hero-meta::before {
+    background: color-mix(in srgb, var(--c-bg) 92%, transparent);
+  }
+
   /* ─── The sky: paintings and the layers over them ─── */
 
   .hero-sky {

@@ -19,7 +19,9 @@ export interface HomeHeaderProps {
  * it; the subline sits under it. "Get in touch ↗" sits top-right from 768px; below that it moves
  * under the subline beside "View projects". The CV control follows the placeholder rule (a
  * download when cvUrl is set, a non-link placeholder chip in label mode, nothing in hide mode),
- * and the meta row shows only below 1280px, where the sidebar with the same facts is hidden.
+ * and the meta row shows only below 1280px, where the sidebar with the same facts is hidden. Over
+ * the painting the meta row sits low in a short hero, where the scrim has faded, so it is ink-2
+ * (not the usual meta ink-3) on a denser plate (`.hero-meta` in hero.css; ledger Ruling 46).
  */
 export function HomeHeader({ mode = site.placeholders }: HomeHeaderProps): ReactNode {
   const [first, second] = home.headline;
@@ -42,7 +44,7 @@ export function HomeHeader({ mode = site.placeholders }: HomeHeaderProps): React
         </ButtonLink>
         <CvLink href={profile.cvUrl} label={home.ctas.cv} mode={mode} />
       </div>
-      <p className="mt-4 flex flex-wrap items-center gap-x-2 text-meta text-ink-3 md:col-span-2 xl:hidden">
+      <p className="hero-meta mt-4 flex flex-wrap items-center gap-x-2 text-meta text-ink-2 md:col-span-2 xl:hidden">
         {available ? <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-status-live" /> : null}
         <MetaLine as="span" segments={availabilityLine} mode={mode} />
       </p>
