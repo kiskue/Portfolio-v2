@@ -424,6 +424,39 @@ test.describe('the dragon waits for the page to settle', () => {
     expect(describeConsoleProblems(problems)).toEqual([]);
   });
 
+  test('a Home tab hidden while the dragon waits for the page to settle flies once it is shown again', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'one project is enough');
+    test.setTimeout(60_000);
+    // The page reports itself hidden or shown when the test says so (window.__hide / __show). A
+    // really hidden page runs no frames, so its gate waits until it is shown; holding the idle
+    // callbacks keeps the gate waiting here in the same way.
+    await page.addInitScript(() => {
+      let hidden = false;
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (hidden ? 'hidden' : 'visible') });
+      const flip = (value: boolean) => () => {
+        hidden = value;
+        document.dispatchEvent(new Event('visibilitychange'));
+      };
+      Object.assign(window, { __hide: flip(true), __show: flip(false) });
+    });
+    await holdIdleCallbacks(page);
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    await expect.poll(() => gateHeld(page), { message: 'the scene waits for an idle main thread' }).toBe(1);
+    // The page has painted and Home has mounted by now: hidden for more than 8 s from here, an
+    // opening timed from first paint or the mount would be past its give-up when the page returns.
+    const hiddenAt = await page.evaluate(() => {
+      (window as unknown as { __hide: () => void }).__hide();
+      return performance.now();
+    });
+    await page.waitForFunction((until) => performance.now() >= until, hiddenAt + 8_500, { timeout: 15_000 });
+    expect((await dragonState(page)).flight, 'idle while hidden').toBe('idle');
+    await page.evaluate(() => (window as unknown as { __show: () => void }).__show());
+    await releaseIdle(page);
+    await expect(page.locator(DRAGON), 'flying within 3 s of being shown').toHaveAttribute('data-flight', 'flying', { timeout: 3_000 });
+  });
+
   test('reduced motion while the page settles: no WebGL context and no frames', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'one project is enough');
     const problems = collectConsoleProblems(page);
