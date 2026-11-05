@@ -167,8 +167,8 @@ test('on short screens the hero grows to fit its text: nothing overlaps', async 
       };
       const main = document.querySelector('main#content');
       const gutter = main ? Number.parseFloat(getComputedStyle(main).paddingLeft) : 0;
-      // The credit's own width, measured without its plate: that blurred patch reaches 1.25rem past
-      // each side of the text on purpose.
+      // The credit's own width, measured without its plate: that blurred patch reaches past each
+      // side of the text on purpose (up to the page gutter).
       const credit = document.querySelector('[data-hero-credit]');
       if (!credit) throw new Error('[data-hero-credit] is not rendered');
       const unplated = document.createElement('style');
@@ -201,6 +201,40 @@ test('on short screens the hero grows to fit its text: nothing overlaps', async 
     expect(tools.top, `${label}: the tools strip starts below the hero`).toBeGreaterThanOrEqual(hero.bottom - 1);
   }
 });
+
+/*
+ * Small phones (ledger Ruling 42): below 22.5rem the page gutter is 1rem (app-shell.tsx), and the
+ * hero's text plates must not make the page wider than the screen. Under mobile emulation the
+ * layout viewport grows to fit the content, so window.innerWidth widens with it and the
+ * `scrollWidth <= innerWidth` checks elsewhere cannot see such an overflow: compare scrollWidth
+ * with clientWidth, the screen's width.
+ */
+for (const viewport of [
+  { width: 320, height: 568 },
+  { width: 340, height: 640 },
+  { width: 359, height: 640 },
+]) {
+  test.describe(`a ${viewport.width}×${viewport.height} phone`, () => {
+    test.use({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+
+    test(`at ${viewport.width}×${viewport.height} Home is no wider than the screen, in light and dark`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== 'mobile', 'the size is set here; one project is enough');
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme });
+        await page.goto('/', { waitUntil: 'load' });
+        await fontsReady(page);
+        const seen = await page.evaluate(() => ({
+          dark: document.documentElement.classList.contains('dark'),
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        }));
+        expect(seen.dark, `${colorScheme}: the theme`).toBe(colorScheme === 'dark');
+        expect(seen.clientWidth, `${colorScheme}: the screen's width`).toBe(viewport.width);
+        expect(seen.scrollWidth, `${colorScheme}: scrollWidth ${seen.scrollWidth} fits clientWidth ${seen.clientWidth}`).toBeLessThanOrEqual(seen.clientWidth);
+      }
+    });
+  });
+}
 
 test('the credit is on the painting with its two links', async ({ page }) => {
   await page.goto('/', { waitUntil: 'load' });

@@ -62,7 +62,9 @@
 
   /*
    * Text plates: a soft patch in the page background colour right behind the text, so the painting
-   * elsewhere stays vivid. It follows the theme exactly as the text colour does.
+   * elsewhere stays vivid. It follows the theme exactly as the text colour does. It reaches 1.25rem
+   * past each side of the text, but never past the page gutter: below 22.5rem the gutter is only
+   * 1rem (app-shell.tsx), and a wider plate made the page wider than a small phone (Ruling 42).
    */
   .hero-content header > div:first-child,
   .hero-content header > p,
@@ -78,7 +80,7 @@
     position: absolute;
     z-index: -1;
     pointer-events: none;
-    inset: -1rem -1.25rem;
+    inset: -1rem max(-1.25rem, calc(var(--gutter) * -1));
     background: color-mix(in srgb, var(--c-bg) 82%, transparent);
     border-radius: 1.5rem;
     filter: blur(18px);
