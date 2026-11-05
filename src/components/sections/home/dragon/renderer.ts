@@ -194,11 +194,15 @@ export async function createWebGLRenderer(gl: WebGLRenderingContext, urls: WebGL
   const bodyProgram = queueProgram(gl, BODY_VS, BODY_FS, ['p']);
   const loaded = await frameBitmaps(urls);
   const frames = loaded ?? [];
+  /** How many frames are uploaded (and closed) so far. */
+  let uploaded = 0;
   try {
     if (!loaded || stopped() || !tailProgram || !bodyProgram) return lost(gl);
     const programs = [tailProgram, bodyProgram];
     if (parallel) {
-      while (!programs.every((program) => gl.getProgramParameter(program, parallel.COMPLETION_STATUS_KHR))) {
+      // A lost context ends the wait whatever the browser answers for it (the link check below
+      // then fails), so the bitmaps are never held by a poll that cannot end.
+      while (!gl.isContextLost() && !programs.every((program) => gl.getProgramParameter(program, parallel.COMPLETION_STATUS_KHR))) {
         await nextFrame();
         if (stopped()) return lost(gl);
       }
@@ -228,9 +232,10 @@ export async function createWebGLRenderer(gl: WebGLRenderingContext, urls: WebGL
       if (stopped()) return lost(gl);
       upload(gl, unit, frame);
       frame.close();
+      uploaded = unit + 1;
     }
 
-      return {
+    return {
       draw(weights, tailSeconds) {
         const verts = bendTail(rig, tailSeconds);
         gl.viewport(0, 0, width, height);
@@ -257,8 +262,8 @@ export async function createWebGLRenderer(gl: WebGLRenderingContext, urls: WebGL
       },
     };
   } finally {
-    // Each bitmap is closed: once uploaded, or unused when the build stopped, failed or threw.
-    for (const frame of frames) frame.close();
+    // Each bitmap is closed once: right after its upload, or here when the build stopped, failed or threw.
+    for (const frame of frames.slice(uploaded)) frame.close();
   }
 }
 
