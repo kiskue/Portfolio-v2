@@ -5,6 +5,7 @@ import { markFlown, onThemeSwitch, openingFlightDue, openingStartAt, type Flight
 import { settle } from '@/components/sections/home/dragon/settled';
 import { TAIL } from '@/components/sections/home/dragon/tail';
 import { bobUnits, WING_LOOP_S, wingWeights } from '@/components/sections/home/dragon/wings';
+import { warmSky, type Warmup } from '@/components/sections/home/sky-warmup';
 import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
 
 /**
@@ -24,6 +25,11 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  * failures stay quiet: without a hardware WebGL context, or when its frames do not load or decode,
  * the dragon flies as stacked frames; when those fail to load, it stays away. Anything else is a
  * bug and is reported (reportError), never swallowed.
+ *
+ * Once the page has settled, with a hardware WebGL context, it also warms the sky's next change
+ * (sky-warmup.ts): until a theme change, the GPU's first-use work for the sky is done then, not in
+ * the change's first frames. The dragon is ready to fly once the warm-up is over; a theme change,
+ * reduced motion or dispose ends it.
  */
 
 /** Written to the dragon element at runtime, so the speed gate can tell this chunk from any other (a duplicate lives in tests/support/budgets.ts). */
@@ -115,6 +121,10 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   let shownOpacity = '';
   let shownHaze = '';
   let shownScale = '';
+  /** The sky's warm-up, once started. */
+  let warmup: Warmup | null = null;
+  /** The theme has changed since the scene started: that change did the warm-up's work. */
+  let switched = false;
 
   const measure = (width: number, height: number): void => {
     const position = parseObjectPosition(painting ? getComputedStyle(painting).objectPosition : '');
@@ -257,10 +267,16 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     canvas.width = TAIL.canvasWidth;
     canvas.height = TAIL.canvasHeight;
     context = createWebGLContext(canvas);
+    // With a hardware context only: without one there is no GPU to warm, and the warm-up would only
+    // cost drawing time. After asking for it (that request would wait behind the GPU work the
+    // warm-up asks for), in the same task: the sky's programs compile while the dragon's frames load.
+    if (context && !switched && sky) warmup = warmSky(sky, getDisplaySnapshot().resolved.dark);
+    const warmed = (): Promise<void> => warmup?.done ?? Promise.resolve();
     if (context) {
       const webgl = await createWebGLRenderer(context, WEBGL_FRAMES, stopped);
       // The renderer owns the context now; without one, the build has lost it.
       context = null;
+      if (webgl) await warmed();
       if (stopped()) {
         webgl?.dispose();
         return;
@@ -272,6 +288,7 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     }
     const full = Promise.all([decoded('/scene/dragon-full-up.webp'), decoded('/scene/dragon-full-level.webp'), decoded('/scene/dragon-full-down.webp')]);
     const frames = await decodedOrNull(full);
+    await warmed();
     if (frames && !stopped()) ready(createImageRenderer(frames), 'images', frames);
   };
   start().catch((error: unknown) => reportError(error));
@@ -281,10 +298,14 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     const changed = next !== dark;
     dark = next;
     if (reduceMotion) {
+      warmup?.cancel();
       abort();
       return;
     }
     if (!changed) return;
+    // The change does the warm-up's work itself; the sky island plays it.
+    switched = true;
+    warmup?.cancel();
     plan = onThemeSwitch(plan, performance.now());
     // A switch before the opening flight (scheduled, or waiting for the page to be shown) replaces it.
     if (plan.kind === 'scheduled') {
@@ -336,6 +357,7 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
       if (disposed) return;
       disposed = true;
       settling.cancel();
+      warmup?.cancel();
       abort();
       unsubscribe();
       document.removeEventListener('visibilitychange', onVisibility);

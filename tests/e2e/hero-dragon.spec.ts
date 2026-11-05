@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { collectConsoleProblems, describeConsoleProblems } from '../support/console';
 import { DRAGON, dragonState, flying, navigate, sampleDragon, sceneReady, switchTheme } from '../support/dragon';
 import { fontsReady, hydrated, storeDisplay } from '../support/page';
+import { recordWarmups, warmups } from '../support/warmup';
 
 /*
  * The dragon (design §3.3), against the production build: the scene chunk flies it once per session,
@@ -177,6 +178,16 @@ test.describe('the dragon', () => {
     await hydrated(page);
     await page.waitForTimeout(4_000);
     await expect(page.locator(DRAGON)).toHaveCount(0);
+  });
+
+  test('without hardware WebGL the sky is not warmed (hero-warmup.spec.ts: on the GPU it is)', async ({ page }) => {
+    await alreadyFlown(page);
+    await storeDisplay(page, { theme: 'light' });
+    await recordWarmups(page);
+    await page.goto('/', { waitUntil: 'load' });
+    await sceneReady(page);
+    expect((await dragonState(page)).renderer, 'this browser renders in software').toBe('images');
+    expect(await warmups(page)).toEqual([]);
   });
 
   test('on a phone the big dragon keeps clear of the headline', async ({ page }, testInfo) => {
