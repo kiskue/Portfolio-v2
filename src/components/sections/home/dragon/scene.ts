@@ -28,13 +28,15 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  *
  * Once the page has settled, in Chromium with a hardware WebGL context and until a theme change, it
  * also does the GPU's first-use work ahead of time, at a strength no screen shows: it warms the
- * sky's next change (sky-warmup.ts; never over a change the sky is playing), and once its renderer is
- * built it draws the dragon at poses along its path in the themes' filters (warmDragon). With an
- * opening flight due, nothing of that comes before the dragon is ready, so it is ready as soon as it
- * is built, as before: then the sky (if its 0.5 s fits) and the other theme's filter are warmed while
- * that fits before the flight's slot, and the rest after the flight lands. Without one, the sky is
- * warmed while the dragon is built, and it is ready once both warm-ups are over. A theme change,
- * reduced motion, a flight, a hidden page or dispose stops them.
+ * sky's next change (sky-warmup.ts), and once its renderer is built it draws the dragon at poses
+ * along its path in the themes' filters (warmDragon); neither runs over a change the sky is playing.
+ * With an opening flight due, nothing of that comes before the dragon is ready, so it is ready as
+ * soon as it is built, as before: then the sky (if its 0.5 s fits) and the other theme's filter are
+ * warmed while that fits before the flight's slot, and the rest once that flight has flown to its
+ * end. Without one, the sky is warmed while the dragon is built, and it is ready once both warm-ups
+ * are over. A theme change, reduced motion, a flight, a hidden page or dispose stops them; what they
+ * did not reach then stays unwarmed (a flight cut short, or a page hidden with no opening flight,
+ * leaves it to the first change or flight to compile, as before the warm-ups).
  */
 
 /** Written to the dragon element at runtime, so the speed gate can tell this chunk from any other (a duplicate lives in tests/support/budgets.ts). */
@@ -441,9 +443,9 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     const dragonWarm = warmable && kind === 'webgl' && !switched;
     if (plan.kind === 'idle' && openingFlightDue(session())) {
       // An opening flight is due: ready at once, as before the warm-ups. The sky and the other
-      // theme's filter are warmed while that fits before the flight's slot, and the rest after the
-      // flight lands (the flight itself draws the theme on show). With no flight coming after all
-      // (too late for one), at once; with a hidden page, once it is shown (onVisibility).
+      // theme's filter are warmed while that fits before the flight's slot, and the rest once the
+      // flight has flown to its end (the flight itself draws the theme on show). With no flight
+      // coming after all (too late for one), at once; with a hidden page, once it is shown (onVisibility).
       if (dragonWarm) poses = posesIn(true);
       ready(made, kind, nodes);
       // Each checks the plan ready() made: a scheduled flight, or none.
@@ -496,7 +498,8 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
 
   const onVisibility = (): void => {
     if (document.hidden) {
-      // A dragon warm-up draws nothing now: it stops, and keeps the poses it did not reach.
+      // A dragon warm-up draws nothing now: it stops. The poses it did not reach wait for the warm-up
+      // before or after the opening flight; with none coming (no opening flight), they stay unwarmed.
       stopWarm();
       // A flight in progress stops and a switch's scheduled flight is dropped. The opening flight is
       // kept: if it comes due while the page is still hidden, fly() holds it until the page returns.

@@ -260,7 +260,7 @@
     filter: var(--dragon-night);
   }
 
-  /* The other theme's filter, while the scene warms it up before any flight (dragon/scene.ts). */
+  /* The other theme's filter, while the scene warms it up at opacity 0.002, never during a flight (dragon/scene.ts). */
   .hero-dragon[data-warm] {
     filter: var(--dragon-night);
   }

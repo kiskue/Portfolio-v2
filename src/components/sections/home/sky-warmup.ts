@@ -74,10 +74,10 @@ export function skyWarmup(dark: boolean): readonly WarmupLayer[] {
 /**
  * A change is playing on the sky, or about to: a layer has an animation of its own other than the
  * warm-up's (its children, the stars' lines, do not count), or the island holds a layer at its
- * start (its inline pins).
+ * start (its inline pins). The stars' layer is an <svg>.
  */
 export function skyBusy(sky: ParentNode): boolean {
-  return [...sky.querySelectorAll<HTMLElement>('[data-hero-layer]')].some(
+  return [...sky.querySelectorAll<HTMLElement | SVGElement>('[data-hero-layer]')].some(
     (layer) => layer.getAnimations().some(({ id }) => id !== WARMUP_ID) || layer.style.opacity !== '' || layer.style.filter !== '',
   );
 }
