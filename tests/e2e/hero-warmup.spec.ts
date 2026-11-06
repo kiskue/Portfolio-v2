@@ -338,6 +338,7 @@ test.describe('the dragon', () => {
   test('with an opening flight due, the dragon is ready as soon as it is built and flies 1.2 s after first paint, within a frame', async ({ page }) => {
     await storeDisplay(page, { theme: 'light' });
     await recordDragon(page);
+    await recordWarmups(page);
     await page.goto('/', { waitUntil: 'load' });
     await expect(page.locator(DRAGON)).toHaveAttribute('data-flight', 'flying', { timeout: 15_000 });
     const fcp = await page.evaluate(() => performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? 0);
@@ -345,19 +346,29 @@ test.describe('the dragon', () => {
     const readyAt = log.find((entry) => entry.renderer !== '')?.at ?? Number.NaN;
     const flyingAt = log.find((entry) => entry.flight === 'flying')?.at ?? Number.NaN;
     const firstSeen = log[0]?.at ?? Number.NaN;
-    // Nothing of the warm-up comes before ready: no pose, no other theme's filter.
+    // Nothing of the warm-ups comes before ready, so nothing slows the dragon's build: no pose, no
+    // other theme's filter, no sky warm-up.
     expect(
       log.filter((entry) => entry.at < readyAt && (entry.warm || Number(entry.opacity) > 0)),
       'no warm-up pose before the dragon is ready',
+    ).toEqual([]);
+    // readyAt is stamped by a mutation observer, at the end of the task that made the dragon ready; a
+    // warm-up started later in that same task reads a few ms earlier. One started at the gate, before
+    // the dragon's build, reads hundreds of ms earlier.
+    expect(
+      (await warmups(page)).filter((call) => call.at < readyAt - 20).map((call) => call.layer),
+      'no sky warm-up before the dragon is ready',
     ).toEqual([]);
     test.info().annotations.push({ type: 'opening', description: `from first paint: ready ${Math.round(readyAt - fcp)} ms, flying ${Math.round(flyingAt - fcp)} ms` });
     // The slot is max(first paint, the island's mount) + 1.2 s; the island mounts before the scene
     // first writes to its dragon, so the flight is due no later than that + 1.2 s.
     expect(flyingAt - fcp, 'never before first paint + 1.2 s').toBeGreaterThanOrEqual(1199);
     expect(flyingAt, 'at its slot, within a frame (not held back by the warm-up)').toBeLessThanOrEqual(Math.max(fcp, firstSeen) + 1200 + 17);
-    // The other theme's filter was warmed between ready and the slot, where that fitted.
+    // The other theme's filter, and the sky, were warmed between ready and the slot, where that fitted.
     const warmedBeforeFlight = log.filter((entry) => entry.at > readyAt && entry.at < flyingAt && entry.warm && Number(entry.opacity) === TRACE);
     if (flyingAt - readyAt > 300) expect(warmedBeforeFlight.length, 'the night filter warmed before the slot').toBeGreaterThan(0);
+    const skyBeforeFlight = (await warmups(page)).filter((call) => call.at >= readyAt - 20 && call.at < flyingAt);
+    if (flyingAt - readyAt > 700) expect(skyBeforeFlight.length, 'the sky warmed before the slot').toBeGreaterThan(0);
   });
 
   test('a theme change during the dragon’s warm-up stops it, and the switch flight goes 1.6 s later', async ({ page }) => {

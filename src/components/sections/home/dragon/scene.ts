@@ -5,7 +5,7 @@ import { markFlown, onThemeSwitch, openingFlightDue, openingStartAt, type Flight
 import { settle } from '@/components/sections/home/dragon/settled';
 import { TAIL } from '@/components/sections/home/dragon/tail';
 import { bobUnits, WING_LOOP_S, wingWeights } from '@/components/sections/home/dragon/wings';
-import { skyBusy, TRACE_OPACITY, warmSky, type Warmup } from '@/components/sections/home/sky-warmup';
+import { skyBusy, TRACE_OPACITY, WARMUP_MS, warmSky, type Warmup } from '@/components/sections/home/sky-warmup';
 import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
 
 /**
@@ -30,10 +30,11 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  * also does the GPU's first-use work ahead of time, at a strength no screen shows: it warms the
  * sky's next change (sky-warmup.ts; never over a change the sky is playing), and once its renderer is
  * built it draws the dragon at poses along its path in the themes' filters (warmDragon). With an
- * opening flight due, the dragon is ready as soon as it is built, as before; it is warmed in the
- * other theme's filter while that fits before the flight's slot, and the rest after the flight
- * lands. Without one, it is ready once both warm-ups are over. A theme change, reduced motion, a
- * flight, a hidden page or dispose stops them.
+ * opening flight due, nothing of that comes before the dragon is ready, so it is ready as soon as it
+ * is built, as before: then the sky (if its 0.5 s fits) and the other theme's filter are warmed while
+ * that fits before the flight's slot, and the rest after the flight lands. Without one, the sky is
+ * warmed while the dragon is built, and it is ready once both warm-ups are over. A theme change,
+ * reduced motion, a flight, a hidden page or dispose stops them.
  */
 
 /** Written to the dragon element at runtime, so the speed gate can tell this chunk from any other (a duplicate lives in tests/support/budgets.ts). */
@@ -176,6 +177,8 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   let warmRun = 0;
   /** A dragon warm-up is drawing (the dragon shows a pose at opacity 0.002). */
   let warming = false;
+  /** The warm-ups may run: Chromium, with a hardware WebGL context (known once the page has settled). */
+  let warmable = false;
 
   const measure = (width: number, height: number): void => {
     hostWidth = width;
@@ -238,8 +241,8 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     const at = flightAt(path, ms);
     if (!at) {
       land();
-      // The warm-up poses that did not fit before the opening flight's slot, now the dragon is idle.
-      if (poses.length > 0) window.setTimeout(warmLeft, 0);
+      // What did not fit before the opening flight's slot, now the dragon is idle.
+      if (poses.length > 0 || (warmable && !warmup)) window.setTimeout(warmLeft, 0);
       return;
     }
     frame = requestAnimationFrame(tick);
@@ -369,16 +372,25 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     }
   };
 
-  /** Warms what fits before the scheduled flight (the opening flight's slot); the rest waits. */
-  const warmBeforeFlight = (): void => {
-    if (plan.kind !== 'scheduled' || !renderer || poses.length === 0) return;
-    warmDragon(renderer, plan.at - WARM_SLOT_MARGIN_MS).catch((error: unknown) => reportError(error));
+  /** Starts the sky's warm-up, once, unless the theme has changed or a change is playing (skyBusy). */
+  const warmSkyNow = (): void => {
+    if (!warmable || warmup || switched || !sky || stopped() || skyBusy(sky)) return;
+    warmup = warmSky(sky, getDisplaySnapshot().resolved.dark);
   };
 
-  /** Warms the poses left, now the dragon is idle (after the opening flight). */
+  /** Warms what fits before the scheduled flight (the opening flight's slot); the rest waits. */
+  const warmBeforeFlight = (): void => {
+    if (plan.kind !== 'scheduled' || !renderer) return;
+    const deadline = plan.at - WARM_SLOT_MARGIN_MS;
+    if (performance.now() + WARMUP_MS <= deadline) warmSkyNow();
+    if (poses.length > 0) warmDragon(renderer, deadline).catch((error: unknown) => reportError(error));
+  };
+
+  /** Warms what is left, now the dragon is idle (after the opening flight, or with none coming). */
   const warmLeft = (): void => {
     if (!renderer || plan.kind !== 'idle') return;
-    warmDragon(renderer, Number.POSITIVE_INFINITY).catch((error: unknown) => reportError(error));
+    warmSkyNow();
+    if (poses.length > 0) warmDragon(renderer, Number.POSITIVE_INFINITY).catch((error: unknown) => reportError(error));
   };
 
   // Nothing is asked of the GPU or the network before the page has settled; the painting waited
@@ -397,11 +409,12 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     canvas.height = TAIL.canvasHeight;
     context = createWebGLContext(canvas);
     // The warm-ups: in Chromium with a hardware context only. Without one there is no GPU to warm,
-    // and they would only cost drawing time. The sky's starts after asking for the context (that
-    // request would wait behind the GPU work it asks for), in the same task, so its programs compile
-    // while the dragon's frames load; never over a change the sky is playing or about to play.
-    const warm = context !== null && CHROMIUM;
-    if (warm && !switched && sky && !skyBusy(sky)) warmup = warmSky(sky, getDisplaySnapshot().resolved.dark);
+    // and they would only cost drawing time. With an opening flight due, the sky's waits until the
+    // dragon is ready (its GPU work would slow the dragon's build). Without one it starts now, after
+    // asking for the context (that request would wait behind the GPU work it asks for), in the same
+    // task, so its programs compile while the dragon's frames load.
+    warmable = context !== null && CHROMIUM;
+    if (!(plan.kind === 'idle' && openingFlightDue(session()))) warmSkyNow();
     const warmed = (): Promise<void> => warmup?.done ?? Promise.resolve();
     let made: DragonRenderer | null = null;
     let kind: 'webgl' | 'images' = 'webgl';
@@ -423,14 +436,19 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
       kind = 'images';
       nodes = frames;
     }
-    const dragonWarm = warm && kind === 'webgl' && !switched;
+    const dragonWarm = warmable && kind === 'webgl' && !switched;
     if (plan.kind === 'idle' && openingFlightDue(session())) {
-      // An opening flight is due: ready at once, as before the warm-ups. The other theme's filter is
-      // warmed while that fits before the flight's slot, and the rest after the flight lands (the
-      // flight itself draws the theme on show).
+      // An opening flight is due: ready at once, as before the warm-ups. The sky and the other
+      // theme's filter are warmed while that fits before the flight's slot, and the rest after the
+      // flight lands (the flight itself draws the theme on show). With no flight coming after all
+      // (too late for one), at once; with a hidden page, once it is shown (onVisibility).
       if (dragonWarm) poses = posesIn(true);
       ready(made, kind, nodes);
-      warmBeforeFlight();
+      // Each checks the plan ready() made: a scheduled flight, or none.
+      if (!openingPending) {
+        warmBeforeFlight();
+        warmLeft();
+      }
       return;
     }
     // No opening flight: ready once the warm-ups are over (the other theme's filter first).

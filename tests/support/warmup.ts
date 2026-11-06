@@ -9,6 +9,8 @@ import type { Page } from '@playwright/test';
 export const WARMUP_ID = 'sky-warmup';
 
 export interface WarmupCall {
+  /** performance.now() when the page started it. */
+  readonly at: number;
   readonly layer: string | null;
   readonly opacities: readonly number[];
   readonly filters: readonly string[];
@@ -35,6 +37,7 @@ export async function recordWarmups(page: Page, hold = false): Promise<void> {
         if (typeof options === 'object' && options.id === id) {
           const frames = (Array.isArray(keyframes) ? keyframes : []) as Keyframe[];
           record.__warmups.push({
+            at: performance.now(),
             layer: this.getAttribute('data-hero-layer'),
             opacities: frames.map((frame) => Number(frame.opacity ?? Number.NaN)),
             filters: frames.map((frame) => String(frame.filter ?? '')),
