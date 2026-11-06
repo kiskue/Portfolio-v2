@@ -161,10 +161,10 @@ describe('warmSky', () => {
   });
 });
 
-/** A sky whose layers have these animations of their own and these inline styles. */
-function layersSky(layers: readonly { readonly animations?: number; readonly opacity?: string; readonly filter?: string }[]): ParentNode {
+/** A sky whose layers have these animations of their own (and these of the warm-up's) and these inline styles. */
+function layersSky(layers: readonly { readonly animations?: number; readonly warmups?: number; readonly opacity?: string; readonly filter?: string }[]): ParentNode {
   const elements = layers.map((layer) => ({
-    getAnimations: () => Array.from({ length: layer.animations ?? 0 }, () => ({})),
+    getAnimations: () => [...Array.from({ length: layer.warmups ?? 0 }, () => ({ id: WARMUP_ID })), ...Array.from({ length: layer.animations ?? 0 }, () => ({ id: '' }))],
     style: { opacity: layer.opacity ?? '', filter: layer.filter ?? '' },
   }));
   return { querySelectorAll: (selector: string) => (selector === '[data-hero-layer]' ? elements : []) } as unknown as ParentNode;
@@ -177,6 +177,11 @@ describe('skyBusy: a change the sky is playing, or about to play', () => {
 
   it('is true while a layer has an animation of its own (the change; the stars’ lines are not the layer)', () => {
     expect(skyBusy(layersSky([{}, { animations: 1 }, {}]))).toBe(true);
+    expect(skyBusy(layersSky([{ warmups: 1 }, { animations: 1 }, {}])), 'beside the warm-up').toBe(true);
+  });
+
+  it('is false while only the warm-up’s own animations run (the dragon’s warm-up goes on beside it)', () => {
+    expect(skyBusy(layersSky([{ warmups: 1 }, { warmups: 1 }, {}]))).toBe(false);
   });
 
   it('is true while the island holds a layer at its start (the pins before the change starts)', () => {

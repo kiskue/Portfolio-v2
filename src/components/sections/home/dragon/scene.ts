@@ -348,21 +348,23 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
    * size the flight's scale gives: on a cold cache the first night flight compiled four in its first
    * frame (a 50-66 ms frame) and more as it flew. So the dragon is drawn at the poses left (scale,
    * tilt and haze along its path; data-warm asks for the other theme's filter, hero.css), two frames
-   * each, until `deadline`, a theme change, a flight, a hidden page or the end of the scene; then it
-   * is hidden again. Poses it did not reach stay for later.
+   * each, until `deadline`, a theme change, a change the sky plays (one the scene never heard, too),
+   * a flight, a hidden page or the end of the scene; then it is hidden again. The poses it did not
+   * reach are drawn only by a later warm-up, if one comes (after the opening flight lands).
    */
   const warmDragon = async (made: DragonRenderer, deadline: number): Promise<void> => {
     if (!map || poses.length === 0) return;
     const run = ++warmRun;
-    made.draw(wingWeights(0), 0);
     try {
       for (;;) {
         const [pose, ...rest] = poses;
-        if (!pose || run !== warmRun || switched || stopped() || document.hidden || plan.kind === 'flying') return;
+        if (!pose || run !== warmRun || switched || stopped() || document.hidden || plan.kind === 'flying' || (sky !== null && skyBusy(sky))) return;
         if (performance.now() + WARM_POSE_MS > deadline) return;
         poses = rest;
         const at = flightAt(path, pose.ms);
         if (!at) continue;
+        // The dragon's frame, drawn once, when its first pose is about to show it.
+        if (!warming) made.draw(wingWeights(0), 0);
         showPose(pose, at);
         await twoFrames(WARM_POSE_MAX_MS);
       }
@@ -478,8 +480,9 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
       return;
     }
     if (!changed) return;
-    // The change does the warm-ups' work itself; the sky island plays it.
+    // The change does the warm-ups' work itself; the sky island plays it. No pose is left to draw.
     switched = true;
+    poses = [];
     warmup?.cancel();
     stopWarm();
     plan = onThemeSwitch(plan, performance.now());
