@@ -34,10 +34,6 @@ test.beforeEach(async ({ page }, testInfo) => {
   await requireHardwareWebGL(page);
 });
 
-async function twoFrames(page: Page): Promise<void> {
-  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-}
-
 /** The sky's own animations (not the stars' lines), as layer:id. */
 async function skyAnimations(page: Page): Promise<string[]> {
   return page.evaluate(
@@ -101,6 +97,133 @@ async function dragonWarming(page: Page): Promise<boolean> {
   return page.evaluate((trace) => (window as unknown as DragonRecord).__dragon.some((entry) => Number(entry.opacity) === trace), TRACE);
 }
 
+interface GateHold {
+  __gateHeld: () => boolean;
+  __releaseIdle: () => void;
+}
+
+/**
+ * Holds idle callbacks until released (before any page script runs): the start gate's last step is
+ * one, with a 1 s timeout (dragon/settled.ts), so nothing is warmed meanwhile.
+ */
+async function holdGate(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const held: { readonly callback: IdleRequestCallback; readonly timeout: number | undefined }[] = [];
+    window.requestIdleCallback = (callback, options) => {
+      held.push({ callback, timeout: options?.timeout });
+      return held.length;
+    };
+    window.cancelIdleCallback = () => {};
+    const hold = window as unknown as GateHold;
+    hold.__gateHeld = () => held.some((entry) => entry.timeout === 1_000);
+    hold.__releaseIdle = () => {
+      for (const { callback } of held.splice(0)) callback({ didTimeout: true, timeRemaining: () => 0 });
+    };
+  });
+}
+
+async function gateHeld(page: Page): Promise<boolean> {
+  return page.evaluate(() => (window as unknown as GateHold).__gateHeld());
+}
+
+async function releaseGate(page: Page): Promise<void> {
+  await page.evaluate(() => (window as unknown as GateHold).__releaseIdle());
+}
+
+interface PoseHold {
+  __poses: {
+    /** The kind of pose held on screen ('other' theme's filter, or 'own'), or null. */
+    held(): string | null;
+    /** Lets the held pose go (and, with `stop`, holds no more). */
+    release(stop: boolean): void;
+    /** Two frames, on the page's own requestAnimationFrame. */
+    frames(): Promise<void>;
+  };
+}
+
+/**
+ * Holds the dragon's first warm-up pose of each kind (the other theme's filter, then the one on
+ * show) on screen until released (before any page script runs). A pose waits for two frames, or
+ * a timer where the page draws none (dragon/scene.ts, twoFrames): while the dragon shows a pose
+ * (opacity 0.002) of a kind not yet released, every frame callback and timer the page asks for is
+ * held, so the pose stays put for a screenshot. The test's own frames use the page's original
+ * requestAnimationFrame (frames()).
+ */
+async function holdPoses(page: Page): Promise<void> {
+  await page.addInitScript((trace) => {
+    const raf = window.requestAnimationFrame.bind(window);
+    const caf = window.cancelAnimationFrame.bind(window);
+    const timeout = window.setTimeout.bind(window);
+    const clear = window.clearTimeout.bind(window);
+    const released = new Set<string>();
+    const frames = new Map<number, FrameRequestCallback>();
+    const timers = new Map<number, () => void>();
+    let holding = true;
+    let held: string | null = null;
+    let next = -1;
+    const posing = (): string | null => {
+      const dragon = document.querySelector<HTMLElement>('.hero-dragon');
+      if (!holding || !dragon || Number(dragon.style.opacity) !== trace) return null;
+      const kind = dragon.hasAttribute('data-warm') ? 'other' : 'own';
+      return released.has(kind) ? null : kind;
+    };
+    window.requestAnimationFrame = (callback) => {
+      const kind = posing();
+      if (!kind) return raf(callback);
+      held = kind;
+      next -= 1;
+      frames.set(next, callback);
+      return next;
+    };
+    window.cancelAnimationFrame = (id) => {
+      if (id < 0) frames.delete(id);
+      else caf(id);
+    };
+    window.setTimeout = ((handler: TimerHandler, ms?: number, ...rest: unknown[]) => {
+      if (!posing() || typeof handler !== 'function') return timeout(handler, ms, ...rest);
+      next -= 1;
+      timers.set(next, () => (handler as (...values: unknown[]) => void)(...rest));
+      return next;
+    }) as typeof window.setTimeout;
+    window.clearTimeout = (id) => {
+      if (typeof id === 'number' && id < 0) timers.delete(id);
+      else clear(id);
+    };
+    (window as unknown as PoseHold).__poses = {
+      held: () => held,
+      release: (stop) => {
+        if (held) released.add(held);
+        held = null;
+        if (stop) holding = false;
+        frames.clear();
+        for (const run of timers.values()) timeout(run, 0);
+        timers.clear();
+      },
+      frames: () => new Promise((resolve) => raf(() => raf(() => resolve()))),
+    };
+  }, TRACE);
+}
+
+async function heldPose(page: Page): Promise<string | null> {
+  return page.evaluate(() => (window as unknown as PoseHold).__poses.held());
+}
+
+/** The largest and the mean change of a channel between two shots of the same size. */
+async function levels(a: Buffer, b: Buffer): Promise<{ readonly max: number; readonly mean: number }> {
+  const [one, two] = await Promise.all([a, b].map((png) => sharp(png).raw().toBuffer({ resolveWithObject: true })));
+  if (!one || !two) throw new Error('no pixels');
+  expect(one.info.width, 'same size').toBe(two.info.width);
+  expect(one.info.height, 'same size').toBe(two.info.height);
+  let max = 0;
+  let sum = 0;
+  for (let offset = 0; offset < one.data.length; offset += 1) {
+    const delta = Math.abs((one.data[offset] ?? 0) - (two.data[offset] ?? 0));
+    max = Math.max(max, delta);
+    sum += delta;
+  }
+  return { max, mean: sum / one.data.length };
+}
+
 test.describe('the sky', () => {
   for (const theme of ['light', 'dark'] as const) {
     test(`${theme}: once settled, the layers the next change fades in above the painting on show are drawn once, at a strength no screen shows`, async ({ page }) => {
@@ -141,42 +264,63 @@ test.describe('the sky', () => {
       test.describe(`${theme}, ${size.name}`, () => {
         test.use(size.use);
 
-        test('the warm-up changes no pixel of the hero by more than 3 levels', async ({ page }) => {
+        test('the warm-ups change no pixel of the hero by more than 3 levels: before, during the sky’s and the dragon’s, after', async ({ page }) => {
           await alreadyFlown(page);
           await storeDisplay(page, { theme });
           await stillStars(page);
+          // The sky's warm-up runs slowly, so it stays on screen; the gate and the dragon's poses wait to be let go.
           await recordWarmups(page, true);
+          await holdGate(page);
+          await holdPoses(page);
           await page.goto('/', { waitUntil: 'load' });
           await hydrated(page);
-          await expect.poll(() => warmupRunning(page), { timeout: 15_000 }).toBeGreaterThan(0);
           const hero = page.locator('[data-section="hero"]');
-          // Held (it runs slowly), so it is on screen for the shot.
-          await twoFrames(page);
-          const shot = await hero.screenshot();
+          const frames = () => page.evaluate(() => (window as unknown as PoseHold).__poses.frames());
+          // Before: the page has settled (first paint, the painting on show decoded), nothing warmed yet.
+          await expect.poll(() => gateHeld(page), { timeout: 15_000 }).toBe(true);
+          await page.evaluate(() => document.fonts.ready.then(() => undefined));
+          await frames();
+          const before = await hero.screenshot();
+          expect(await warmups(page), 'nothing warmed before the gate').toEqual([]);
+          await releaseGate(page);
+          // The sky's warm-up (with the dragon's first pose too, when its build was quicker than this poll).
+          await expect.poll(() => warmupRunning(page), { timeout: 15_000 }).toBeGreaterThan(0);
+          await frames();
+          const poseWithSky = await heldPose(page);
+          const sky = await hero.screenshot();
+          // The dragon's first pose in the other theme's filter, then its first in the one on show, the sky's warm-up still on.
+          // At 0.002 a pose changes no pixel by itself (0.002 × a difference stays under half a level);
+          // what the shots bound is what its layer does to the hero around it.
+          const pose = () => page.locator(DRAGON).evaluate((dragon: HTMLElement) => ({ opacity: dragon.style.opacity, warm: dragon.hasAttribute('data-warm'), canvas: dragon.querySelectorAll('canvas').length }));
+          await expect.poll(() => heldPose(page), { timeout: 15_000 }).toBe('other');
+          await frames();
+          expect(await pose(), 'the other theme’s pose is on').toEqual({ opacity: String(TRACE), warm: true, canvas: 1 });
+          const other = await hero.screenshot();
+          await page.evaluate(() => (window as unknown as PoseHold).__poses.release(false));
+          await expect.poll(() => heldPose(page), { timeout: 15_000 }).toBe('own');
+          await frames();
+          expect(await pose(), 'the pose in the filter on show is on').toEqual({ opacity: String(TRACE), warm: false, canvas: 1 });
+          const own = await hero.screenshot();
+          expect(await warmupRunning(page), 'the sky’s warm-up was on for both poses').toBeGreaterThan(0);
           await page.evaluate((id) => {
             for (const animation of document.getAnimations()) if (animation.id === id) animation.cancel();
+            (window as unknown as PoseHold).__poses.release(true);
           }, WARMUP_ID);
           await sceneReady(page);
-          await twoFrames(page);
-          const rest = await hero.screenshot();
-          const pixels = async (png: Buffer) => sharp(png).raw().toBuffer({ resolveWithObject: true });
-          const base = await pixels(rest);
-          const warm = await pixels(shot);
-          expect(warm.info.width, 'same size').toBe(base.info.width);
-          expect(warm.info.height, 'same size').toBe(base.info.height);
-          let max = 0;
-          let sum = 0;
-          for (let offset = 0; offset < base.data.length; offset += 1) {
-            const delta = Math.abs((warm.data[offset] ?? 0) - (base.data[offset] ?? 0));
-            max = Math.max(max, delta);
-            sum += delta;
+          await frames();
+          const after = await hero.screenshot();
+          const pairs = { 'sky/before': [sky, before], 'sky/after': [sky, after], 'other pose/before': [other, before], 'other pose/after': [other, after], 'own pose/before': [own, before], 'own pose/after': [own, after], 'after/before': [after, before] } as const;
+          const measured: string[] = [];
+          for (const [name, [a, b]] of Object.entries(pairs)) {
+            const { max, mean } = await levels(a, b);
+            measured.push(`${name} max ${max} mean ${mean.toFixed(3)}`);
+            // A level or so here and there is the rounding of the extra blends and the gradients' dither;
+            // a change anyone could see is many levels (the painting on show put on a layer of its own,
+            // as the day painting under the night one did, moved its edges by 10-51).
+            expect.soft(max, `${name}: the largest change of a channel`).toBeLessThanOrEqual(3);
+            expect.soft(mean, `${name}: the mean change of a channel`).toBeLessThan(0.5);
           }
-          test.info().annotations.push({ type: 'pixels', description: `${theme} ${size.name}: max ${max}, mean ${(sum / base.data.length).toFixed(3)} levels` });
-          // A level or so here and there is the rounding of the extra blends and the gradients' dither;
-          // a change anyone could see is many levels (the painting on show put on a layer of its own,
-          // as the day painting under the night one did, moved its edges by 10-51).
-          expect(max, 'the largest change of a channel').toBeLessThanOrEqual(3);
-          expect(sum / base.data.length, 'the mean change of a channel').toBeLessThan(0.5);
+          test.info().annotations.push({ type: 'pixels', description: `${theme} ${size.name} (pose with the sky shot: ${poseWithSky ?? 'none'}): ${measured.join('; ')}` });
         });
       });
     }
@@ -196,10 +340,11 @@ test.describe('the sky', () => {
     await sceneReady(page);
   });
 
-  test('a change the scene never heard (before its chunk arrived) is not warmed over', async ({ page }) => {
+  test('a change the scene never heard (before its chunk arrived) is not warmed over, by the sky or the dragon', async ({ page }) => {
     await alreadyFlown(page);
     await page.emulateMedia({ colorScheme: 'light' });
     await recordWarmups(page);
+    await recordDragon(page);
     // Holds the scene's chunk until the sunset is playing.
     let release = (): void => {};
     const released = new Promise<void>((resolve) => {
@@ -215,15 +360,16 @@ test.describe('the sky', () => {
     await hydrated(page);
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect.poll(() => skyAnimations(page)).toHaveLength(7);
-    // Every frame from now until the sunset is over: the sky's animations, and whether a painting shows.
+    // Every frame from now until the sunset is over: the sky's animations, whether a painting shows,
+    // and the dragon's opacity.
     const watching = page.evaluate((selector) => {
-      const frames: { readonly ids: string[]; readonly day: number; readonly night: number }[] = [];
+      const frames: { readonly at: number; readonly ids: string[]; readonly day: number; readonly night: number; readonly dragon: string }[] = [];
       return new Promise<typeof frames>((resolve) => {
         const step = () => {
           const layers = [...document.querySelectorAll(selector)];
           const ids = layers.flatMap((element) => element.getAnimations().map((animation) => animation.id));
           const opacity = (name: string) => Number(getComputedStyle(document.querySelector(`[data-hero-layer="${name}"]`) as Element).opacity);
-          frames.push({ ids, day: opacity('day'), night: opacity('night') });
+          frames.push({ at: performance.now(), ids, day: opacity('day'), night: opacity('night'), dragon: document.querySelector<HTMLElement>('.hero-dragon')?.style.opacity ?? '' });
           if (ids.length === 0) resolve(frames);
           else requestAnimationFrame(step);
         };
@@ -246,34 +392,32 @@ test.describe('the sky', () => {
       'the paintings show in every frame',
     ).toEqual([]);
     expect(await warmups(page), 'and none at all: the sunset did that work').toEqual([]);
+    // Nor did the dragon's warm-up draw a pose while the sunset played (its first-use compiles would
+    // land inside that change).
+    const sunsetEnd = frames.at(-1)?.at ?? 0;
+    expect(
+      (await dragonLog(page)).filter((entry) => entry.at <= sunsetEnd && Number(entry.opacity) === TRACE),
+      'no dragon pose during the sunset',
+    ).toEqual([]);
+    expect(
+      frames.filter((frame) => Number(frame.dragon) === TRACE),
+      'in any frame of it',
+    ).toEqual([]);
   });
 
   test('a theme change before the page settles leaves nothing to warm', async ({ page }) => {
     await alreadyFlown(page);
     await page.emulateMedia({ colorScheme: 'light' });
     await recordWarmups(page);
-    // Holds idle callbacks until the change has happened: the start gate's last step is one, with a
-    // 1 s timeout (dragon/settled.ts).
-    await page.addInitScript(() => {
-      const held: { readonly callback: IdleRequestCallback; readonly timeout: number | undefined }[] = [];
-      window.requestIdleCallback = (callback, options) => {
-        held.push({ callback, timeout: options?.timeout });
-        return held.length;
-      };
-      window.cancelIdleCallback = () => {};
-      const hold = window as unknown as { __gateHeld: () => boolean; __releaseIdle: () => void };
-      hold.__gateHeld = () => held.some((entry) => entry.timeout === 1_000);
-      hold.__releaseIdle = () => {
-        for (const { callback } of held.splice(0)) callback({ didTimeout: true, timeRemaining: () => 0 });
-      };
-    });
+    // The gate is held until the change has happened.
+    await holdGate(page);
     await page.goto('/', { waitUntil: 'load' });
     await hydrated(page);
-    await expect.poll(() => page.evaluate(() => (window as unknown as { __gateHeld: () => boolean }).__gateHeld()), { timeout: 15_000 }).toBe(true);
+    await expect.poll(() => gateHeld(page), { timeout: 15_000 }).toBe(true);
     await page.emulateMedia({ colorScheme: 'dark' });
     // The page hears of the change at its next rendering update: wait for it before the gate opens.
     await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true);
-    await page.evaluate(() => (window as unknown as { __releaseIdle: () => void }).__releaseIdle());
+    await releaseGate(page);
     await sceneReady(page);
     expect(await warmups(page)).toEqual([]);
   });
