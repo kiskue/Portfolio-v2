@@ -8,13 +8,22 @@ import { skyChange, type SkyLayer } from '@/components/sections/home/sky';
  * thread in the first 0.4 s of the first sunset: two or three frames of 55-130 ms.
  *
  * So once the page has settled, before any theme change, the layers the next change fades in are
- * drawn for 0.5 s at opacity 0.002, the painting with the warm filter's own functions at 0.1%: no
- * pixel moves by half a level of 255. Values of exactly 0, or an identity filter, would be skipped
- * by the compositor and compile nothing. Nothing on show is touched: a layer the compositor draws
- * on its own is resampled differently from the page around it, so the painting on show would
- * change at its edges (up to 40 levels on a tablet). The scene chunk runs it (dragon/scene.ts) when
- * it has a hardware WebGL context, so never on a software renderer (there it would only cost
- * drawing time) or under reduced motion; a theme change cancels it.
+ * drawn for 0.5 s at opacity 0.002, the night painting with the warm filter's own functions at
+ * 0.1%. Values of exactly 0, or an identity filter, would be skipped by the compositor and compile
+ * nothing. A layer at 0.002 adds at most about half a level of 255; with the rounding of the extra
+ * blends and the gradients' dither, no channel of the hero moved by more than 3 levels (measured on
+ * the GPU at three sizes, in both themes).
+ *
+ * Nothing on show is touched, and nothing drawn under the painting on show: a layer the compositor
+ * draws on its own is resampled differently from the page around it, and compositing a layer under
+ * the painting on show puts that painting on a layer of its own too. Its edges then moved by up to
+ * 30-51 levels (the day painting under the night one, before a sunrise), so before a sunrise only
+ * the tint and the day scrim are warmed, and the sunrise compiles the rest itself. Nothing is warmed
+ * while a change plays or is about to (skyBusy).
+ *
+ * The scene chunk runs it (dragon/scene.ts), only in Chromium with a hardware WebGL context, so never
+ * on a software renderer (there it would only cost drawing time) or under reduced motion; a theme
+ * change cancels it.
  */
 
 /** The opacity the warm-up gives a layer the next change fades in. */
@@ -29,28 +38,47 @@ export const WARMUP_MS = 500;
 /** The id the warm-up's animations carry (Animation.id). */
 export const WARMUP_ID = 'sky-warmup';
 
+/**
+ * The sky's layers from the bottom up (hero.css, home-hero.tsx): the two paintings (no z-index, in
+ * DOM order), then the z-index 1 layers in DOM order.
+ */
+export const SKY_PAINT_ORDER = ['day', 'night', 'tint', 'stars', 'scrim-day', 'scrim-night'] as const satisfies readonly SkyLayer[];
+
 export interface WarmupLayer {
   readonly layer: SkyLayer;
   /** The state held for the warm-up. */
   readonly frame: Keyframe;
 }
 
-/** What the warm-up draws for the change away from the theme `dark`: each layer it fades in, once. */
+/**
+ * What the warm-up draws for the change away from the theme `dark`: each layer it fades in that is
+ * drawn above the painting on show, once.
+ */
 export function skyWarmup(dark: boolean): readonly WarmupLayer[] {
   const change = skyChange(dark, !dark);
   const shown = new Set(change.filter(({ keyframes }) => keyframes[0]?.opacity === 1).map(({ layer }) => layer));
   const filtered = change.some(({ keyframes }) => typeof keyframes[0]?.filter === 'string');
-  const painting: SkyLayer = dark ? 'day' : 'night';
+  const floor = SKY_PAINT_ORDER.indexOf(dark ? 'night' : 'day');
   const warmed = new Map<SkyLayer, Keyframe>();
   for (const { layer } of change) {
-    if (shown.has(layer) || warmed.has(layer)) continue;
+    if (shown.has(layer) || warmed.has(layer) || SKY_PAINT_ORDER.indexOf(layer) <= floor) continue;
     const frame: Keyframe = { opacity: TRACE_OPACITY };
-    if (filtered && layer === painting) frame.filter = WARM_TRACE;
+    if (filtered && layer === 'night') frame.filter = WARM_TRACE;
     // The stars are display: none until .dark (hero.css).
     if (layer === 'stars') frame.display = 'block';
     warmed.set(layer, frame);
   }
   return [...warmed].map(([layer, frame]) => ({ layer, frame }));
+}
+
+/**
+ * A change is playing on the sky, or about to: a layer has an animation of its own (its children,
+ * the stars' lines, do not count), or the island holds a layer at its start (its inline pins).
+ */
+export function skyBusy(sky: ParentNode): boolean {
+  return [...sky.querySelectorAll<HTMLElement>('[data-hero-layer]')].some(
+    (layer) => layer.getAnimations().length > 0 || layer.style.opacity !== '' || layer.style.filter !== '',
+  );
 }
 
 export interface Warmup {

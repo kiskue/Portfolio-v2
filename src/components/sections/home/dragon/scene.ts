@@ -5,7 +5,7 @@ import { markFlown, onThemeSwitch, openingFlightDue, openingStartAt, type Flight
 import { settle } from '@/components/sections/home/dragon/settled';
 import { TAIL } from '@/components/sections/home/dragon/tail';
 import { bobUnits, WING_LOOP_S, wingWeights } from '@/components/sections/home/dragon/wings';
-import { TRACE_OPACITY, warmSky, type Warmup } from '@/components/sections/home/sky-warmup';
+import { skyBusy, TRACE_OPACITY, warmSky, type Warmup } from '@/components/sections/home/sky-warmup';
 import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
 
 /**
@@ -26,12 +26,12 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  * the dragon flies as stacked frames; when those fail to load, it stays away. Anything else is a
  * bug and is reported (reportError), never swallowed.
  *
- * Once the page has settled, with a hardware WebGL context and until a theme change, it also does
- * the GPU's first-use work ahead of time: it warms the sky's next change (sky-warmup.ts), and once
- * its renderer is built it draws the dragon at a few poses in both themes' filters (warmDragon), all
- * at a strength no screen shows, so neither the change's first frames nor the flight's compile GPU
- * programs. The dragon is ready to fly once both are over; a theme change, reduced motion or
- * dispose ends them.
+ * Once the page has settled, in Chromium with a hardware WebGL context and until a theme change, it
+ * also does the GPU's first-use work ahead of time: it warms the sky's next change (sky-warmup.ts;
+ * never over a change the sky is playing), and once its renderer is built it draws the dragon at a
+ * few poses in both themes' filters (warmDragon), all at a strength no screen shows, so neither the
+ * change's first frames nor the flight's compile GPU programs. The dragon is ready to fly once both
+ * are over; a theme change, reduced motion or dispose ends them.
  */
 
 /** Written to the dragon element at runtime, so the speed gate can tell this chunk from any other (a duplicate lives in tests/support/budgets.ts). */
@@ -53,6 +53,8 @@ const WEBGL_FRAMES: WebGLFrames = ['/scene/dragon-up.webp', '/scene/dragon-level
 const WARM_POSES_MS = [0, 2000, 4000, 6000, 8000, 10_000, 12_000, 13_000];
 /** Each pose is held for two frames, or this long where the page draws none (a hidden tab). */
 const WARM_POSE_MAX_MS = 250;
+/** The warm-ups were measured in Chrome, against Skia's program compiles: Chromium only (Ruling 48). */
+const CHROMIUM = typeof navigator !== 'undefined' && 'userAgentData' in navigator;
 
 /** Resolves after two animation frames, or after `ms` where the page draws none. */
 function twoFrames(ms: number): Promise<void> {
@@ -322,16 +324,18 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     canvas.width = TAIL.canvasWidth;
     canvas.height = TAIL.canvasHeight;
     context = createWebGLContext(canvas);
-    // With a hardware context only: without one there is no GPU to warm, and the warm-up would only
-    // cost drawing time. After asking for it (that request would wait behind the GPU work the
-    // warm-up asks for), in the same task: the sky's programs compile while the dragon's frames load.
-    if (context && !switched && sky) warmup = warmSky(sky, getDisplaySnapshot().resolved.dark);
+    // The warm-ups: in Chromium with a hardware context only. Without one there is no GPU to warm,
+    // and they would only cost drawing time. The sky's starts after asking for the context (that
+    // request would wait behind the GPU work it asks for), in the same task, so its programs compile
+    // while the dragon's frames load; never over a change the sky is playing or about to play.
+    const warm = context !== null && CHROMIUM;
+    if (warm && !switched && sky && !skyBusy(sky)) warmup = warmSky(sky, getDisplaySnapshot().resolved.dark);
     const warmed = (): Promise<void> => warmup?.done ?? Promise.resolve();
     if (context) {
       const webgl = await createWebGLRenderer(context, WEBGL_FRAMES, stopped);
       // The renderer owns the context now; without one, the build has lost it.
       context = null;
-      if (webgl && !stopped()) await Promise.all([warmed(), warmDragon(webgl, [canvas])]);
+      if (webgl && !stopped()) await Promise.all([warmed(), warm ? warmDragon(webgl, [canvas]) : undefined]);
       if (stopped()) {
         webgl?.dispose();
         return;

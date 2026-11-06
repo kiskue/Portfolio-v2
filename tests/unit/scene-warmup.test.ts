@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { WARMUP_ID as TEST_WARMUP_ID } from '../support/warmup';
 import { SUNRISE, SUNSET, WARM_FILTER } from '@/components/sections/home/sky';
-import { skyWarmup, TRACE_OPACITY, WARM_TRACE, WARMUP_ID, WARMUP_MS, warmSky } from '@/components/sections/home/sky-warmup';
+import { SKY_PAINT_ORDER, skyBusy, skyWarmup, TRACE_OPACITY, WARM_TRACE, WARMUP_ID, WARMUP_MS, warmSky } from '@/components/sections/home/sky-warmup';
 
 /*
  * The sky's warm-up (smooth-sky follow-up): before the first theme change, the layers the next
  * change fades in are drawn once at a strength no screen shows, so the GPU compiles their programs
- * and decodes the other painting then, not in the change's first frames. Nothing on show is touched.
+ * and decodes the other painting then, not in the change's first frames. Nothing on show is touched,
+ * nothing drawn under the painting on show is warmed, and nothing is warmed while a change plays.
  */
 
 describe('the warm-up plan', () => {
@@ -19,32 +20,39 @@ describe('the warm-up plan', () => {
     ]);
   });
 
-  it('before a sunrise: the day painting with the warm filter, the tint and the day scrim, just showing', () => {
+  it('before a sunrise: only the tint and the day scrim, just showing (the day painting is under the night painting on show)', () => {
     expect(skyWarmup(true)).toEqual([
-      { layer: 'day', frame: { opacity: TRACE_OPACITY, filter: WARM_TRACE } },
       { layer: 'tint', frame: { opacity: TRACE_OPACITY } },
       { layer: 'scrim-day', frame: { opacity: TRACE_OPACITY } },
     ]);
   });
 
-  it('warms every layer the change fades in, and none it fades out (a layer on show, drawn by the compositor, is resampled: it would show)', () => {
+  it('warms only layers the change fades in that are drawn above the painting on show (one under it would force the painting onto a layer of its own, resampled)', () => {
     for (const [dark, change] of [
       [false, SUNSET],
       [true, SUNRISE],
     ] as const) {
-      const fadedIn = change.filter((entry) => entry.keyframes[0]?.opacity !== 1).map((entry) => entry.layer);
       const shown = change.filter((entry) => entry.keyframes[0]?.opacity === 1).map((entry) => entry.layer);
+      const painting = dark ? 'night' : 'day';
+      const above = (layer: string) => SKY_PAINT_ORDER.indexOf(layer as (typeof SKY_PAINT_ORDER)[number]) > SKY_PAINT_ORDER.indexOf(painting);
+      const fadedIn = change.map((entry) => entry.layer).filter((layer) => !shown.includes(layer));
       const warmed = skyWarmup(dark).map((entry) => entry.layer);
-      expect(new Set(warmed), `dark ${dark}`).toEqual(new Set(fadedIn.filter((layer) => !shown.includes(layer))));
+      expect(new Set(warmed), `dark ${dark}`).toEqual(new Set(fadedIn.filter(above)));
       for (const layer of shown) expect(warmed, `dark ${dark}: ${layer} is on show`).not.toContain(layer);
     }
   });
 
-  it('draws every warmed layer at the trace opacity, the warm filter only on the painting', () => {
+  it('knows every layer’s place in the sky (hero.css: the paintings, then the z-index 1 layers in DOM order)', () => {
+    const layers = new Set([...SUNSET, ...SUNRISE].map((entry) => entry.layer));
+    for (const layer of layers) expect(SKY_PAINT_ORDER, layer).toContain(layer);
+    expect(SKY_PAINT_ORDER.slice(0, 2)).toEqual(['day', 'night']);
+  });
+
+  it('draws every warmed layer at the trace opacity, the warm filter only on the night painting', () => {
     for (const dark of [false, true]) {
       for (const { layer, frame } of skyWarmup(dark)) {
         expect(frame.opacity, layer).toBe(TRACE_OPACITY);
-        if (frame.filter !== undefined) expect(layer).toBe(dark ? 'day' : 'night');
+        if (frame.filter !== undefined) expect(layer).toBe('night');
       }
     }
   });
@@ -61,7 +69,7 @@ describe('the warm-up plan', () => {
     }
   });
 
-  it('moves no pixel by more than half a level of 255, and still draws (0 is skipped by the compositor)', () => {
+  it('adds at most about half a level of 255 of its own, and still draws (0 is skipped by the compositor)', () => {
     expect(TRACE_OPACITY).toBeGreaterThan(0);
     expect(TRACE_OPACITY * 255).toBeLessThanOrEqual(0.51);
   });
@@ -134,8 +142,9 @@ describe('warmSky', () => {
   });
 
   it('is done once every animation has finished', async () => {
-    const { sky, made } = fakeSky(['day', 'tint', 'scrim-day']);
-    const warmup = warmSky(sky, true);
+    const { sky, made } = fakeSky(['night', 'tint', 'scrim-night']);
+    const warmup = warmSky(sky, false);
+    expect(made).toHaveLength(3);
     made[0]?.animation.finish();
     made[1]?.animation.finish();
     expect(await settled(warmup.done), 'one animation still runs').toBe(false);
@@ -149,5 +158,29 @@ describe('warmSky', () => {
     warmup.cancel();
     for (const entry of made) expect(entry.animation.cancel, entry.layer).toHaveBeenCalledTimes(1);
     expect(await settled(warmup.done)).toBe(true);
+  });
+});
+
+/** A sky whose layers have these animations of their own and these inline styles. */
+function layersSky(layers: readonly { readonly animations?: number; readonly opacity?: string; readonly filter?: string }[]): ParentNode {
+  const elements = layers.map((layer) => ({
+    getAnimations: () => Array.from({ length: layer.animations ?? 0 }, () => ({})),
+    style: { opacity: layer.opacity ?? '', filter: layer.filter ?? '' },
+  }));
+  return { querySelectorAll: (selector: string) => (selector === '[data-hero-layer]' ? elements : []) } as unknown as ParentNode;
+}
+
+describe('skyBusy: a change the sky is playing, or about to play', () => {
+  it('is false at rest', () => {
+    expect(skyBusy(layersSky([{}, {}, {}]))).toBe(false);
+  });
+
+  it('is true while a layer has an animation of its own (the change; the stars’ lines are not the layer)', () => {
+    expect(skyBusy(layersSky([{}, { animations: 1 }, {}]))).toBe(true);
+  });
+
+  it('is true while the island holds a layer at its start (the pins before the change starts)', () => {
+    expect(skyBusy(layersSky([{ opacity: '1' }, {}]))).toBe(true);
+    expect(skyBusy(layersSky([{ filter: 'none' }, {}]))).toBe(true);
   });
 });
