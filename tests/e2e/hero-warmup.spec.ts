@@ -436,6 +436,48 @@ test.describe('the sky', () => {
     await expect(page.locator(DRAGON)).toHaveCount(0);
   });
 
+  test('a scroll as the page settles holds both warm-ups back until the visitor has left the page alone for 200 ms', async ({ page }) => {
+    await alreadyFlown(page);
+    await storeDisplay(page, { theme: 'light' });
+    await recordWarmups(page);
+    await recordDragon(page);
+    await holdGate(page);
+    // The visitor's last wheel or scroll event, as the page sees it (before any page script runs).
+    await page.addInitScript(() => {
+      const record = window as unknown as { __lastInput: number };
+      record.__lastInput = 0;
+      for (const type of ['wheel', 'scroll']) {
+        addEventListener(
+          type,
+          () => {
+            record.__lastInput = performance.now();
+          },
+          { capture: true, passive: true },
+        );
+      }
+    });
+    await page.goto('/', { waitUntil: 'load' });
+    await hydrated(page);
+    await expect.poll(() => gateHeld(page), { timeout: 15_000 }).toBe(true);
+    await page.mouse.move(700, 300);
+    // Down and back up, while the gate opens.
+    for (let step = 0; step < 16; step += 1) {
+      await page.mouse.wheel(0, step < 8 ? 60 : -60);
+      if (step === 4) await releaseGate(page);
+      await page.waitForTimeout(30);
+    }
+    await sceneReady(page);
+    const lastInput = await page.evaluate(() => (window as unknown as { __lastInput: number }).__lastInput);
+    expect(lastInput, 'the page heard the scroll').toBeGreaterThan(0);
+    const calls = await warmups(page);
+    const poses = (await dragonLog(page)).filter((entry) => Number(entry.opacity) === TRACE);
+    expect(calls.length, 'the sky was warmed in the end').toBeGreaterThan(0);
+    expect(poses.length, 'and the dragon').toBeGreaterThan(0);
+    // The scene stamps its own clock in its listener; a few ms of rounding either way.
+    expect(Math.min(...calls.map((call) => call.at)) - lastInput, 'the sky’s warm-up keeps 200 ms off the last input').toBeGreaterThanOrEqual(190);
+    expect(Math.min(...poses.map((entry) => entry.at)) - lastInput, 'and so do the dragon’s poses').toBeGreaterThanOrEqual(190);
+  });
+
   test('reduced motion: nothing is warmed', async ({ page }) => {
     await storeDisplay(page, { theme: 'light', motion: 'reduce' });
     await recordWarmups(page);
