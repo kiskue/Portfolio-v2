@@ -1,5 +1,5 @@
 import { coverMap, PAINTING, paintingToScreen, parseObjectPosition, pxPerUnit, unitsToPainting, type CoverMap } from '@/components/sections/home/dragon/cover';
-import { DRAGON_UNITS, FLIGHT_DESKTOP, FLIGHT_PHONE, flightAt, headingTurnDeg, nextRoll, PHONE_SCALE, tiltDeg } from '@/components/sections/home/dragon/flight';
+import { DRAGON_UNITS, FLIGHT_DESKTOP, FLIGHT_PHONE, flightAt, headingTurnDeg, nextRoll, PHONE_SCALE, tiltDeg, type FlightFrame } from '@/components/sections/home/dragon/flight';
 import { createImageRenderer, createWebGLContext, createWebGLRenderer, loseContext, type DragonRenderer, type WebGLFrames } from '@/components/sections/home/dragon/renderer';
 import { markFlown, onThemeSwitch, openingFlightDue, openingStartAt, type FlightPlan } from '@/components/sections/home/dragon/schedule';
 import { settle } from '@/components/sections/home/dragon/settled';
@@ -27,11 +27,13 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  * bug and is reported (reportError), never swallowed.
  *
  * Once the page has settled, in Chromium with a hardware WebGL context and until a theme change, it
- * also does the GPU's first-use work ahead of time: it warms the sky's next change (sky-warmup.ts;
- * never over a change the sky is playing), and once its renderer is built it draws the dragon at a
- * few poses in both themes' filters (warmDragon), all at a strength no screen shows, so neither the
- * change's first frames nor the flight's compile GPU programs. The dragon is ready to fly once both
- * are over; a theme change, reduced motion or dispose ends them.
+ * also does the GPU's first-use work ahead of time, at a strength no screen shows: it warms the
+ * sky's next change (sky-warmup.ts; never over a change the sky is playing), and once its renderer is
+ * built it draws the dragon at poses along its path in the themes' filters (warmDragon). With an
+ * opening flight due, the dragon is ready as soon as it is built, as before; it is warmed in the
+ * other theme's filter while that fits before the flight's slot, and the rest after the flight
+ * lands. Without one, it is ready once both warm-ups are over. A theme change, reduced motion, a
+ * flight, a hidden page or dispose stops them.
  */
 
 /** Written to the dragon element at runtime, so the speed gate can tell this chunk from any other (a duplicate lives in tests/support/budgets.ts). */
@@ -51,21 +53,40 @@ const RATIO_EPSILON = 0.001;
 const WEBGL_FRAMES: WebGLFrames = ['/scene/dragon-up.webp', '/scene/dragon-level.webp', '/scene/dragon-down.webp', '/scene/dragon-tail.webp'];
 /** The dragon's warm-up poses, in ms of its flight: every 2 s, and one near the end (the blur sizes it flies through). */
 const WARM_POSES_MS = [0, 2000, 4000, 6000, 8000, 10_000, 12_000, 13_000];
-/** Each pose is held for two frames, or this long where the page draws none (a hidden tab). */
+/** Each pose is held for two frames, or this long where the page draws none. */
 const WARM_POSE_MAX_MS = 250;
+/** What a pose takes at 60 Hz, with room: none is started that would not end before its deadline. */
+const WARM_POSE_MS = 40;
+/** The warm-up ends this long before a flight's slot, so the flight's first frame finds the dragon as before. */
+const WARM_SLOT_MARGIN_MS = 50;
 /** The warm-ups were measured in Chrome, against Skia's program compiles: Chromium only (Ruling 48). */
 const CHROMIUM = typeof navigator !== 'undefined' && 'userAgentData' in navigator;
 
-/** Resolves after two animation frames, or after `ms` where the page draws none. */
+/** One warm-up pose: `ms` into the flight, in the other theme's filter or the one on show. */
+interface WarmPose {
+  readonly other: boolean;
+  readonly ms: number;
+}
+
+/** The poses along the path, in the other theme's filter or the one on show. */
+function posesIn(other: boolean): WarmPose[] {
+  return WARM_POSES_MS.map((ms) => ({ other, ms }));
+}
+
+/** Resolves after two animation frames, or after `ms` where the page draws none (then the frames are cancelled). */
 function twoFrames(ms: number): Promise<void> {
   return new Promise((resolve) => {
-    const timer = window.setTimeout(resolve, ms);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
+    let frame = 0;
+    const timer = window.setTimeout(() => {
+      cancelAnimationFrame(frame);
+      resolve();
+    }, ms);
+    frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
         window.clearTimeout(timer);
         resolve();
-      }),
-    );
+      });
+    });
   });
 }
 
@@ -149,6 +170,12 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   /** The host's size, as last measured. */
   let hostWidth = 0;
   let hostHeight = 0;
+  /** The dragon's warm-up poses not drawn yet, in order. */
+  let poses: readonly WarmPose[] = [];
+  /** Bumped to stop a dragon warm-up under way before its next pose. */
+  let warmRun = 0;
+  /** A dragon warm-up is drawing (the dragon shows a pose at opacity 0.002). */
+  let warming = false;
 
   const measure = (width: number, height: number): void => {
     hostWidth = width;
@@ -169,6 +196,22 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     shownOpacity = '0';
     style.opacity = '0';
     dragon.dataset.flight = 'idle';
+  };
+
+  /** The dragon as a flight expects it after a warm-up pose: hidden, its own theme's filter, no warm-up haze. */
+  const unwarm = (): void => {
+    warming = false;
+    dragon.removeAttribute('data-warm');
+    style.removeProperty('--haze');
+    shownHaze = '';
+    shownOpacity = '0';
+    style.opacity = '0';
+  };
+
+  /** Stops a dragon warm-up under way before its next pose, and hides the dragon again at once. */
+  const stopWarm = (): void => {
+    warmRun += 1;
+    if (warming) unwarm();
   };
 
   /** Stops a flight and drops a scheduled or pending one. */
@@ -195,6 +238,8 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     const at = flightAt(path, ms);
     if (!at) {
       land();
+      // The warm-up poses that did not fit before the opening flight's slot, now the dragon is idle.
+      if (poses.length > 0) window.setTimeout(warmLeft, 0);
       return;
     }
     frame = requestAnimationFrame(tick);
@@ -224,6 +269,8 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
 
   const fly = (): void => {
     timer = 0;
+    // A warm-up still drawing gives the dragon back before the flight's first frame.
+    stopWarm();
     // A start that comes due while the hero is off screen or motion is reduced is dropped.
     if (!inView || getDisplaySnapshot().resolved.reduceMotion) {
       abort();
@@ -253,9 +300,14 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     if (plan.kind === 'scheduled' && renderer) timer = window.setTimeout(fly, Math.max(0, plan.at - performance.now()));
   };
 
+  /** Puts the renderer's nodes in the dragon (once: a warm-up may have put them there already). */
+  const attach = (nodes: readonly HTMLElement[]): void => {
+    for (const node of nodes) if (node.parentNode !== dragon) dragon.append(node);
+  };
+
   const ready = (made: DragonRenderer, kind: 'webgl' | 'images', nodes: readonly HTMLElement[]): void => {
     renderer = made;
-    dragon.append(...nodes);
+    attach(nodes);
     dragon.dataset.renderer = kind;
     if (plan.kind === 'idle' && openingFlightDue(session())) {
       if (document.hidden) {
@@ -278,35 +330,55 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   /** Disposed, or motion turned off: the start goes no further. */
   const stopped = (): boolean => disposed || getDisplaySnapshot().resolved.reduceMotion;
 
+  /** Shows the dragon at one warm-up pose, in the middle of the hero, at opacity 0.002. */
+  const showPose = (pose: WarmPose, at: FlightFrame): void => {
+    warming = true;
+    dragon.toggleAttribute('data-warm', pose.other);
+    style.transform = `translate(${(hostWidth / 2).toFixed(2)}px, ${(hostHeight / 2).toFixed(2)}px) translate(-50%, -50%) rotate(${tiltDeg(0, pose.ms).toFixed(2)}deg) scale(${at.s.toFixed(4)})`;
+    style.setProperty('--haze', at.haze.toFixed(3));
+    style.opacity = String(TRACE_OPACITY);
+  };
+
   /**
    * The dragon's own warm-up (smooth-sky follow-up). Its CSS filter (the haze's blur, and at night the
    * moonlit drop-shadow) is drawn by GPU programs compiled the first time each is used, at each blur
    * size the flight's scale gives: on a cold cache the first night flight compiled four in its first
-   * frame (a 50-66 ms frame) and more as it flew. So the dragon is drawn in the middle of the hero at
-   * a pose every 2 s along its path (scale, tilt and haze), in the filter of the theme on show and
-   * then in the other's (data-warm, hero.css), at opacity 0.002; then it is hidden again.
+   * frame (a 50-66 ms frame) and more as it flew. So the dragon is drawn at the poses left (scale,
+   * tilt and haze along its path; data-warm asks for the other theme's filter, hero.css), two frames
+   * each, until `deadline`, a theme change, a flight, a hidden page or the end of the scene; then it
+   * is hidden again. Poses it did not reach stay for later.
    */
-  const warmDragon = async (made: DragonRenderer, nodes: readonly HTMLElement[]): Promise<void> => {
-    if (switched || !map) return;
-    dragon.append(...nodes);
+  const warmDragon = async (made: DragonRenderer, deadline: number): Promise<void> => {
+    if (!map || poses.length === 0) return;
+    const run = ++warmRun;
     made.draw(wingWeights(0), 0);
-    style.opacity = String(TRACE_OPACITY);
-    const centre = `translate(${(hostWidth / 2).toFixed(2)}px, ${(hostHeight / 2).toFixed(2)}px) translate(-50%, -50%)`;
-    for (const other of [false, true]) {
-      dragon.toggleAttribute('data-warm', other);
-      for (const ms of WARM_POSES_MS) {
-        const at = flightAt(path, ms);
-        if (!at || switched || stopped()) break;
-        style.transform = `${centre} rotate(${tiltDeg(0, ms).toFixed(2)}deg) scale(${at.s.toFixed(4)})`;
-        style.setProperty('--haze', at.haze.toFixed(3));
+    try {
+      for (;;) {
+        const [pose, ...rest] = poses;
+        if (!pose || run !== warmRun || switched || stopped() || document.hidden || plan.kind === 'flying') return;
+        if (performance.now() + WARM_POSE_MS > deadline) return;
+        poses = rest;
+        const at = flightAt(path, pose.ms);
+        if (!at) continue;
+        showPose(pose, at);
         await twoFrames(WARM_POSE_MAX_MS);
       }
+    } finally {
+      // A warm-up stopped from outside (stopWarm) has been put back already.
+      if (run === warmRun && warming) unwarm();
     }
-    dragon.removeAttribute('data-warm');
-    style.removeProperty('--haze');
-    shownHaze = '';
-    shownOpacity = '0';
-    style.opacity = '0';
+  };
+
+  /** Warms what fits before the scheduled flight (the opening flight's slot); the rest waits. */
+  const warmBeforeFlight = (): void => {
+    if (plan.kind !== 'scheduled' || !renderer || poses.length === 0) return;
+    warmDragon(renderer, plan.at - WARM_SLOT_MARGIN_MS).catch((error: unknown) => reportError(error));
+  };
+
+  /** Warms the poses left, now the dragon is idle (after the opening flight). */
+  const warmLeft = (): void => {
+    if (!renderer || plan.kind !== 'idle') return;
+    warmDragon(renderer, Number.POSITIVE_INFINITY).catch((error: unknown) => reportError(error));
   };
 
   // Nothing is asked of the GPU or the network before the page has settled; the painting waited
@@ -331,24 +403,49 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     const warm = context !== null && CHROMIUM;
     if (warm && !switched && sky && !skyBusy(sky)) warmup = warmSky(sky, getDisplaySnapshot().resolved.dark);
     const warmed = (): Promise<void> => warmup?.done ?? Promise.resolve();
+    let made: DragonRenderer | null = null;
+    let kind: 'webgl' | 'images' = 'webgl';
+    let nodes: readonly HTMLElement[] = [canvas];
     if (context) {
-      const webgl = await createWebGLRenderer(context, WEBGL_FRAMES, stopped);
+      made = await createWebGLRenderer(context, WEBGL_FRAMES, stopped);
       // The renderer owns the context now; without one, the build has lost it.
       context = null;
-      if (webgl && !stopped()) await Promise.all([warmed(), warm ? warmDragon(webgl, [canvas]) : undefined]);
       if (stopped()) {
-        webgl?.dispose();
-        return;
-      }
-      if (webgl) {
-        ready(webgl, 'webgl', [canvas]);
+        made?.dispose();
         return;
       }
     }
-    const full = Promise.all([decoded('/scene/dragon-full-up.webp'), decoded('/scene/dragon-full-level.webp'), decoded('/scene/dragon-full-down.webp')]);
-    const frames = await decodedOrNull(full);
-    await warmed();
-    if (frames && !stopped()) ready(createImageRenderer(frames), 'images', frames);
+    if (!made) {
+      const full = Promise.all([decoded('/scene/dragon-full-up.webp'), decoded('/scene/dragon-full-level.webp'), decoded('/scene/dragon-full-down.webp')]);
+      const frames = await decodedOrNull(full);
+      if (!frames || stopped()) return;
+      made = createImageRenderer(frames);
+      kind = 'images';
+      nodes = frames;
+    }
+    const dragonWarm = warm && kind === 'webgl' && !switched;
+    if (plan.kind === 'idle' && openingFlightDue(session())) {
+      // An opening flight is due: ready at once, as before the warm-ups. The other theme's filter is
+      // warmed while that fits before the flight's slot, and the rest after the flight lands (the
+      // flight itself draws the theme on show).
+      if (dragonWarm) poses = posesIn(true);
+      ready(made, kind, nodes);
+      warmBeforeFlight();
+      return;
+    }
+    // No opening flight: ready once the warm-ups are over (the other theme's filter first).
+    if (dragonWarm) {
+      poses = [...posesIn(true), ...posesIn(false)];
+      attach(nodes);
+      await Promise.all([warmed(), warmDragon(made, Number.POSITIVE_INFINITY)]);
+    } else {
+      await warmed();
+    }
+    if (stopped()) {
+      made.dispose();
+      return;
+    }
+    ready(made, kind, nodes);
   };
   start().catch((error: unknown) => reportError(error));
 
@@ -358,13 +455,15 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     dark = next;
     if (reduceMotion) {
       warmup?.cancel();
+      stopWarm();
       abort();
       return;
     }
     if (!changed) return;
-    // The change does the warm-up's work itself; the sky island plays it.
+    // The change does the warm-ups' work itself; the sky island plays it.
     switched = true;
     warmup?.cancel();
+    stopWarm();
     plan = onThemeSwitch(plan, performance.now());
     // A switch before the opening flight (scheduled, or waiting for the page to be shown) replaces it.
     if (plan.kind === 'scheduled') {
@@ -376,6 +475,8 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
 
   const onVisibility = (): void => {
     if (document.hidden) {
+      // A dragon warm-up draws nothing now: it stops, and keeps the poses it did not reach.
+      stopWarm();
       // A flight in progress stops and a switch's scheduled flight is dropped. The opening flight is
       // kept: if it comes due while the page is still hidden, fly() holds it until the page returns.
       if (!opening && !openingPending) abort();
@@ -391,6 +492,7 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     plan = { kind: 'scheduled', at };
     opening = true;
     arm();
+    warmBeforeFlight();
   };
   document.addEventListener('visibilitychange', onVisibility);
 
@@ -417,6 +519,7 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
       disposed = true;
       settling.cancel();
       warmup?.cancel();
+      stopWarm();
       abort();
       unsubscribe();
       document.removeEventListener('visibilitychange', onVisibility);
