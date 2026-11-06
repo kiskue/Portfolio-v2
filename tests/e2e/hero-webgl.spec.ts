@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { collectConsoleProblems, describeConsoleProblems, idleAfterLoad } from '../support/console';
 import { DRAGON, dragonState, flying, navigate } from '../support/dragon';
+import { GPU_TEST_OPTIONS, requireHardwareWebGL } from '../support/gpu';
 import { hydrated } from '../support/page';
 
 /*
@@ -10,36 +11,14 @@ import { hydrated } from '../support/page';
  * so this file launches Chromium on the GPU (ANGLE on Direct3D 11). Desktop project only.
  *
  * The tests skip only when an independent probe, run before Home loads, finds no hardware WebGL in
- * this browser. So a regression that makes the dragon fall back to its frames on a GPU fails here
- * instead of skipping.
+ * this browser (tests/support/gpu.ts; E2E_REQUIRE_GPU=1 makes that a failure). So a regression that
+ * makes the dragon fall back to its frames on a GPU fails here instead of skipping.
  */
 
 // One worker per file, tests in order (see smoke.spec.ts for why).
 test.describe.configure({ mode: 'default' });
 
-test.use({ reducedMotion: 'no-preference', launchOptions: { args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] } });
-
-/** Software WebGL renderers. Written again here on purpose: the probe must not share renderer.ts's rule. */
-const SOFTWARE = /swiftshader|llvmpipe|softpipe|software|basic render/i;
-
-/**
- * Skips the test unless this browser has hardware WebGL: on about:blank, a detached canvas asks for
- * a context that refuses a major performance caveat, and its renderer's name must not be software.
- */
-async function requireHardwareWebGL(page: Page): Promise<void> {
-  await page.goto('about:blank');
-  const renderer = await page.evaluate(() => {
-    const gl = document.createElement('canvas').getContext('webgl', { failIfMajorPerformanceCaveat: true });
-    if (!gl) return null;
-    let name = String(gl.getParameter(gl.RENDERER));
-    if (name === 'WebKit WebGL') {
-      const info = gl.getExtension('WEBGL_debug_renderer_info');
-      if (info) name = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
-    }
-    return name;
-  });
-  test.skip(renderer === null || SOFTWARE.test(renderer), `no hardware WebGL in this browser (${renderer ?? 'no context'})`);
-}
+test.use(GPU_TEST_OPTIONS);
 
 /** What watchBitmaps saw: the page's ImageBitmaps and its texture uploads. */
 interface BitmapWatch {

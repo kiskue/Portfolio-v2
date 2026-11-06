@@ -49,6 +49,17 @@ export async function sampleDragon(page: Page, key: 'flight' | 'scale', every: n
   );
 }
 
+/** Starts a session that has already seen the opening flight (before any page script runs). */
+export async function alreadyFlown(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    try {
+      sessionStorage.setItem('gm.dragon', '1');
+    } catch {
+      // Without storage the opening flight would fly; the tests then fail on their idle checks.
+    }
+  });
+}
+
 /** Waits for a flight to be under way. */
 export async function flying(page: Page): Promise<void> {
   await expect(page.locator(DRAGON)).toHaveAttribute('data-flight', 'flying', { timeout: 6_000 });

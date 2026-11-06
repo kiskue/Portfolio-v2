@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { collectConsoleProblems, describeConsoleProblems } from '../support/console';
-import { DRAGON, dragonState, flying, navigate, sampleDragon, sceneReady, switchTheme } from '../support/dragon';
+import { alreadyFlown, DRAGON, dragonState, flying, navigate, sampleDragon, sceneReady, switchTheme } from '../support/dragon';
 import { fontsReady, hydrated, storeDisplay } from '../support/page';
 import { recordWarmups, warmups } from '../support/warmup';
 
@@ -20,17 +20,6 @@ test.describe.configure({ mode: 'default' });
 /** The canvases in the document. */
 async function canvases(page: Page): Promise<number> {
   return page.evaluate(() => document.querySelectorAll('canvas').length);
-}
-
-/** Starts a session that has already seen the opening flight (before any page script runs). */
-async function alreadyFlown(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    try {
-      sessionStorage.setItem('gm.dragon', '1');
-    } catch {
-      // Without storage the opening flight would fly; the tests then fail on their idle checks.
-    }
-  });
 }
 
 /** What watchWebGL saw at the page's first request for a 'webgl' context. */
@@ -188,6 +177,39 @@ test.describe('the dragon', () => {
     await sceneReady(page);
     expect((await dragonState(page)).renderer, 'this browser renders in software').toBe('images');
     expect(await warmups(page)).toEqual([]);
+  });
+
+  test('the dragon’s day and night filters keep their values (custom properties, hero.css)', async ({ page }) => {
+    await alreadyFlown(page);
+    await storeDisplay(page, { theme: 'light' });
+    await page.goto('/', { waitUntil: 'load' });
+    await sceneReady(page);
+    const filterAt = (haze: string, dark: boolean) =>
+      page.locator(DRAGON).evaluate(
+        (dragon: HTMLElement, { value, night }) => {
+          document.documentElement.classList.toggle('dark', night);
+          dragon.style.setProperty('--haze', value);
+          const filter = getComputedStyle(dragon).filter;
+          document.documentElement.classList.remove('dark');
+          dragon.style.removeProperty('--haze');
+          return filter;
+        },
+        { value: haze, night: dark },
+      );
+    expect(await filterAt('0.5', false)).toBe('saturate(0.825) contrast(0.85) brightness(1.035) blur(0.25px)');
+    expect(await filterAt('0.5', true)).toBe('brightness(0.78) saturate(0.78) blur(0.25px) drop-shadow(rgba(165, 195, 255, 0.55) 0px 0px 9px)');
+    // The other theme's filter, as the warm-up asks for it (data-warm).
+    const warmAt = (dark: boolean) =>
+      page.locator(DRAGON).evaluate((dragon: HTMLElement, night) => {
+        document.documentElement.classList.toggle('dark', night);
+        dragon.setAttribute('data-warm', '');
+        const filter = getComputedStyle(dragon).filter;
+        dragon.removeAttribute('data-warm');
+        document.documentElement.classList.remove('dark');
+        return filter;
+      }, dark);
+    expect(await warmAt(false), 'light, warming the night filter').toContain('drop-shadow');
+    expect(await warmAt(true), 'dark, warming the day filter').not.toContain('drop-shadow');
   });
 
   test('on a phone the big dragon keeps clear of the headline', async ({ page }, testInfo) => {
