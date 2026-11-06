@@ -32,9 +32,11 @@
   }
 
   /*
-   * No theme crossfade (PLAN → Motion). The display store sets this attribute for the one style
-   * recalc that switches theme or motion, so colour transitions on links and buttons do not
-   * animate the switch. Layered !important beats the unlayered reduced-motion rules.
+   * No theme crossfade (PLAN → Motion). The display store usually finishes a switch's colour
+   * transitions itself (src/lib/display-store.ts); it sets this attribute instead for a theme
+   * change under reduced motion, or where document.getAnimations() or CSSTransition is missing,
+   * for the one style recalc that switches. Taking it off a task later restyles every element
+   * again. Layered !important beats the unlayered reduced-motion rules.
    */
   html[data-display-switching] *,
   html[data-display-switching] *::before,
