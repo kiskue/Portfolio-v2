@@ -171,18 +171,6 @@ let layers = new Map<string, FakeLayer>();
 let resizes: ((entries: { contentRect: { width: number; height: number } }[]) => void)[] = [];
 let stored = new Map<string, string>();
 let reported: ReturnType<typeof vi.fn>;
-/** The window's listeners, by event type. */
-let inputs = new Map<string, { readonly listener: () => void; readonly options: AddEventListenerOptions }[]>();
-
-/** The visitor scrolls, points, types or touches: the event reaches the window's listeners. */
-function input(type: string): void {
-  for (const { listener } of inputs.get(type) ?? []) listener();
-}
-
-/** The sky's warm-up is under way. */
-function skyWarming(): boolean {
-  return [...layers.values()].some((layer) => layer.animations.some((animation) => animation.id === WARMUP_ID));
-}
 
 /** Lets pending promise callbacks run (microtasks only). */
 async function microtasks(): Promise<void> {
@@ -239,18 +227,8 @@ function install({ opening }: { readonly opening: boolean }): void {
     addEventListener: () => {},
     removeEventListener: () => {},
   });
-  inputs = new Map();
   vi.stubGlobal('window', {
     matchMedia: () => ({ matches: false }),
-    addEventListener: (type: string, listener: () => void, options: AddEventListenerOptions) => {
-      inputs.set(type, [...(inputs.get(type) ?? []), { listener, options }]);
-    },
-    removeEventListener: (type: string, listener: () => void) => {
-      inputs.set(
-        type,
-        (inputs.get(type) ?? []).filter((entry) => entry.listener !== listener),
-      );
-    },
     setTimeout: (run: () => void, ms = 0) => {
       ids += 1;
       timers.set(ids, { at: clock + ms, run });
@@ -453,147 +431,6 @@ describe('the dragon’s warm-up', () => {
       expect(traces(dragon), `no pose after landing ${flight}`).toBe(poses);
       switchTheme();
     }
-    expect(reported).not.toHaveBeenCalled();
-  });
-});
-
-/*
- * Ruling 55: on a cold GPU cache each warm-up step compiles programs, and a scroll that met them at
- * load dropped more frames. So no step starts while the visitor scrolls, or within 200 ms of a
- * pointer, key, wheel or touch event; it waits until they have left the page alone that long.
- */
-describe('the warm-ups keep off the visitor', () => {
-  const QUIET = 200;
-  const TYPES = ['pointerdown', 'pointerup', 'keydown', 'wheel', 'touchstart', 'scroll'];
-
-  it('listen at capture, passively, for scroll, pointer, key, wheel and touch events from the start, and let go on dispose', () => {
-    install({ opening: false });
-    const handle = startScene(host as unknown as HTMLElement, 0);
-    for (const type of TYPES) expect(inputs.get(type)?.map((entry) => entry.options), type).toEqual([{ capture: true, passive: true }]);
-    handle.dispose();
-    for (const type of TYPES) expect(inputs.get(type), type).toEqual([]);
-  });
-
-  it('no pose starts within 200 ms of an input, or while a scroll goes on; then the poses go on', async () => {
-    install({ opening: false });
-    const { dragon } = await start({ gateAt: 400, builtAt: 600 });
-    expect(traces(dragon), 'the first pose, before any input').toBeGreaterThan(0);
-    input('pointerdown');
-    const inputAt = clock;
-    const shown = traces(dragon);
-    // A scroll right after it: a scroll event every frame for 600 ms.
-    while (clock < inputAt + 600) {
-      input('scroll');
-      await frame();
-    }
-    const lastScroll = clock - 16;
-    expect(traces(dragon), 'no pose while the visitor scrolls').toBe(shown);
-    expect(dragon.style.opacity, 'the dragon is hidden meanwhile').toBe('0');
-    await advance(lastScroll + QUIET - 20 - clock);
-    await pose(1);
-    expect(traces(dragon), 'nor within 200 ms of the last scroll event').toBe(shown);
-    await advance(40);
-    await pose(1);
-    expect(traces(dragon), 'then the poses go on').toBeGreaterThan(shown);
-    await pose(16);
-    expect(dragon.dataset.renderer, 'and the dragon is ready once they are over').toBe('webgl');
-    expect(reported).not.toHaveBeenCalled();
-  });
-
-  it('the sky’s warm-up the gate would start while the visitor scrolls waits until 200 ms after the scroll', async () => {
-    install({ opening: false });
-    const handle = startScene(host as unknown as HTMLElement, 0);
-    for (const resize of resizes) resize([{ contentRect: { width: 1183, height: 722 } }]);
-    for (let at = 0; at < 300; at += 16) {
-      input('scroll');
-      await advance(16);
-    }
-    const lastScroll = clock - 16;
-    build.open();
-    await microtasks();
-    expect(skyWarming(), 'not while the visitor scrolls').toBe(false);
-    await advance(lastScroll + QUIET - 10 - clock);
-    expect(skyWarming(), 'nor within 200 ms of the last scroll event').toBe(false);
-    await advance(20);
-    expect(skyWarming(), 'then it starts').toBe(true);
-    handle.dispose();
-    expect(reported).not.toHaveBeenCalled();
-  });
-
-  it('with an opening flight due, what the visitor holds back past the slot waits, and the flight keeps its slot', async () => {
-    install({ opening: true });
-    const slot = FCP + OPENING_DELAY_MS;
-    const handle = startScene(host as unknown as HTMLElement, 0);
-    const dragon = host.children[0] as FakeElement;
-    for (const resize of resizes) resize([{ contentRect: { width: 1183, height: 722 } }]);
-    await advance(400);
-    build.open();
-    await microtasks();
-    // The visitor scrolls from before the dragon is ready until 100 ms before the slot.
-    let built = false;
-    while (clock < slot - 100) {
-      input('wheel');
-      input('scroll');
-      if (!built && clock >= 500) {
-        build.done({ draw: vi.fn(), dispose: vi.fn() });
-        built = true;
-      }
-      await frame();
-    }
-    expect(dragon.dataset.renderer, 'ready as soon as it is built').toBe('webgl');
-    expect(traces(dragon), 'no pose while the visitor scrolls').toBe(0);
-    expect(skyWarming(), 'no sky warm-up either').toBe(false);
-    await advance(slot - clock);
-    expect(dragon.dataset.flight, 'the opening flight, at its slot').toBe('flying');
-    expect(traces(dragon), 'nothing warmed in the last 100 ms before it (no room for the sky’s 0.5 s, none for a pose)').toBe(0);
-    expect(skyWarming()).toBe(false);
-    handle.dispose();
-    expect(reported).not.toHaveBeenCalled();
-  });
-
-  it('a step under way yields: an input cancels the sky’s warm-up and hides a pose at once, and both go on once the visitor has left the page alone', async () => {
-    install({ opening: false });
-    const handle = startScene(host as unknown as HTMLElement, 0);
-    const dragon = host.children[0] as FakeElement;
-    for (const resize of resizes) resize([{ contentRect: { width: 1183, height: 722 } }]);
-    await advance(400);
-    build.open();
-    await microtasks();
-    expect(skyWarming(), 'the sky warms at the gate').toBe(true);
-    input('wheel');
-    expect(skyWarming(), 'cancelled by the wheel, in the same task').toBe(false);
-    await advance(QUIET - 10);
-    expect(skyWarming(), 'not again within 200 ms').toBe(false);
-    await advance(20);
-    expect(skyWarming(), 'then again').toBe(true);
-    // The dragon's build ends; its first pose shows, and a tap hides it at once.
-    build.done({ draw: vi.fn(), dispose: vi.fn() });
-    await microtasks();
-    expect(dragon.style.opacity, 'a pose').toBe(String(TRACE_OPACITY));
-    input('pointerdown');
-    expect(dragon.style.opacity, 'hidden by the tap, in the same task').toBe('0');
-    expect(dragon.hasAttribute('data-warm'), 'on its own theme’s filter').toBe(false);
-    expect(skyWarming(), 'and the sky yields again').toBe(false);
-    await advance(QUIET + 20);
-    await pose(1);
-    expect(dragon.style.opacity, 'the poses go on').toBe(String(TRACE_OPACITY));
-    expect(skyWarming(), 'and the sky').toBe(true);
-    handle.dispose();
-    expect(reported).not.toHaveBeenCalled();
-  });
-
-  it('a theme switch still ends a warm-up that waits for the visitor', async () => {
-    install({ opening: false });
-    const { dragon } = await start({ gateAt: 400, builtAt: 600 });
-    input('pointerdown');
-    await pose(1);
-    const shown = traces(dragon);
-    switchTheme();
-    await advance(QUIET * 2);
-    await pose(16);
-    expect(traces(dragon), 'no pose after the switch').toBe(shown);
-    expect(dragon.style.opacity).toBe('0');
-    expect(dragon.dataset.renderer, 'ready').toBe('webgl');
     expect(reported).not.toHaveBeenCalled();
   });
 });

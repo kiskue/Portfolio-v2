@@ -29,8 +29,7 @@ import { getDisplaySnapshot, subscribeDisplay } from '@/lib/display-store';
  * Once the page has settled, in Chromium with a hardware WebGL context and until a theme change, it
  * also does the GPU's first-use work ahead of time, at a strength no screen shows: it warms the
  * sky's next change (sky-warmup.ts), and once its renderer is built it draws the dragon at poses
- * along its path in the themes' filters (warmDragon); neither runs over a change the sky is playing,
- * and no step of theirs starts while the visitor scrolls or has just pointed, typed or touched.
+ * along its path in the themes' filters (warmDragon); neither runs over a change the sky is playing.
  * With an opening flight due, nothing of that comes before the dragon is ready, so it is ready as
  * soon as it is built, as before: then the sky (if its 0.5 s fits) and the other theme's filter are
  * warmed while that fits before the flight's slot, and the rest once that flight has flown to its
@@ -65,14 +64,6 @@ const WARM_POSE_MS = 40;
 const WARM_SLOT_MARGIN_MS = 50;
 /** The warm-ups were measured in Chrome, against Skia's program compiles: Chromium only (Ruling 48). */
 const CHROMIUM = typeof navigator !== 'undefined' && 'userAgentData' in navigator;
-/**
- * No warm-up step starts while the visitor scrolls, or this soon after a pointer, key, wheel or touch
- * event (Ruling 55): on a cold cache a step's compiles took frames from a scroll made at load.
- */
-const QUIET_MS = 200;
-/** The events that hold the warm-ups back (a scroll in progress fires scroll events every frame; pointerup covers a long press). */
-const INPUTS = ['pointerdown', 'pointerup', 'keydown', 'wheel', 'touchstart', 'scroll'];
-const PASSIVE: AddEventListenerOptions = { capture: true, passive: true };
 
 /** One warm-up pose: `ms` into the flight, in the other theme's filter or the one on show. */
 interface WarmPose {
@@ -190,19 +181,6 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
   let warming = false;
   /** The warm-ups may run: Chromium, with a hardware WebGL context (known once the page has settled). */
   let warmable = false;
-  /** When the visitor last scrolled, pointed, typed or touched. */
-  let inputAt = Number.NEGATIVE_INFINITY;
-  /** While the sky's warm-up runs: cancels it, to be tried again once the visitor leaves the page alone. */
-  let yieldSky: (() => void) | null = null;
-  // A step under way yields too: the frames it has not drawn yet compile nothing.
-  const onInput = (): void => {
-    inputAt = performance.now();
-    yieldSky?.();
-    if (warming) unwarm();
-  };
-  /** How long a warm-up step must still wait for the visitor to leave the page alone (none when 0 or less). */
-  const quietIn = (): number => inputAt + QUIET_MS - performance.now();
-  if (CHROMIUM) for (const type of INPUTS) window.addEventListener(type, onInput, PASSIVE);
 
   const measure = (width: number, height: number): void => {
     hostWidth = width;
@@ -383,13 +361,6 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
       for (;;) {
         const [pose, ...rest] = poses;
         if (!pose || run !== warmRun || switched || stopped() || document.hidden || plan.kind === 'flying' || (sky !== null && skyBusy(sky))) return;
-        const wait = quietIn();
-        if (wait > 0) {
-          // The visitor is busy: hidden meanwhile, and every stop is checked again before the next pose.
-          if (warming) unwarm();
-          await new Promise((resolve) => window.setTimeout(resolve, wait));
-          continue;
-        }
         if (performance.now() + WARM_POSE_MS > deadline) return;
         poses = rest;
         const at = flightAt(path, pose.ms);
@@ -405,34 +376,17 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
     }
   };
 
-  /**
-   * Starts the sky's warm-up, once, unless the theme has changed, a change is playing (skyBusy) or it
-   * no longer `fits`; while the visitor is busy it tries again once they have left the page alone.
-   */
-  const warmSkyNow = (fits = (): boolean => true): void => {
-    if (!warmable || warmup || switched || !sky || stopped() || skyBusy(sky) || !fits()) return;
-    const wait = quietIn();
-    if (wait > 0) {
-      window.setTimeout(() => warmSkyNow(fits), wait);
-      return;
-    }
-    const run = (warmup = warmSky(sky, getDisplaySnapshot().resolved.dark));
-    yieldSky = () => {
-      yieldSky = null;
-      warmup = null;
-      run.cancel();
-      warmSkyNow(fits);
-    };
-    void run.done.then(() => {
-      if (warmup === run) yieldSky = null;
-    });
+  /** Starts the sky's warm-up, once, unless the theme has changed or a change is playing (skyBusy). */
+  const warmSkyNow = (): void => {
+    if (!warmable || warmup || switched || !sky || stopped() || skyBusy(sky)) return;
+    warmup = warmSky(sky, getDisplaySnapshot().resolved.dark);
   };
 
   /** Warms what fits before the scheduled flight (the opening flight's slot); the rest waits. */
   const warmBeforeFlight = (): void => {
     if (plan.kind !== 'scheduled' || !renderer) return;
     const deadline = plan.at - WARM_SLOT_MARGIN_MS;
-    warmSkyNow(() => plan.kind === 'scheduled' && performance.now() + WARMUP_MS <= deadline);
+    if (performance.now() + WARMUP_MS <= deadline) warmSkyNow();
     if (poses.length > 0) warmDragon(renderer, deadline).catch((error: unknown) => reportError(error));
   };
 
@@ -592,7 +546,6 @@ export function startScene(host: HTMLElement, mountedAt: number): SceneHandle {
       stopWarm();
       abort();
       unsubscribe();
-      for (const type of INPUTS) window.removeEventListener(type, onInput, PASSIVE);
       document.removeEventListener('visibilitychange', onVisibility);
       watch.disconnect();
       resize.disconnect();
