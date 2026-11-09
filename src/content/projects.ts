@@ -13,9 +13,12 @@ import { ph } from '@/lib/placeholder';
  *   icon tile instead.
  */
 
-/** Shared note for the three V1 web projects, whose context, year and role are unknown. */
+/**
+ * Shared note for the three V1 web projects, whose context, year and role are unknown. They did
+ * ship (owner decision, 2026-10-22), so their status stays "Shipped".
+ */
 const V1_PROJECT_CONFIRM =
-  'V1 project. V1 described ERP and video-consultation work as part of your current job, so it is filed as company work. Confirm the company or client, the year, your role and ownership, and that it shipped.';
+  'V1 project. V1 described ERP and video-consultation work as part of your current job, so it is filed as company work. Confirm the company or client, the year, and your role and ownership.';
 
 const caseStudyProjects: readonly Project[] = [
   {

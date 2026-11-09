@@ -2,15 +2,7 @@ import type { Route } from 'next';
 import type { ReactNode } from 'react';
 import { listingById } from '@/content/apps/store';
 import { site } from '@/content/site';
-import type {
-  CaseStudyPath,
-  Field,
-  PlaceholderMode,
-  Project,
-  ProjectContext,
-  Segments,
-  StoreListing,
-} from '@/content/types';
+import type { CaseStudyPath, Field, PlaceholderMode, Project, Segments, StoreListing } from '@/content/types';
 import { ButtonLink } from '@/components/ui/button';
 import { Card, stretchedLinkClass } from '@/components/ui/card';
 import { Chip, ExampleTag } from '@/components/ui/chip';
@@ -23,6 +15,7 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { STORE_NAME, StoreLink } from '@/components/ui/store-link';
 import { cn } from '@/lib/cn';
 import { fieldOrNull, hasToken } from '@/lib/placeholder';
+import { CONTEXT_LABEL } from '@/lib/project-filters';
 import { caseStudyHref } from '@/lib/routes';
 
 export type ProjectCardLook = 'case-study' | 'compact' | 'adjacent';
@@ -45,12 +38,6 @@ export interface ProjectCardProps {
   readonly className?: string;
 }
 
-const CONTEXT_LABEL = {
-  personal: 'Personal',
-  company: 'Company',
-  client: 'Client',
-} as const satisfies Record<ProjectContext, string>;
-
 /** Shown stack chips; the rest collapse into "+n" (the case study lists them all). */
 export const STACK_PREVIEW = 4;
 
@@ -66,7 +53,8 @@ export function projectMeta(project: Project): Segments {
 /** Where a project card can send people, after placeholder rules. */
 export type ProjectDestination =
   | { readonly kind: 'internal'; readonly href: Route<CaseStudyPath>; readonly label: string }
-  | { readonly kind: 'external'; readonly href: string; readonly label: Field }
+  /** `detail` is read after the label by screen readers only, e.g. " listing for Eventbook Exhibitors". */
+  | { readonly kind: 'external'; readonly href: string; readonly label: Field; readonly detail?: string }
   | { readonly kind: 'store'; readonly listing: StoreListing }
   /** A link whose URL is still a placeholder: a non-link chip in label mode. */
   | { readonly kind: 'pending'; readonly label: Field };
@@ -94,19 +82,31 @@ export function projectDestinations(project: Project, mode: PlaceholderMode): re
         break;
       }
       case 'store-page':
-        destinations.push({ kind: 'external', href: link.href, label: STORE_NAME[link.platform] });
+        // Like StoreLink: the visible "Google Play" also says which app it lists.
+        destinations.push({
+          kind: 'external',
+          href: link.href,
+          label: STORE_NAME[link.platform],
+          detail: ` listing for ${project.title}`,
+        });
         break;
     }
   }
   return destinations;
 }
 
+/**
+ * The status shape and its label. A placeholder label (e.g. Citizen Web's "[[Status to confirm]]")
+ * means the status itself is unconfirmed, so no shape claims one: label mode shows the marked
+ * placeholder alone, hide mode drops the line.
+ */
 function StatusLine({ project, mode }: { readonly project: Project; readonly mode: PlaceholderMode }) {
-  if (fieldOrNull(project.statusLabel, mode) === null) return null;
+  const label = fieldOrNull(project.statusLabel, mode);
+  if (label === null) return null;
   return (
     <p className="flex items-center gap-2 text-meta text-ink-2">
-      <StatusDot status={project.status} />
-      <Copy text={project.statusLabel} mode={mode} />
+      {hasToken(label) ? null : <StatusDot status={project.status} />}
+      <Copy text={label} mode={mode} />
     </p>
   );
 }
@@ -168,6 +168,7 @@ function DestinationLinks({ destinations, mode }: { readonly destinations: reado
           ) : destination.kind === 'external' ? (
             <ExternalLink href={destination.href} className="text-meta">
               <Copy text={destination.label} mode={mode} />
+              {destination.detail ? <span className="sr-only">{destination.detail}</span> : null}
             </ExternalLink>
           ) : destination.kind === 'store' ? (
             <StoreLink listing={destination.listing} className="text-meta" />

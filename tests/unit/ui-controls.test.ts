@@ -17,25 +17,33 @@ function inputs(markup: string): Record<string, string>[] {
   );
 }
 
-describe('link prefetch policy (heavy routes prefetch on hover or focus only)', () => {
+describe('link prefetch policy (pages with replica phones prefetch on hover or focus only)', () => {
   it.each([
     ['/showcase', true],
     ['/showcase?app=sme', true],
     ['/projects/sme-panindio', true],
     ['/projects/defensys-citizen#brands', true],
-    ['/projects', false],
-    ['/projects?type=ai', false],
-    ['/', false],
+    ['/projects', true],
+    ['/projects?type=ai', true],
+    ['/projects#more', true],
+    ['/', true],
+    ['/?ref=x', true],
+    ['/#content', true],
+    ['/about', false],
     ['/contact?topic=hiring', false],
     ['/showcases', false],
+    ['/projectsx', false],
   ])('%s heavy: %s', (href, heavy) => {
     expect(isHeavyRoute(href)).toBe(heavy);
   });
 
-  it('heavy routes default to intent, others to Next default; an explicit value always wins', () => {
+  it('pages with replica phones default to intent, others to Next default; an explicit value always wins', () => {
     expect(resolvePrefetch('/showcase')).toBe('intent');
+    expect(resolvePrefetch('/')).toBe('intent');
+    expect(resolvePrefetch('/projects?type=web')).toBe('intent');
     expect(resolvePrefetch('/about')).toBeNull();
     expect(resolvePrefetch('/showcase', false)).toBe(false);
+    expect(resolvePrefetch('/', null)).toBeNull();
     expect(resolvePrefetch('/about', 'intent')).toBe('intent');
   });
 });

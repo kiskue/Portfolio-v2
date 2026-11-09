@@ -1,0 +1,56 @@
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "http://localhost:3100/",
+        "http://localhost:3100/projects/defensys-citizen",
+        "http://localhost:3100/showcase",
+        "http://localhost:3100/contact"
+      ],
+      "startServerCommand": "npm run start -- -p 3100",
+      "startServerReadyPattern": "Ready in",
+      "startServerReadyTimeout": 60000,
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertMatrix": [
+        {
+          "matchingUrlPattern": ".*",
+          "aggregationMethod": "median-run",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.9 }],
+            "categories:best-practices": ["error", { "minScore": 0.95 }],
+            "categories:accessibility": ["warn", { "minScore": 1 }],
+            "categories:seo": ["warn", { "minScore": 1 }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.05 }],
+            "total-blocking-time": ["error", { "maxNumericValue": 150 }],
+            "document-title": "error",
+            "meta-description": "error",
+            "http-status-code": "error",
+            "link-text": "error",
+            "crawlable-anchors": "error",
+            "robots-txt": "error",
+            "hreflang": "error",
+            "canonical": "error"
+          }
+        },
+        {
+          "matchingUrlPattern": "^https?://[^/]+/?(\\?[^#]*)?$",
+          "aggregationMethod": "median-run",
+          "assertions": {
+            "resource-summary:script:size": ["warn", { "maxNumericValue": 180000 }]
+          }
+        }
+      ]
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci/reports"
+    }
+  },
+  "formFactors": {
+    "mobile": { "settings": {}, "performance": 0.9 },
+    "desktop": { "settings": { "preset": "desktop" }, "performance": 0.95 }
+  }
+}

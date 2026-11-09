@@ -12,11 +12,11 @@ import {
   useRef,
   useState,
   type ReactNode,
-  type RefObject,
 } from 'react';
 import { MetaLine } from '@/components/ui/copy';
 import { SegmentedControl, type SegmentedOption } from '@/components/ui/segmented-control';
 import type { AssetPath, BrandId, Segments } from '@/content/types';
+import { parseParam, withParam } from '@/hooks/search-param';
 import { useSearchParam } from '@/hooks/use-search-param';
 import type { BrandCssVars } from '@/lib/brand-vars';
 import { cn } from '@/lib/cn';
@@ -28,11 +28,18 @@ import { cn } from '@/lib/cn';
  * changes. BrandSwitcher is the native-radio chip group; useBrand reads the selection.
  *
  * The selection follows ?brand= (or the scope's own `param`, e.g. ?rbrand= for a Responder scope
- * beside a Citizen one) through useSearchParam (history.replaceState: no history entry, no
+ * beside a Citizen one) with useSearchParam's rules (history.replaceState: no history entry, no
  * server request). Reading the URL needs a Suspense boundary on a static page, so only a
- * tiny sync component sits inside one: the server and the first paint show the default brand,
- * and the page stays static. There is no crossfade: the site's one View Transition is the
+ * tiny reader (BrandParamSync) sits inside one: the server and the first paint show the default
+ * brand, and the page stays static. There is no crossfade: the site's one View Transition is the
  * phone morph (PLAN → Motion).
+ *
+ * After hydration that reader mounts in a commit of its own, and Next.js only follows
+ * history.replaceState from the hydration commit's effects on. So a brand chosen before the
+ * reader mounts (a click right after hydration) is held and written when it mounts, and the
+ * reader takes the brand from the live URL, never from useSearchParams alone, which can trail
+ * window.location: an early choice is neither lost nor undone. The wrapper carries
+ * data-brand-ready once the scope follows the URL.
  */
 
 /** The fixed caption under every switcher (design §5.5). */
@@ -79,28 +86,35 @@ export interface BrandState {
 
 const BrandContext = createContext<BrandState | null>(null);
 
-type UrlSetter = (brand: BrandId) => void;
+/**
+ * Sets ?<param>= in the live URL with useSearchParam's rules: history.replaceState, the fallback
+ * removes the key, the other params keep their order and the #hash stays.
+ */
+function writeBrandParam(param: string, brand: BrandId, fallback: BrandId): void {
+  const { pathname, search, hash } = window.location;
+  window.history.replaceState(null, '', `${pathname}${withParam(search, param, brand, fallback)}${hash}`);
+}
 
 interface BrandParamSyncProps {
   readonly param: string;
   readonly ids: readonly BrandId[];
   readonly fallback: BrandId;
   readonly onUrlBrand: (brand: BrandId) => void;
-  readonly setterRef: RefObject<UrlSetter | null>;
+  /** Called once the reader has mounted (Next.js follows history from then on); returns its cleanup. */
+  readonly onLive: () => () => void;
 }
 
-/** Reads and writes ?<param>= (inside Suspense: it needs useSearchParams). Renders nothing. */
-function BrandParamSync({ param, ids, fallback, onUrlBrand, setterRef }: BrandParamSyncProps): ReactNode {
-  const [value, setValue] = useSearchParam(param, ids, fallback);
+/**
+ * Follows ?<param>= (inside Suspense: it needs useSearchParams). Renders nothing. On mount it first
+ * lets the scope write a choice made before it existed, then reads the brand from the live URL:
+ * the hook's value only says when to read, because it can trail window.location.
+ */
+function BrandParamSync({ param, ids, fallback, onUrlBrand, onLive }: BrandParamSyncProps): ReactNode {
+  const [value] = useSearchParam(param, ids, fallback);
+  useEffect(() => onLive(), [onLive]);
   useEffect(() => {
-    onUrlBrand(value);
-  }, [value, onUrlBrand]);
-  useEffect(() => {
-    setterRef.current = setValue;
-    return () => {
-      setterRef.current = null;
-    };
-  }, [setValue, setterRef]);
+    onUrlBrand(parseParam(new URLSearchParams(window.location.search).get(param), ids, fallback));
+  }, [value, param, ids, fallback, onUrlBrand]);
   return null;
 }
 
@@ -108,16 +122,33 @@ export function BrandScope({ app, defaultBrand, options, param = 'brand', childr
   const ids = useMemo(() => options.map((option) => option.id), [options]);
   const fallback = ids.includes(defaultBrand) ? defaultBrand : (ids[0] ?? defaultBrand);
   const [brand, setBrandState] = useState<BrandId>(fallback);
-  const urlSetter = useRef<UrlSetter | null>(null);
+  // True while the reader is mounted (Next.js follows history by then): a choice is written at once.
+  const live = useRef(false);
+  // The latest choice made before that, written when the reader mounts.
+  const pending = useRef<BrandId | null>(null);
+  // `live`, rendered as data-brand-ready.
+  const [ready, setReady] = useState(false);
 
   const onUrlBrand = useCallback((next: BrandId) => setBrandState(next), []);
+  const onLive = useCallback(() => {
+    live.current = true;
+    const held = pending.current;
+    pending.current = null;
+    if (held !== null) writeBrandParam(param, held, fallback);
+    setReady(true);
+    return () => {
+      live.current = false;
+      setReady(false);
+    };
+  }, [param, fallback]);
   const setBrand = useCallback(
     (next: BrandId) => {
       if (!ids.includes(next)) return;
       setBrandState(next);
-      urlSetter.current?.(next);
+      if (live.current) writeBrandParam(param, next, fallback);
+      else pending.current = next;
     },
-    [ids],
+    [ids, param, fallback],
   );
 
   const option = options.find((candidate) => candidate.id === brand);
@@ -125,9 +156,16 @@ export function BrandScope({ app, defaultBrand, options, param = 'brand', childr
 
   return (
     <BrandContext value={state}>
-      <div className={cn('contents', className)} data-brand-scope={app} data-brand={brand} data-brand-param={param} style={option?.vars}>
+      <div
+        className={cn('contents', className)}
+        data-brand-scope={app}
+        data-brand={brand}
+        data-brand-param={param}
+        data-brand-ready={ready ? '' : undefined}
+        style={option?.vars}
+      >
         <Suspense fallback={null}>
-          <BrandParamSync param={param} ids={ids} fallback={fallback} onUrlBrand={onUrlBrand} setterRef={urlSetter} />
+          <BrandParamSync param={param} ids={ids} fallback={fallback} onUrlBrand={onUrlBrand} onLive={onLive} />
         </Suspense>
         {children}
       </div>
@@ -155,7 +193,7 @@ function BrandMark({ option }: { readonly option: BrandOption }): ReactNode {
   return (
     <span
       aria-hidden="true"
-      className="inline-grid size-6 shrink-0 place-items-center rounded-[6px] border border-line bg-sunken text-[0.75rem] leading-none font-bold text-ink"
+      className="inline-grid size-6 shrink-0 place-items-center rounded-[6px] border border-line bg-sunken text-[0.75rem] leading-none font-bold text-ink forced-colors:forced-color-adjust-auto"
     >
       {option.monogram ?? option.name.slice(0, 2).toUpperCase()}
     </span>

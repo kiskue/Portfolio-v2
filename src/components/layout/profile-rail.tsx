@@ -58,7 +58,7 @@ export function ProfileRail({ variant }: ProfileRailProps) {
         <Name />
         <p className="text-body-sm font-medium text-ink-3">{profile.handle}</p>
         <AvailabilityPill className="mt-3" />
-        <SocialRow className="mt-4" />
+        <SocialRow className="mt-4" size={sidebar ? 36 : 40} />
       </div>
 
       <nav aria-label="Primary" className="mt-5 border-t border-line pt-4">

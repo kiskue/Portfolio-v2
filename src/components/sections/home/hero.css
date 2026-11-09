@@ -1,0 +1,427 @@
+/*
+ * The painted hero (design §3.1, §3.5, §3.6). Imported once, from home-hero.tsx. The painting
+ * follows the theme from CSS alone: `.dark` on <html> is set by the pre-paint script, and without
+ * it the day painting shows. No transitions here: the theme switch animates from JS (a later task).
+ *
+ * The hero spans <main>'s full border box (margin-inline -gutter) and starts at <main>'s top edge
+ * (the negative margin-top cancels <main>'s top padding). 100cqw is <main>'s content width, so
+ * 100cqw + 2 * gutter is the hero's width.
+ */
+
+@layer components {
+  .hero {
+    position: relative;
+    isolation: isolate;
+    margin-inline: calc(var(--gutter) * -1);
+    margin-top: -1.5rem;
+    min-height: calc(100svh - 60px);
+    /* Content in row 1, the foot in row 2: on a short screen the hero grows to fit its text. */
+    display: grid;
+    grid-template-rows: 1fr auto;
+  }
+
+  @media (min-width: 48rem) {
+    .hero {
+      margin-top: -2rem;
+      min-height: min(calc(100svh - 64px),calc((100cqw + 2 * var(--gutter)) * 0.75));
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .hero {
+      margin-top: -2.5rem;
+      min-height: min(100dvh,calc((100cqw + 2 * var(--gutter)) * 0.75));
+    }
+  }
+
+  /* The header, in the box <main> used to give it, so the H1 does not move. */
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 1.5rem var(--gutter) 0;
+  }
+
+  @media (min-width: 48rem) {
+    .hero-content {
+      padding-top: 2rem;
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .hero-content {
+      padding-top: 2.5rem;
+    }
+  }
+
+  .hero-content h1,
+  .hero-content h1 + p {
+    text-shadow:
+      0 0 22px color-mix(in srgb, var(--c-bg) 85%, transparent),
+      0 0 5px color-mix(in srgb, var(--c-bg) 70%, transparent);
+  }
+
+  /*
+   * Text plates: a soft patch in the page background colour right behind the text, so the painting
+   * elsewhere stays vivid. It follows the theme exactly as the text colour does. It reaches 1.25rem
+   * past each side of the text, but never past the page gutter: below 22.5rem the gutter is only
+   * 1rem (app-shell.tsx), and a wider plate made the page wider than a small phone (Ruling 42).
+   */
+  .hero-content header > div:first-child,
+  .hero-content header > p,
+  .hero-credit {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .hero-content header > div:first-child::before,
+  .hero-content header > p::before,
+  .hero-credit::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    inset: -1rem max(-1.25rem, calc(var(--gutter) * -1));
+    background: color-mix(in srgb, var(--c-bg) 82%, transparent);
+    border-radius: 1.5rem;
+    filter: blur(18px);
+  }
+
+  /*
+   * The meta row sits low in a short hero, where the scrim has faded, so its plate is denser: with
+   * its ink-2 text that keeps it at WCAG AA at every size (Ruling 46). The other plates stay at 82%.
+   */
+  .hero-content .hero-meta::before {
+    background: color-mix(in srgb, var(--c-bg) 92%, transparent);
+  }
+
+  /* ─── The sky: paintings and the layers over them ─── */
+
+  .hero-sky {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hero-sky picture,
+  .hero-sky img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .hero-sky img {
+    object-fit: cover;
+    object-position: 66% 50%;
+  }
+
+  @media (min-width: 48rem) {
+    .hero-sky img {
+      object-position: 70% 40%;
+    }
+  }
+
+  [data-hero-layer='night'] {
+    opacity: 0;
+  }
+
+  .dark [data-hero-layer='day'] {
+    opacity: 0;
+  }
+
+  .dark [data-hero-layer='night'] {
+    opacity: 1;
+  }
+
+  [data-hero-layer='tint'] {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0;
+    mix-blend-mode: soft-light;
+    background: radial-gradient(
+      90% 75% at 72% 52%,
+      rgb(255 170 90 / 0.85),
+      rgb(255 110 100 / 0.4) 45%,
+      rgb(90 50 130 / 0.25) 75%,
+      transparent 100%
+    );
+  }
+
+  /* Scrims: below 48rem a vertical wash over the headline block, from 48rem a left-to-right one. */
+  [data-hero-layer^='scrim'] {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  [data-hero-layer='scrim-day'] {
+    opacity: 1;
+    background: linear-gradient(
+      180deg,
+      rgb(243 243 235 / 0.92) 0%,
+      rgb(243 243 235 / 0.88) 58%,
+      rgb(243 243 235 / 0.55) 70%,
+      rgb(243 243 235 / 0) 85%
+    );
+  }
+
+  [data-hero-layer='scrim-night'] {
+    opacity: 0;
+    background: linear-gradient(
+      180deg,
+      rgb(10 16 34 / 0.9) 0%,
+      rgb(10 16 34 / 0.85) 58%,
+      rgb(10 16 34 / 0.5) 70%,
+      rgb(10 16 34 / 0) 85%
+    );
+  }
+
+  .dark [data-hero-layer='scrim-day'] {
+    opacity: 0;
+  }
+
+  .dark [data-hero-layer='scrim-night'] {
+    opacity: 1;
+  }
+
+  @media (min-width: 48rem) {
+    [data-hero-layer^='scrim'] {
+      -webkit-mask-image: linear-gradient(180deg, black 0%, black 34%, transparent 62%);
+      mask-image: linear-gradient(180deg, black 0%, black 34%, transparent 62%);
+    }
+
+    [data-hero-layer='scrim-day'] {
+      background: linear-gradient(
+        90deg,
+        rgb(243 243 235 / 0.9) 0%,
+        rgb(243 243 235 / 0.72) 34%,
+        rgb(243 243 235 / 0.25) 56%,
+        rgb(243 243 235 / 0) 72%
+      );
+    }
+
+    [data-hero-layer='scrim-night'] {
+      background: linear-gradient(
+        90deg,
+        rgb(10 16 34 / 0.85) 0%,
+        rgb(10 16 34 / 0.6) 34%,
+        rgb(10 16 34 / 0.18) 56%,
+        rgb(10 16 34 / 0) 72%
+      );
+    }
+  }
+
+  /* The painting meets the page: the bottom fifth fades into the page background, with the theme. */
+  .hero-fade {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 20%;
+    z-index: 3;
+    background: linear-gradient(to bottom, transparent, var(--c-bg));
+  }
+
+  /* The dragon's stage: over the scrims, under the fade. */
+  .hero-dragon-host {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /*
+   * The dragon (design §3.3), added by the scene chunk (dragon/scene.ts), which moves and fades it
+   * every frame (transform, opacity) at the width --dragon-w. --haze (0 near, 1 far) makes it lose
+   * contrast and colour far away, like the far hills. The canvas has 100px of room around the
+   * 800×706 dragon so the swinging tail is never cut off; the no-WebGL frames sit in that inner box.
+   */
+  .hero-dragon {
+    --haze: 0;
+    /* By day; at night a little darker, with a soft moonlit glow. */
+    --dragon-day: saturate(calc(1 - var(--haze) * 0.35)) contrast(calc(1 - var(--haze) * 0.3)) brightness(calc(1 + var(--haze) * 0.07)) blur(calc(var(--haze) * 0.5px));
+    --dragon-night: brightness(calc(0.84 - var(--haze) * 0.12)) saturate(calc(0.88 - var(--haze) * 0.2)) blur(calc(var(--haze) * 0.5px)) drop-shadow(0 0 9px rgb(165 195 255 / 0.55));
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--dragon-w);
+    aspect-ratio: 1000 / 906;
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+    filter: var(--dragon-day);
+  }
+
+  .dark .hero-dragon {
+    filter: var(--dragon-night);
+  }
+
+  /* The other theme's filter, while the scene warms it up at opacity 0.002, never during a flight (dragon/scene.ts). */
+  .hero-dragon[data-warm] {
+    filter: var(--dragon-night);
+  }
+
+  .dark .hero-dragon[data-warm] {
+    filter: var(--dragon-day);
+  }
+
+  .hero-dragon canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* The stacked frames (beats the painting rule `.hero-sky img`). */
+  .hero-sky .hero-dragon img {
+    inset: 11.038% auto auto 10%;
+    width: 80%;
+    height: 77.925%;
+    object-fit: fill;
+    opacity: 0;
+  }
+
+  /* ─── Shooting stars: night only, never under reduced motion ─── */
+
+  .hero-stars {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  .dark .hero-stars {
+    display: block;
+  }
+
+  :root[data-motion='reduce'] .hero-stars {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-motion]) .hero-stars {
+      display: none;
+    }
+  }
+
+  .hero-stars line {
+    stroke: url(#hero-star-trail);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    opacity: 0;
+    animation: hero-star var(--dur) linear var(--delay) infinite;
+  }
+
+  .hero-stars stop {
+    stop-color: white;
+  }
+
+  .hero-stars stop:first-child {
+    stop-opacity: 0;
+  }
+
+  .hero-stars stop:last-child {
+    stop-opacity: 0.95;
+  }
+
+  @keyframes hero-star {
+    0% {
+      transform: translate(var(--x), var(--y)) rotate(var(--r)) translateX(0);
+      opacity: 0;
+    }
+    2% {
+      opacity: 1;
+    }
+    9% {
+      transform: translate(var(--x), var(--y)) rotate(var(--r)) translateX(260px);
+      opacity: 0;
+    }
+    100% {
+      transform: translate(var(--x), var(--y)) rotate(var(--r)) translateX(260px);
+      opacity: 0;
+    }
+  }
+
+  /* ─── The foot: credit and pill ─── */
+
+  .hero-foot {
+    position: relative;
+    z-index: 2;
+    padding-inline: var(--gutter);
+    padding-bottom: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .hero-foot .hero-pill {
+    order: -1;
+  }
+
+  /* Each link stays whole on one line: "CC-BY 4.0" never splits after its hyphen. */
+  .hero-credit a {
+    white-space: nowrap;
+  }
+
+  @media (min-width: 64rem) {
+    .hero-foot {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      text-align: start;
+    }
+
+    .hero-foot .hero-credit {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .hero-foot .hero-pill {
+      grid-column: 2;
+      grid-row: 1;
+      order: 0;
+    }
+  }
+
+  /*
+   * Print: like the site's other decorative chrome, the painting and everything drawn over it (the
+   * sky's layers, the dragon, the bottom fade), the text plates and the halo stay off paper, and the
+   * hero is only as tall as its text, so the headline and subline print as plain text. The credit
+   * stays, a line apart from the subline. The scroll pill is hidden by print:hidden in
+   * home-hero.tsx: its button utilities would win over this layer.
+   */
+  @media print {
+    .hero {
+      min-height: 0;
+    }
+
+    .hero-foot {
+      padding-top: 1rem;
+    }
+
+    .hero-sky,
+    .hero-fade {
+      display: none;
+    }
+
+    .hero-content header > div:first-child::before,
+    .hero-content header > p::before,
+    .hero-credit::before {
+      display: none;
+    }
+
+    .hero-content h1,
+    .hero-content h1 + p {
+      text-shadow: none;
+    }
+  }
+}

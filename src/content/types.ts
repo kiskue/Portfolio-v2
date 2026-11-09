@@ -96,6 +96,8 @@ export const ICON_NAMES = [
   'accessibility',
   'moon',
   'sun',
+  'volume-2',
+  'volume-x',
   'monitor',
   'mail',
   'arrow-up-right',

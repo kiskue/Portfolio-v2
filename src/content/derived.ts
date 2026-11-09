@@ -33,7 +33,7 @@ import {
   type StoreListing,
   type StoreSummary,
 } from '@/content/types';
-import { installBandValue } from '@/lib/format';
+import { formatRatingCount, formatRatingValue, installBandValue } from '@/lib/format';
 import { visible } from '@/lib/placeholder';
 import { showInstalls, showRating } from '@/lib/store-rules';
 
@@ -225,6 +225,41 @@ export function buildShowcaseEntries(
 
 export const showcaseEntries: readonly ShowcaseEntry[] = buildShowcaseEntries(figures, storeListings, apps);
 
+/**
+ * Kept (shown) store screenshots per public Citizen brand, across all of its listings: the n of
+ * the source toggle's "Real screenshots (n)". Excluded screenshots are already gone from the
+ * listings (src/content/apps/store.ts), so they never count. Brands without a listing count 0.
+ */
+export function screenshotCounts(
+  listings: readonly StoreListing[],
+  brandList: readonly CitizenBrand[],
+): Readonly<Record<CitizenBrand['id'], number>> {
+  const counts = Object.fromEntries(brandList.map((brand) => [brand.id, 0])) as Record<CitizenBrand['id'], number>;
+  for (const listing of listings) counts[listing.brand] = (counts[listing.brand] ?? 0) + listing.screenshots.length;
+  return counts;
+}
+
+export const screenshotsByBrand: Readonly<Record<CitizenBrand['id'], number>> = screenshotCounts(storeListings, brandsFor('citizen'));
+
+/** The Showcase wall's totals: every tile, split by source, and per app (group headers). */
+export interface ShowcaseSummary {
+  readonly total: number;
+  readonly replica: number;
+  readonly real: number;
+  readonly byApp: Readonly<Record<AppId, { readonly replica: number; readonly real: number }>>;
+}
+
+export function summarizeShowcase(entries: readonly ShowcaseEntry[], appList: readonly AppInfo[]): ShowcaseSummary {
+  const count = (app: AppId | null, source: ShowcaseEntry['source']): number =>
+    entries.filter((entry) => (app === null || entry.app === app) && entry.source === source).length;
+  const byApp = Object.fromEntries(
+    appList.map((app) => [app.id, { replica: count(app.id, 'replica'), real: count(app.id, 'real') }]),
+  ) as Record<AppId, { readonly replica: number; readonly real: number }>;
+  return { total: entries.length, replica: count(null, 'replica'), real: count(null, 'real'), byApp };
+}
+
+export const showcaseSummary: ShowcaseSummary = summarizeShowcase(showcaseEntries, apps);
+
 // ─── Projects ────────────────────────────────────────────────────────────────────────────
 
 export type ProjectFacet = 'all' | ProjectType | ProjectContext;
@@ -239,3 +274,132 @@ export function facetCounts(list: readonly Project[], mode: PlaceholderMode): Re
 }
 
 export const projectFacetCounts: Readonly<Record<ProjectFacet, number>> = facetCounts(projects, site.placeholders);
+
+// ─── Case studies ────────────────────────────────────────────────────────────────────────
+
+// Case-study store facts. The Citizen case study shows listing counts, installs and ratings in its
+// metrics, its At a glance status and its per-brand store rows. Every such number is computed here
+// from the store data (store-listings.json via store.ts), never restated in JSX (audit S3.M5, S5.05).
+// The content files keep the same figures as readable, test-guarded text
+// (tests/unit/case-studies.test.ts); the page renders the values below.
+
+/** The store fact behind one case-study metric. */
+export type StoreMetricFact =
+  | { readonly kind: 'listing-count' }
+  | { readonly kind: 'installs'; readonly listing: StoreListing['id'] }
+  | { readonly kind: 'rating'; readonly listing: StoreListing['id'] };
+
+/**
+ * Which case-study metrics are store facts, by case study and metric id. Their values (and the
+ * numbers in their labels) are computed from the store data; tests/unit/derived-w9.test.ts checks
+ * every id resolves and that the content's text still matches.
+ */
+export const STORE_BACKED_METRICS: Readonly<Partial<Record<CaseStudySlug, Readonly<Record<string, StoreMetricFact>>>>> = {
+  'defensys-citizen': {
+    'store-listings': { kind: 'listing-count' },
+    'taytay-installs': { kind: 'installs', listing: 'smile-safe-taytay.play' },
+    'taytay-rating': { kind: 'rating', listing: 'smile-safe-taytay.play' },
+  },
+};
+
+/** A metric as a case study renders it. `store`: the value comes from the store data. */
+export type CaseStudyMetric = CaseStudy['metrics'][number] & { readonly store: boolean };
+
+/**
+ * A case study's metrics in content order, with every store-backed value computed from `listings`
+ * and `summary`. A store fact that fails its display rule (installs under 1K, fewer than 5
+ * ratings) or whose listing is gone is left out rather than shown.
+ */
+export function resolveCaseStudyMetrics(
+  study: CaseStudy,
+  listings: readonly StoreListing[],
+  summary: StoreSummary,
+): readonly CaseStudyMetric[] {
+  const facts = STORE_BACKED_METRICS[study.slug] ?? {};
+  return study.metrics.flatMap((metric): CaseStudyMetric[] => {
+    const fact = facts[metric.id];
+    if (fact === undefined) return [{ ...metric, store: false }];
+    if (fact.kind === 'listing-count') {
+      return [{ ...metric, value: `${summary.play} + ${summary.appstore}`, asOf: summary.asOf, store: true }];
+    }
+    const listing = listings.find((candidate) => candidate.id === fact.listing);
+    if (!listing) return [];
+    const store = PLATFORM_LABEL[listing.platform];
+    if (fact.kind === 'installs') {
+      const installs = listing.installs;
+      if (!installs || !showInstalls(installs)) return [];
+      return [{ ...metric, value: installs, label: `${store} installs of ${listing.name}`, asOf: listing.asOf, store: true }];
+    }
+    const rating = listing.rating;
+    if (!rating || !showRating(rating)) return [];
+    return [
+      {
+        ...metric,
+        value: formatRatingValue(rating.value),
+        label: `${store} rating of ${listing.name}, from ${formatRatingCount(rating.count)}`,
+        asOf: listing.asOf,
+        store: true,
+      },
+    ];
+  });
+}
+
+/** The metrics a case study renders (store-backed values from the site's store data). */
+export function caseStudyMetrics(study: CaseStudy): readonly CaseStudyMetric[] {
+  return resolveCaseStudyMetrics(study, storeListings, storeSummary);
+}
+
+/** "6 on Google Play" / "2 on the App Store": a listing count written into a status segment. */
+const STORE_COUNT_SEGMENT = /^\d+ on (Google Play|the App Store)$/;
+
+/**
+ * An At a glance status line with each listing-count segment ("6 on Google Play", "2 on the App
+ * Store") recomputed from `summary`; every other segment is kept as written.
+ */
+export function resolveGlanceStatus(status: CaseStudy['glance']['status'], summary: StoreSummary): CaseStudy['glance']['status'] {
+  return status.map((segment) => {
+    const store = STORE_COUNT_SEGMENT.exec(segment)?.[1];
+    if (store === undefined) return segment;
+    return store === 'Google Play' ? `${summary.play} on Google Play` : `${summary.appstore} on the App Store`;
+  });
+}
+
+/** A case study's At a glance status, with its listing counts from the site's store data. */
+export function caseStudyGlanceStatus(study: CaseStudy): CaseStudy['glance']['status'] {
+  return resolveGlanceStatus(study.glance.status, storeSummary);
+}
+
+/** One public listing as a case study shows it: the link, and the facts that pass the display rules. */
+export interface ListingFacts {
+  readonly listing: StoreListing;
+  /** The install band when it passes the display rule (1K+), else null. */
+  readonly installs: StoreListing['installs'];
+  /** The rating when it passes the display rule (5+ ratings), else null. */
+  readonly rating: StoreListing['rating'];
+}
+
+/** A Citizen brand's public listings (Google Play first), for the hero store row and the #brands table. */
+export interface BrandStoreFacts {
+  readonly brand: CitizenBrand;
+  readonly listings: readonly ListingFacts[];
+}
+
+const PLATFORM_ORDER: Readonly<Record<StoreListing['platform'], number>> = { play: 0, appstore: 1 };
+
+/** Each brand's listings with their displayable facts, in brand order; Google Play before the App Store. */
+export function buildBrandStoreFacts(brandList: readonly CitizenBrand[], listings: readonly StoreListing[]): readonly BrandStoreFacts[] {
+  return brandList.map((brand) => ({
+    brand,
+    listings: listings
+      .filter((listing) => listing.brand === brand.id)
+      .toSorted((a, b) => PLATFORM_ORDER[a.platform] - PLATFORM_ORDER[b.platform])
+      .map((listing) => ({
+        listing,
+        installs: listing.installs && showInstalls(listing.installs) ? listing.installs : null,
+        rating: showRating(listing.rating) ? listing.rating : null,
+      })),
+  }));
+}
+
+/** The six public Citizen brands with their store facts (switcher order). */
+export const citizenStoreFacts: readonly BrandStoreFacts[] = buildBrandStoreFacts(brandsFor('citizen'), storeListings);

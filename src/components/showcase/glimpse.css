@@ -133,6 +133,15 @@
     background: currentColor;
   }
 
+  /* Forced colours turn the current mark's fill into Canvas, a hollow pill among hollow dots: it
+     takes the system Highlight instead, like every selected or current state on the site. */
+  @media (forced-colors: active) {
+    .gl-dot[aria-current="step"]::before {
+      border-color: Highlight;
+      background-color: Highlight;
+    }
+  }
+
   .gl-bars {
     display: inline-flex;
     flex: none;

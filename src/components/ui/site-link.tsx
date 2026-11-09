@@ -9,7 +9,8 @@ export type SiteLinkProps = Omit<ComponentProps<'a'>, 'href'> & {
   readonly href: SiteRoute;
   /**
    * Next's prefetch values, plus 'intent' (prefetch on first hover, focus or touch). Omitted:
-   * heavy routes (case studies, /showcase) use 'intent', everything else Next's default.
+   * the pages with replica phones (Home, /projects, case studies, /showcase) use 'intent',
+   * everything else Next's default.
    */
   readonly prefetch?: LinkPrefetch;
   /** Passed to React.addTransitionType for <ViewTransition> (Link prop since Next 16.2). */
@@ -24,6 +25,7 @@ export type SiteLinkProps = Omit<ComponentProps<'a'>, 'href'> & {
  * External URLs use ExternalLink instead.
  */
 export function SiteLink({ href, prefetch, transitionTypes, ...rest }: SiteLinkProps) {
+  // An explicit value always wins, null (Next's default) included.
   const mode = resolvePrefetch(href, prefetch);
   const types = transitionTypes ? [...transitionTypes] : undefined;
   if (mode === 'intent') return <IntentLink href={href} transitionTypes={types} {...rest} />;
